@@ -1,7 +1,9 @@
 import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
+  decimal,
   foreignKey,
+  integer,
   json,
   jsonb,
   pgTable,
@@ -13,25 +15,30 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AppUsage } from "../usage";
 
-export const user = pgTable("User", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  email: varchar("email", { length: 64 }).notNull(),
-  password: varchar("password", { length: 64 }),
-});
-
-export type User = InferSelectModel<typeof user>;
+// =====================================================
+// IMPORTANT: Schema Notes
+// =====================================================
+// 
+// 1. No User table - using Supabase auth.users directly
+// 2. All user_id fields reference auth.users(id) but FK constraints
+//    are defined in SQL migration (0001_initial_schema.sql), not here
+//    because Drizzle cannot reference Supabase's auth schema
+// 3. RLS policies are defined in SQL, enforced at database level
+// 4. This schema is for TypeScript types and Drizzle ORM only
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  createdAt: timestamp("createdAt").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
   title: text("title").notNull(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id),
+  user_id: uuid("user_id").notNull(), // FK to auth.users(id) - defined in SQL
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
   lastContext: jsonb("lastContext").$type<AppUsage | null>(),
+  totalInputTokens: integer("total_input_tokens").default(0),
+  totalOutputTokens: integer("total_output_tokens").default(0),
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }).default("0"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
@@ -57,8 +64,12 @@ export const message = pgTable("Message_v2", {
     .references(() => chat.id),
   role: varchar("role").notNull(),
   parts: json("parts").notNull(),
-  attachments: json("attachments").notNull(),
-  createdAt: timestamp("createdAt").notNull(),
+  attachments: json("attachments").notNull().default("[]"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  modelUsed: varchar("model_used", { length: 100 }),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  cost: decimal("cost", { precision: 10, scale: 6 }),
 });
 
 export type DBMessage = InferSelectModel<typeof message>;
@@ -109,15 +120,13 @@ export const document = pgTable(
   "Document",
   {
     id: uuid("id").notNull().defaultRandom(),
-    createdAt: timestamp("createdAt").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
     title: text("title").notNull(),
     content: text("content"),
-    kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
+    kind: varchar("kind", { enum: ["text", "code", "image", "sheet"] })
       .notNull()
       .default("text"),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
+    user_id: uuid("user_id").notNull(), // FK to auth.users(id) - defined in SQL
   },
   (table) => {
     return {
@@ -138,10 +147,8 @@ export const suggestion = pgTable(
     suggestedText: text("suggestedText").notNull(),
     description: text("description"),
     isResolved: boolean("isResolved").notNull().default(false),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
-    createdAt: timestamp("createdAt").notNull(),
+    user_id: uuid("user_id").notNull(), // FK to auth.users(id) - defined in SQL
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id] }),
@@ -159,7 +166,7 @@ export const stream = pgTable(
   {
     id: uuid("id").notNull().defaultRandom(),
     chatId: uuid("chatId").notNull(),
-    createdAt: timestamp("createdAt").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id] }),
@@ -171,3 +178,67 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// =====================================================
+// NEW TABLES (Admin & Analytics)
+// =====================================================
+
+export const adminConfig = pgTable("admin_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  configKey: varchar("config_key", { length: 100 }).notNull().unique(),
+  configData: jsonb("config_data").notNull(),
+  updatedBy: uuid("updated_by"), // References auth.users(id)
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AdminConfig = InferSelectModel<typeof adminConfig>;
+
+export const usageLogs = pgTable("usage_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull(), // References auth.users(id)
+  chat_id: uuid("chat_id"), // References Chat(id), nullable
+  agentType: varchar("agent_type", { length: 50 }).notNull(),
+  modelUsed: varchar("model_used", { length: 100 }),
+  provider: varchar("provider", { length: 50 }),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  totalTokens: integer("total_tokens"),
+  inputCost: decimal("input_cost", { precision: 10, scale: 6 }),
+  outputCost: decimal("output_cost", { precision: 10, scale: 6 }),
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }),
+  requestTimestamp: timestamp("request_timestamp").defaultNow(),
+  responseTimestamp: timestamp("response_timestamp"),
+  durationMs: integer("duration_ms"),
+  metadata: jsonb("metadata"),
+});
+
+export type UsageLog = InferSelectModel<typeof usageLogs>;
+
+export const rateLimitTracking = pgTable("rate_limit_tracking", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull(), // References auth.users(id)
+  agentType: varchar("agent_type", { length: 50 }).notNull(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  requestCount: integer("request_count").default(0),
+  limitType: varchar("limit_type", { length: 20 }).notNull(),
+  limitValue: integer("limit_value").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type RateLimitTracking = InferSelectModel<typeof rateLimitTracking>;
+
+export const githubRepositories = pgTable("github_repositories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull(), // References auth.users(id)
+  repoOwner: varchar("repo_owner", { length: 100 }).notNull(),
+  repoName: varchar("repo_name", { length: 100 }).notNull(),
+  repoUrl: text("repo_url"),
+  defaultBranch: varchar("default_branch", { length: 100 }).default("main"),
+  isActive: boolean("is_active").default(true),
+  lastAccessed: timestamp("last_accessed"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type GithubRepository = InferSelectModel<typeof githubRepositories>;
