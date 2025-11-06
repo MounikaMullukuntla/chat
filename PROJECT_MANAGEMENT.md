@@ -138,7 +138,7 @@ lib/db/migrations/
 
 4. **Update Drizzle Schema** (if using Drizzle ORM)
    ```typescript
-   // lib/db/schema.ts
+   // lib/db/drizzle-schema.ts
    export const chat = pgTable("chat", {
      // ... existing fields
      newField: text("new_field"), // Add new field

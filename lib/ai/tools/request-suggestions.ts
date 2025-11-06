@@ -1,19 +1,19 @@
 import { streamObject, tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
+import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
-import type { Suggestion } from "@/lib/db/schema";
+import type { Suggestion } from "@/lib/db/drizzle-schema";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 import { myProvider } from "../providers";
 
 type RequestSuggestionsProps = {
-  session: Session;
+  user: User | null;
   dataStream: UIMessageStreamWriter<ChatMessage>;
 };
 
 export const requestSuggestions = ({
-  session,
+  user,
   dataStream,
 }: RequestSuggestionsProps) =>
   tool({
@@ -63,15 +63,15 @@ export const requestSuggestions = ({
 
         dataStream.write({
           type: "data-suggestion",
-          data: suggestion,
+          data: suggestion as any,
           transient: true,
         });
 
         suggestions.push(suggestion);
       }
 
-      if (session.user?.id) {
-        const userId = session.user.id;
+      if (user?.id) {
+        const userId = user.id;
 
         await saveSuggestions({
           suggestions: suggestions.map((suggestion) => ({

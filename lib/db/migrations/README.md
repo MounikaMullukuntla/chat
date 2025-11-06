@@ -30,7 +30,7 @@ This will apply `0001_initial_schema.sql` which creates:
 
 | File | Description | Status |
 |------|-------------|--------|
-| `0001_initial_schema.sql` | Initial database schema with all tables | ✅ Active |
+| `0001_initial_schema.sql` | Complete initial database schema with all tables, RLS policies, triggers, indexes, and error logging | ✅ Active |
 
 ### Future Migrations
 

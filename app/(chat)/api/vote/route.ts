@@ -1,4 +1,4 @@
-import { auth } from "@/app/(auth)/auth";
+import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
@@ -13,10 +13,13 @@ export async function GET(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:vote").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
   const chat = await getChatById({ id: chatId });
@@ -25,7 +28,7 @@ export async function GET(request: Request) {
     return new ChatSDKError("not_found:chat").toResponse();
   }
 
-  if (chat.userId !== session.user.id) {
+  if (chat.user_id !== user.id) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 
@@ -49,10 +52,13 @@ export async function PATCH(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:vote").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
   const chat = await getChatById({ id: chatId });
@@ -61,7 +67,7 @@ export async function PATCH(request: Request) {
     return new ChatSDKError("not_found:vote").toResponse();
   }
 
-  if (chat.userId !== session.user.id) {
+  if (chat.user_id !== user.id) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 

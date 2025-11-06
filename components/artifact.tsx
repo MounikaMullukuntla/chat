@@ -14,10 +14,11 @@ import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
 import { codeArtifact } from "@/artifacts/code/client";
 import { imageArtifact } from "@/artifacts/image/client";
+import { mermaidArtifact } from "@/artifacts/mermaid/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
-import type { Document, Vote } from "@/lib/db/schema";
+import type { Document, Vote } from "@/lib/db/drizzle-schema";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
 import { ArtifactActions } from "./artifact-actions";
@@ -32,6 +33,7 @@ import type { VisibilityType } from "./visibility-selector";
 export const artifactDefinitions = [
   textArtifact,
   codeArtifact,
+  mermaidArtifact,
   imageArtifact,
   sheetArtifact,
 ];

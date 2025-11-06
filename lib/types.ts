@@ -56,3 +56,69 @@ export type Attachment = {
   url: string;
   contentType: string;
 };
+
+// Enhanced admin configuration interfaces for chat input enhancements
+export interface ModelCapabilities {
+  supportsThinkingMode: boolean;
+  fileInputEnabled: boolean;
+  allowedFileTypes: string[];
+}
+
+export interface EnhancedModelConfig {
+  id: string;
+  name: string;
+  description: string;
+  pricingPerMillionTokens: {
+    input: number;
+    output: number;
+  };
+  enabled: boolean;
+  isDefault: boolean;
+  thinkingEnabled?: boolean;
+  // New capabilities
+  supportsThinkingMode: boolean;
+  fileInputEnabled: boolean;
+  allowedFileTypes: string[];
+}
+
+export interface ProviderCapabilities {
+  enabled: boolean;
+  models: Record<string, EnhancedModelConfig>;
+  // Provider-level file input settings
+  fileInputEnabled: boolean;
+  allowedFileTypes: string[];
+}
+
+export interface AdminConfigSummary {
+  providers: Record<string, ProviderCapabilities>;
+}
+
+// GitHub integration types
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  private: boolean;
+  description: string;
+  stargazers_count?: number;
+  forks_count?: number;
+  language?: string;
+}
+
+export interface GitHubSearchResponse {
+  total_count: number;
+  incomplete_results: boolean;
+  items: GitHubRepo[];
+}
+
+export interface GitHubContextState {
+  searchQuery: string;
+  searchResults: GitHubRepo[];
+  selectedRepos: GitHubRepo[];
+  isLoading: boolean;
+  error: string | null;
+}

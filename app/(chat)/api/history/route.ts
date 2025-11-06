@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { auth } from "@/app/(auth)/auth";
+import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
 import { getChatsByUserId, deleteAllChatsByUserId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
@@ -17,14 +17,17 @@ export async function GET(request: NextRequest) {
     ).toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:chat").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
   const chats = await getChatsByUserId({
-    id: session.user.id,
+    id: user.id,
     limit,
     startingAfter,
     endingBefore,
@@ -34,13 +37,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE() {
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:chat").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
-  const result = await deleteAllChatsByUserId({ userId: session.user.id });
+  const result = await deleteAllChatsByUserId({ userId: user.id });
 
   return Response.json(result, { status: 200 });
 }

@@ -1,4 +1,4 @@
-import { auth } from "@/app/(auth)/auth";
+import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
 import type { ArtifactKind } from "@/components/artifact";
 import {
   deleteDocumentsByIdAfterTimestamp,
@@ -6,37 +6,112 @@ import {
   saveDocument,
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
+import { logApiError, logPermissionError, ErrorCategory, ErrorSeverity } from "@/lib/errors/logger";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
   if (!id) {
-    return new ChatSDKError(
+    await logApiError(
+      ErrorCategory.INVALID_REQUEST,
+      "Document GET request missing required id parameter",
+      {
+        request: {
+          method: 'GET',
+          url: request.url,
+          headers: Object.fromEntries(request.headers.entries())
+        }
+      },
+      ErrorSeverity.WARNING
+    );
+    
+    return await new ChatSDKError(
       "bad_request:api",
       "Parameter id is missing"
-    ).toResponse();
+    ).toResponse({
+      request_path: request.url,
+      request_method: 'GET',
+      user_agent: request.headers.get('user-agent') || undefined
+    });
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:document").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    await logApiError(
+      ErrorCategory.UNAUTHORIZED_ACCESS,
+      `Document GET request authentication failed: ${error instanceof Error ? error.message : 'Unknown auth error'}`,
+      {
+        request: {
+          method: 'GET',
+          url: request.url,
+          headers: Object.fromEntries(request.headers.entries())
+        }
+      },
+      ErrorSeverity.WARNING
+    );
+    
+    return createAuthErrorResponse(error as Error);
   }
 
-  const documents = await getDocumentsById({ id });
+  try {
+    const documents = await getDocumentsById({ id });
+    const [document] = documents;
 
-  const [document] = documents;
+    if (!document) {
+      await logApiError(
+        ErrorCategory.API_REQUEST_FAILED,
+        `Document not found: ${id}`,
+        {
+          request: {
+            method: 'GET',
+            url: request.url
+          },
+          user: user
+        },
+        ErrorSeverity.INFO
+      );
+      
+      return new ChatSDKError("not_found:document").toResponse();
+    }
 
-  if (!document) {
-    return new ChatSDKError("not_found:document").toResponse();
+    if (document.user_id !== user.id) {
+      await logPermissionError(
+        ErrorCategory.PERMISSION_DENIED,
+        `User attempted to access document ${id} owned by another user`,
+        {
+          documentOwnerId: document.user_id,
+          requestingUserId: user.id,
+          requestUrl: request.url
+        },
+        user.id,
+        ErrorSeverity.WARNING
+      );
+      
+      return new ChatSDKError("forbidden:document").toResponse();
+    }
+
+    return Response.json(documents, { status: 200 });
+  } catch (error) {
+    await logApiError(
+      ErrorCategory.DATABASE_ERROR,
+      `Failed to retrieve document ${id} from database: ${error instanceof Error ? error.message : 'Unknown database error'}`,
+      {
+        request: {
+          method: 'GET',
+          url: request.url
+        },
+        user: user
+      },
+      ErrorSeverity.ERROR
+    );
+    
+    return new ChatSDKError("bad_request:database").toResponse();
   }
-
-  if (document.userId !== session.user.id) {
-    return new ChatSDKError("forbidden:document").toResponse();
-  }
-
-  return Response.json(documents, { status: 200 });
 }
 
 export async function POST(request: Request) {
@@ -50,10 +125,13 @@ export async function POST(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("not_found:document").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
   const {
@@ -68,7 +146,7 @@ export async function POST(request: Request) {
   if (documents.length > 0) {
     const [doc] = documents;
 
-    if (doc.userId !== session.user.id) {
+    if (doc.user_id !== user.id) {
       return new ChatSDKError("forbidden:document").toResponse();
     }
   }
@@ -78,7 +156,7 @@ export async function POST(request: Request) {
     content,
     title,
     kind,
-    userId: session.user.id,
+    userId: user.id,
   });
 
   return Response.json(document, { status: 200 });
@@ -103,17 +181,20 @@ export async function DELETE(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:document").toResponse();
+  // Authenticate user with Supabase
+  let user;
+  try {
+    const authResult = await requireAuth();
+    user = authResult.user;
+  } catch (error) {
+    return createAuthErrorResponse(error as Error);
   }
 
   const documents = await getDocumentsById({ id });
 
   const [document] = documents;
 
-  if (document.userId !== session.user.id) {
+  if (document.user_id !== user.id) {
     return new ChatSDKError("forbidden:document").toResponse();
   }
 

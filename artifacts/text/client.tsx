@@ -11,7 +11,7 @@ import {
   UndoIcon,
 } from "@/components/icons";
 import { Editor } from "@/components/text-editor";
-import type { Suggestion } from "@/lib/db/schema";
+import type { Suggestion } from "@/lib/db/drizzle-schema";
 import { getSuggestions } from "../actions";
 
 type TextArtifactMetadata = {
@@ -32,7 +32,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
     if (streamPart.type === "data-suggestion") {
       setMetadata((metadata) => {
         return {
-          suggestions: [...metadata.suggestions, streamPart.data],
+          suggestions: [...metadata.suggestions, streamPart.data as any],
         };
       });
     }

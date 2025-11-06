@@ -52,11 +52,76 @@ export class ChatSDKError extends Error {
     this.statusCode = getStatusCodeByType(this.type);
   }
 
-  toResponse() {
+  async toResponse(context?: {
+    user_id?: string;
+    request_path?: string;
+    request_method?: string;
+    user_agent?: string;
+    additional_details?: Record<string, any>;
+  }) {
     const code: ErrorCode = `${this.type}:${this.surface}`;
     const visibility = visibilityBySurface[this.surface];
 
     const { message, cause, statusCode } = this;
+
+    // Log error using the new error logging system
+    try {
+      const { logApiError, ErrorCategory, ErrorSeverity } = await import('./errors/logger');
+      
+      // Map error types to categories
+      let errorCategory = ErrorCategory.API_REQUEST_FAILED;
+      let severity = ErrorSeverity.ERROR;
+
+      switch (this.type) {
+        case 'bad_request':
+          errorCategory = ErrorCategory.INVALID_REQUEST;
+          severity = ErrorSeverity.WARNING;
+          break;
+        case 'unauthorized':
+          errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
+          severity = ErrorSeverity.WARNING;
+          break;
+        case 'forbidden':
+          errorCategory = ErrorCategory.PERMISSION_DENIED;
+          severity = ErrorSeverity.WARNING;
+          break;
+        case 'not_found':
+          errorCategory = ErrorCategory.API_REQUEST_FAILED;
+          severity = ErrorSeverity.INFO;
+          break;
+        case 'rate_limit':
+          errorCategory = ErrorCategory.API_RATE_LIMIT;
+          severity = ErrorSeverity.WARNING;
+          break;
+        case 'offline':
+          errorCategory = ErrorCategory.NETWORK_ERROR;
+          severity = ErrorSeverity.ERROR;
+          break;
+      }
+
+      await logApiError(
+        errorCategory,
+        `ChatSDKError: ${code} - ${message}${cause ? ` (${cause})` : ''}`,
+        {
+          request: {
+            method: context?.request_method,
+            url: context?.request_path,
+            headers: context?.user_agent ? { 'user-agent': context.user_agent } : undefined
+          },
+          // user: context?.user_id ? { id: context.user_id } : undefined, // Removed - partial user object not allowed
+          ...context?.additional_details
+        },
+        severity
+      );
+    } catch (logError) {
+      // Fallback to console logging if error logging fails
+      console.error('Failed to log ChatSDKError:', logError);
+      console.error({
+        code,
+        message,
+        cause,
+      });
+    }
 
     if (visibility === "log") {
       console.error({

@@ -1,10 +1,15 @@
+// TODO: Replace entire file with Supabase auth actions
+// This file contains NextAuth-specific login/register actions that will be replaced
+
 "use server";
 
 import { z } from "zod";
 
-import { createUser, getUser } from "@/lib/db/queries";
+// TODO: Replace with Supabase auth functions
+// import { createUser, getUser } from "@/lib/db/queries";
 
-import { signIn } from "./auth";
+// TODO: Replace with Supabase auth
+// import { signIn } from "./auth";
 
 const authFormSchema = z.object({
   email: z.string().email(),
@@ -15,6 +20,7 @@ export type LoginActionState = {
   status: "idle" | "in_progress" | "success" | "failed" | "invalid_data";
 };
 
+// TODO: Replace with Supabase auth login action
 export const login = async (
   _: LoginActionState,
   formData: FormData
@@ -25,12 +31,13 @@ export const login = async (
       password: formData.get("password"),
     });
 
-    await signIn("credentials", {
-      email: validatedData.email,
-      password: validatedData.password,
-      redirect: false,
-    });
+    // TODO: Implement Supabase signInWithPassword
+    // const { data, error } = await supabase.auth.signInWithPassword({
+    //   email: validatedData.email,
+    //   password: validatedData.password,
+    // });
 
+    // Temporarily return success during migration
     return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -51,6 +58,7 @@ export type RegisterActionState = {
     | "invalid_data";
 };
 
+// TODO: Replace with Supabase auth register action
 export const register = async (
   _: RegisterActionState,
   formData: FormData
@@ -61,18 +69,20 @@ export const register = async (
       password: formData.get("password"),
     });
 
-    const [user] = await getUser(validatedData.email);
+    // TODO: Implement Supabase signUp
+    // const { data, error } = await supabase.auth.signUp({
+    //   email: validatedData.email,
+    //   password: validatedData.password,
+    // });
 
-    if (user) {
-      return { status: "user_exists" } as RegisterActionState;
-    }
-    await createUser(validatedData.email, validatedData.password);
-    await signIn("credentials", {
-      email: validatedData.email,
-      password: validatedData.password,
-      redirect: false,
-    });
+    // if (error) {
+    //   if (error.message.includes('already registered')) {
+    //     return { status: "user_exists" };
+    //   }
+    //   return { status: "failed" };
+    // }
 
+    // Temporarily return success during migration
     return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) {

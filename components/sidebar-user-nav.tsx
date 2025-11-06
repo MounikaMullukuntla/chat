@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Settings, Shield, Sun, Moon, LogOut } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import type { User } from "@supabase/supabase-js";
+import { useAuth, useRole } from "@/lib/auth/hooks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,16 +19,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { guestRegex } from "@/lib/constants";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
 
-export function SidebarUserNav({ user }: { user: User }) {
+export function SidebarUserNav({ user: propUser }: { user?: User }) {
   const router = useRouter();
-  const { data, status } = useSession();
+  const { user, loading, signOut, error } = useAuth();
+  const { isAdmin, role, loading: roleLoading } = useRole();
   const { setTheme, resolvedTheme } = useTheme();
 
-  const isGuest = guestRegex.test(data?.user?.email ?? "");
+  // Use the user from auth hook if available, otherwise use prop user
+  const currentUser = user || propUser;
+  const status = loading ? "loading" : "authenticated";
+
+
 
   return (
     <SidebarMenu>
@@ -52,14 +57,14 @@ export function SidebarUserNav({ user }: { user: User }) {
                 data-testid="user-nav-button"
               >
                 <Image
-                  alt={user.email ?? "User Avatar"}
+                  alt={currentUser?.email ?? "User Avatar"}
                   className="rounded-full"
                   height={24}
-                  src={`https://avatar.vercel.sh/${user.email}`}
+                  src={`https://avatar.vercel.sh/${currentUser?.email}`}
                   width={24}
                 />
                 <span className="truncate" data-testid="user-email">
-                  {isGuest ? "Guest" : user?.email}
+                  {currentUser?.email ?? "User"}
                 </span>
                 <ChevronUp className="ml-auto" />
               </SidebarMenuButton>
@@ -70,41 +75,66 @@ export function SidebarUserNav({ user }: { user: User }) {
             data-testid="user-nav-menu"
             side="top"
           >
+            <DropdownMenuItem asChild data-testid="user-nav-item-settings">
+              <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild data-testid="user-nav-item-admin">
+                <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center gap-2"
               data-testid="user-nav-item-theme"
               onSelect={() =>
                 setTheme(resolvedTheme === "dark" ? "light" : "dark")
               }
             >
+              {resolvedTheme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
               {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
-                className="w-full cursor-pointer"
-                onClick={() => {
+                className="w-full cursor-pointer flex items-center gap-2"
+                onClick={async () => {
                   if (status === "loading") {
                     toast({
                       type: "error",
                       description:
                         "Checking authentication status, please try again!",
                     });
-
                     return;
                   }
 
-                  if (isGuest) {
+                  if (!currentUser) {
                     router.push("/login");
                   } else {
-                    signOut({
-                      redirectTo: "/",
-                    });
+                    try {
+                      await signOut();
+                      router.push("/");
+                    } catch (err) {
+                      toast({
+                        type: "error",
+                        description: "Failed to sign out. Please try again.",
+                      });
+                    }
                   }
                 }}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                <LogOut className="h-4 w-4" />
+                {!currentUser ? "Login to your account" : "Sign out"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

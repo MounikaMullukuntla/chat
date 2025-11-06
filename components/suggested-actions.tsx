@@ -6,14 +6,30 @@ import { memo } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { Suggestion } from "./elements/suggestion";
 import type { VisibilityType } from "./visibility-selector";
+import type { AdminConfigSummary } from "@/lib/types";
+import { useLocalStorage } from "usehooks-ts";
+import { useModelCapabilities } from "@/hooks/use-model-capabilities";
 
 type SuggestedActionsProps = {
   chatId: string;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   selectedVisibilityType: VisibilityType;
+  selectedModelId?: string;
+  selectedProvider?: string;
 };
 
-function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
+function PureSuggestedActions({
+  chatId,
+  sendMessage,
+  selectedModelId,
+  selectedProvider,
+}: SuggestedActionsProps) {
+  // Get thinking mode from localStorage (same as multimodal-input)
+  const [thinkingMode] = useLocalStorage("thinking-mode", false);
+
+  // Fetch adminConfig directly in this component
+  const { modelCapabilities: adminConfig } = useModelCapabilities();
+
   const suggestedActions = [
     "What are the advantages of using Next.js?",
     "Write code to demonstrate Dijkstra's algorithm",
@@ -38,10 +54,26 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
             className="h-auto w-full whitespace-normal p-3 text-left"
             onClick={(suggestion) => {
               window.history.replaceState({}, "", `/chat/${chatId}`);
-              sendMessage({
+
+              // Check if thinking mode is supported and enabled (same logic as multimodal-input)
+              const providerConfig = selectedProvider && adminConfig?.providers?.[selectedProvider];
+              const modelConfig = selectedModelId && providerConfig?.models?.[selectedModelId];
+              const supportsThinkingMode = modelConfig?.supportsThinkingMode || false;
+              const shouldIncludeThinkingMode = supportsThinkingMode && thinkingMode;
+
+              const messageData: any = {
                 role: "user",
                 parts: [{ type: "text", text: suggestion }],
-              });
+              };
+
+              // Add thinking mode metadata if enabled
+              if (shouldIncludeThinkingMode) {
+                messageData.experimental_providerMetadata = {
+                  thinking: true,
+                };
+              }
+
+              sendMessage(messageData);
             }}
             suggestion={suggestedAction}
           >
@@ -60,6 +92,12 @@ export const SuggestedActions = memo(
       return false;
     }
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) {
+      return false;
+    }
+    if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (prevProps.selectedProvider !== nextProps.selectedProvider) {
       return false;
     }
 

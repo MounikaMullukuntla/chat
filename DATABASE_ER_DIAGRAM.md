@@ -80,7 +80,7 @@ erDiagram
     %% New Admin & Config Tables
     ADMIN_CONFIG {
         uuid id PK
-        varchar config_key UK "routing_agent, chat_agent_google, etc"
+        varchar config_key UK "chat_model_agent_google, document_agent_google, etc"
         jsonb config_data "flexible JSON configuration"
         uuid updated_by FK "admin user"
         timestamp updated_at
@@ -235,9 +235,12 @@ erDiagram
   - `updated_by` → `auth.users(id)` (admin who made last change)
 - **RLS**: Only admins can read/write
 - **Config Keys**:
-  - `routing_agent`
-  - `chat_agent_google`
-  - `artifact_agent_google`
+  - `chat_model_agent_google`
+  - `provider_tools_agent_google`
+  - `document_agent_google`
+  - `python_agent_google`
+  - `mermaid_agent_google`
+  - `git_mcp_agent_google`
   - `git_mcp_agent_google`
 - **Config Data (JSONB)**: Flexible structure for each agent's settings
 

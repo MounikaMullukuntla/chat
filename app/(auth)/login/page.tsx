@@ -1,53 +1,164 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
-import { type LoginActionState, login } from "../actions";
+import { useAuth } from "@/lib/auth/hooks";
+import { logAuthError, ErrorCategory, ErrorSeverity } from "@/lib/errors/logger";
 
-export default function Page() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { signIn, loading, error, clearError, user } = useAuth();
 
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [state, formAction] = useActionState<LoginActionState, FormData>(
-    login,
-    {
-      status: "idle",
-    }
-  );
-
-  const { update: updateSession } = useSession();
-
+  // Redirect if already authenticated
   useEffect(() => {
-    if (state.status === "failed") {
-      toast({
-        type: "error",
-        description: "Invalid credentials!",
-      });
-    } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
-    } else if (state.status === "success") {
-      setIsSuccessful(true);
-      updateSession();
-      router.refresh();
+    if (user && !loading) {
+      const returnTo = searchParams.get("returnTo") || "/chat";
+      router.push(returnTo);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status]);
+  }, [user, loading, router, searchParams]);
 
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get("email") as string);
-    formAction(formData);
+  // Handle auth errors
+  useEffect(() => {
+    if (error) {
+      const userMessage = getErrorMessage(error);
+      let errorCategory = ErrorCategory.LOGIN_FAILED;
+      let severity = ErrorSeverity.ERROR;
+
+      // Categorize the error
+      if (error.includes("Invalid login credentials")) {
+        errorCategory = ErrorCategory.LOGIN_FAILED;
+        severity = ErrorSeverity.WARNING;
+      } else if (error.includes("Email not confirmed")) {
+        errorCategory = ErrorCategory.LOGIN_FAILED;
+        severity = ErrorSeverity.WARNING;
+      } else if (error.includes("Too many requests")) {
+        errorCategory = ErrorCategory.API_RATE_LIMIT;
+        severity = ErrorSeverity.WARNING;
+      } else if (error.includes("Network")) {
+        errorCategory = ErrorCategory.NETWORK_ERROR;
+        severity = ErrorSeverity.ERROR;
+      }
+
+      // Log the error
+      logAuthError(
+        errorCategory,
+        `Login failed: ${error}`,
+        {
+          email: email,
+          userMessage: userMessage,
+          originalError: error,
+          timestamp: new Date().toISOString()
+        },
+        undefined, // No user_id since login failed
+        severity
+      );
+
+      toast({
+        type: "error",
+        description: userMessage,
+      });
+      setIsSubmitting(false);
+    }
+  }, [error, email]);
+
+  // Clear error when component unmounts or user starts typing
+  useEffect(() => {
+    return () => {
+      if (error) {
+        clearError();
+      }
+    };
+  }, [error, clearError]);
+
+  const getErrorMessage = (error: string): string => {
+    // Map Supabase auth errors to user-friendly messages
+    if (error.includes("Invalid login credentials")) {
+      return "Invalid email or password. Please try again.";
+    }
+    if (error.includes("Email not confirmed")) {
+      return "Please check your email and click the confirmation link.";
+    }
+    if (error.includes("Too many requests")) {
+      return "Too many login attempts. Please wait a moment and try again.";
+    }
+    if (error.includes("Network")) {
+      return "Network error. Please check your connection and try again.";
+    }
+    return "Login failed. Please try again.";
   };
+
+  const handleSubmit = async (formData: FormData) => {
+    const emailValue = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    if (!emailValue || !password) {
+      toast({
+        type: "error",
+        description: "Please enter both email and password.",
+      });
+      return;
+    }
+
+    setEmail(emailValue);
+    setIsSubmitting(true);
+    clearError();
+
+    try {
+      await signIn(emailValue, password);
+      setIsSuccessful(true);
+      
+      // Redirect will be handled by the useEffect above
+      toast({
+        type: "success",
+        description: "Successfully signed in!",
+      });
+    } catch (err) {
+      // Log unexpected errors
+      const errorMessage = err instanceof Error ? err.message : 'Unknown login error';
+      
+      logAuthError(
+        ErrorCategory.LOGIN_FAILED,
+        `Unexpected login error: ${errorMessage}`,
+        {
+          email: emailValue,
+          error: errorMessage,
+          stack: err instanceof Error ? err.stack : undefined,
+          timestamp: new Date().toISOString()
+        },
+        undefined,
+        ErrorSeverity.ERROR
+      );
+      
+      console.error("Login error:", err);
+    }
+  };
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex h-dvh w-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render form if user is already authenticated (will redirect)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
@@ -59,7 +170,12 @@ export default function Page() {
           </p>
         </div>
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
+          <SubmitButton 
+            isSuccessful={isSuccessful}
+            disabled={isSubmitting || loading}
+          >
+            {isSubmitting ? "Signing in..." : "Sign in"}
+          </SubmitButton>
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
             {"Don't have an account? "}
             <Link
@@ -73,5 +189,20 @@ export default function Page() {
         </AuthForm>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-dvh w-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

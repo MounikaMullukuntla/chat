@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1730426136995,
+      "tag": "0001_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7", 
+      "when": 1730426137000,
+      "tag": "0002_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1730426137005,
+      "tag": "0003_indexes", 
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1730426137010,
+      "tag": "0004_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1730426137015,
+      "tag": "0005_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1730426137020,
+      "tag": "0006_seed_data_app_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1730426137025,
+      "tag": "0006_seed_data_google",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1730426137030,
+      "tag": "0006_seed_data_openai",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1730426137035,
+      "tag": "0006_seed_data_anthropic",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1730426137040,
+      "tag": "0007_seed_data_model_config",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 "use client";
 
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { Trigger } from "@radix-ui/react-select";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
 import {
@@ -9,7 +8,6 @@ import {
   type Dispatch,
   memo,
   type SetStateAction,
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -18,18 +16,13 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
-import { saveChatModelAsCookie } from "@/app/(chat)/actions";
-import { SelectItem } from "@/components/ui/select";
-import { chatModels } from "@/lib/ai/models";
-import { myProvider } from "@/lib/ai/providers";
-import type { Attachment, ChatMessage } from "@/lib/types";
+
+import type { Attachment, ChatMessage, GitHubRepo } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
 import { Context } from "./elements/context";
 import {
   PromptInput,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputToolbar,
@@ -37,15 +30,18 @@ import {
 } from "./elements/prompt-input";
 import {
   ArrowUpIcon,
-  ChevronDownIcon,
-  CpuIcon,
-  PaperclipIcon,
   StopIcon,
 } from "./icons";
+import { X } from "lucide-react";
+import { ConditionalFileInput, createValidatedFileChangeHandler } from "./conditional-file-input";
+import { GitHubRepoModal } from "./github-repo-modal";
+import { ModelSelector } from "./model-selector";
 import { PreviewAttachment } from "./preview-attachment";
 import { SuggestedActions } from "./suggested-actions";
+import { ThinkingModeToggle } from "./thinking-mode-toggle";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
+import { useModelCapabilities } from "@/hooks/use-model-capabilities";
 
 function PureMultimodalInput({
   chatId,
@@ -63,6 +59,7 @@ function PureMultimodalInput({
   selectedModelId,
   onModelChange,
   usage,
+  githubPAT,
 }: {
   chatId: string;
   input: string;
@@ -79,9 +76,73 @@ function PureMultimodalInput({
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
   usage?: AppUsage;
+  githubPAT?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+
+  // Thinking mode state - persists across model selections within the session
+  const [thinkingMode, setThinkingMode] = useLocalStorage("thinking-mode", false);
+
+  // GitHub repositories state - UI-level storage only (session-based)
+  const [selectedRepos, setSelectedRepos] = useState<GitHubRepo[]>([]);
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+
+  // Load GitHub repos from session storage on mount
+  useEffect(() => {
+    const savedRepos = sessionStorage.getItem(`github-repos-${chatId}`);
+    if (savedRepos) {
+      try {
+        const parsedRepos = JSON.parse(savedRepos);
+        setSelectedRepos(parsedRepos);
+      } catch (error) {
+        console.error('Failed to parse saved GitHub repos:', error);
+      }
+    }
+  }, [chatId]);
+
+  // Save GitHub repos to session storage when they change
+  useEffect(() => {
+    if (selectedRepos.length > 0) {
+      sessionStorage.setItem(`github-repos-${chatId}`, JSON.stringify(selectedRepos));
+    } else {
+      sessionStorage.removeItem(`github-repos-${chatId}`);
+    }
+  }, [selectedRepos, chatId]);
+
+  // Handle GitHub repository selection changes
+  const handleGitHubRepoChange = useCallback((repos: GitHubRepo[]) => {
+    setSelectedRepos(repos);
+  }, []);
+
+  // Provider state for other components
+  const [selectedProvider, setSelectedProvider] = useState("google");
+
+  // Fetch model capabilities for all users
+  const { modelCapabilities: adminConfig, isLoading: configLoading, error: configError } = useModelCapabilities();
+  
+
+
+  // Determine current provider from selected model
+  useEffect(() => {
+    if (adminConfig && selectedModelId) {
+      // Find which provider contains this model
+      for (const [providerId, providerConfig] of Object.entries(adminConfig.providers)) {
+        if (providerConfig.models[selectedModelId]) {
+          setSelectedProvider(providerId);
+          return;
+        }
+      }
+      
+      // If no match found, default to first enabled provider
+      const firstEnabledProvider = Object.entries(adminConfig.providers).find(
+        ([_, config]) => config.enabled
+      );
+      if (firstEnabledProvider) {
+        setSelectedProvider(firstEnabledProvider[0]);
+      }
+    }
+  }, [adminConfig, selectedModelId]);
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
@@ -132,21 +193,52 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, "", `/chat/${chatId}`);
 
-    sendMessage({
+    // Check if thinking mode is supported and enabled
+    const providerConfig = adminConfig?.providers?.[selectedProvider];
+    const modelConfig = providerConfig?.models?.[selectedModelId];
+    const supportsThinkingMode = modelConfig?.supportsThinkingMode || false;
+    const shouldIncludeThinkingMode = supportsThinkingMode && thinkingMode;
+
+    // Prepare message parts
+    const messageParts: any[] = [
+      ...attachments.map((attachment) => ({
+        type: "file" as const,
+        url: attachment.url,
+        name: attachment.name,
+        mediaType: attachment.contentType,
+      })),
+    ];
+
+    // Add GitHub repository context if any are selected
+    if (selectedRepos.length > 0) {
+      const repoContext = selectedRepos.map(repo => 
+        `GitHub Repository: ${repo.full_name} - ${repo.description || 'No description'}`
+      ).join('\n');
+      
+      messageParts.push({
+        type: "text",
+        text: `GitHub Context:\n${repoContext}\n\nUser Message: ${input}`,
+      });
+    } else {
+      messageParts.push({
+        type: "text",
+        text: input,
+      });
+    }
+
+    const messageData: any = {
       role: "user",
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: "file" as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-        })),
-        {
-          type: "text",
-          text: input,
-        },
-      ],
-    });
+      parts: messageParts,
+    };
+
+    // Include thinking mode parameters when enabled
+    if (shouldIncludeThinkingMode) {
+      messageData.experimental_providerMetadata = {
+        thinking: true,
+      };
+    }
+
+    sendMessage(messageData);
 
     setAttachments([]);
     setLocalStorageInput("");
@@ -166,6 +258,11 @@ function PureMultimodalInput({
     width,
     chatId,
     resetHeight,
+    selectedModelId,
+    selectedProvider,
+    adminConfig,
+    thinkingMode,
+    selectedRepos,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -195,9 +292,7 @@ function PureMultimodalInput({
     }
   }, []);
 
-  const _modelResolver = useMemo(() => {
-    return myProvider.languageModel(selectedModelId);
-  }, [selectedModelId]);
+
 
   const contextProps = useMemo(
     () => ({
@@ -232,6 +327,18 @@ function PureMultimodalInput({
     [setAttachments, uploadFile]
   );
 
+  // Create validated file change handler that checks file types
+  const validatedFileChangeHandler = useMemo(
+    () => createValidatedFileChangeHandler(
+      selectedProvider,
+      selectedModelId,
+      adminConfig || undefined,
+      handleFileChange,
+      fileInputRef
+    ),
+    [selectedProvider, selectedModelId, adminConfig, handleFileChange]
+  );
+
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
       {messages.length === 0 &&
@@ -241,13 +348,17 @@ function PureMultimodalInput({
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
             sendMessage={sendMessage}
+            selectedModelId={selectedModelId}
+            selectedProvider={selectedProvider}
           />
         )}
+
+
 
       <input
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
         multiple
-        onChange={handleFileChange}
+        onChange={validatedFileChangeHandler}
         ref={fileInputRef}
         tabIndex={-1}
         type="file"
@@ -313,16 +424,92 @@ function PureMultimodalInput({
           />{" "}
           <Context {...contextProps} />
         </div>
+
+        
+        {/* Selected GitHub Repos Display */}
+        {selectedRepos.length > 0 && (
+          <div className="px-3 pb-2 border-t border-border/50">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 mt-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              <span>GitHub Context ({selectedRepos.length})</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedRepos.map((repo) => (
+                <div
+                  key={repo.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-xs font-medium"
+                >
+                  <span>{repo.full_name}</span>
+                  <button
+                    onClick={() => {
+                      const newRepos = selectedRepos.filter(r => r.id !== repo.id);
+                      handleGitHubRepoChange(newRepos);
+                    }}
+                    className="text-primary/70 hover:text-primary hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                    title={`Remove ${repo.full_name}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <PromptInputToolbar className="!border-top-0 border-t-0! p-0 shadow-none dark:border-0 dark:border-transparent!">
           <PromptInputTools className="gap-0 sm:gap-0.5">
-            <AttachmentsButton
+            <ConditionalFileInput
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModelId}
+              adminConfig={adminConfig || undefined}
               fileInputRef={fileInputRef}
-              selectedModelId={selectedModelId}
+              onFileChange={validatedFileChangeHandler}
               status={status}
             />
-            <ModelSelectorCompact
-              onModelChange={onModelChange}
-              selectedModelId={selectedModelId}
+            
+            {/* GitHub Repository Button */}
+            {githubPAT && (
+              <Button
+                type="button"
+                className={`aspect-square h-8 rounded-lg p-1 transition-all duration-200 ${
+                  selectedRepos.length > 0 
+                    ? 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20' 
+                    : 'hover:bg-accent'
+                }`}
+                variant="ghost"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowGitHubModal(!showGitHubModal);
+                }}
+                title={selectedRepos.length > 0 ? `${selectedRepos.length} repositories selected` : 'Select GitHub repositories'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                {selectedRepos.length > 0 && (
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                    {selectedRepos.length}
+                  </div>
+                )}
+              </Button>
+            )}
+            
+            <ModelSelector
+              selectedModel={selectedModelId}
+              adminConfig={adminConfig || undefined}
+              isLoading={configLoading}
+              error={configError}
+              onModelChange={onModelChange || (() => {})}
+            />
+            <ThinkingModeToggle
+              selectedModel={selectedModelId}
+              adminConfig={adminConfig || undefined}
+              thinkingMode={thinkingMode}
+              onThinkingModeChange={setThinkingMode}
+              className="ml-2"
             />
           </PromptInputTools>
 
@@ -339,6 +526,17 @@ function PureMultimodalInput({
           )}
         </PromptInputToolbar>
       </PromptInput>
+
+      {/* GitHub Repository Modal */}
+      {githubPAT && (
+        <GitHubRepoModal
+          isOpen={showGitHubModal}
+          onClose={() => setShowGitHubModal(false)}
+          githubPAT={githubPAT}
+          selectedRepos={selectedRepos}
+          onRepoSelectionChange={handleGitHubRepoChange}
+        />
+      )}
     </div>
   );
 }
@@ -361,98 +559,17 @@ export const MultimodalInput = memo(
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
       return false;
     }
+    if (prevProps.githubPAT !== nextProps.githubPAT) {
+      return false;
+    }
 
     return true;
   }
 );
 
-function PureAttachmentsButton({
-  fileInputRef,
-  status,
-  selectedModelId,
-}: {
-  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-  status: UseChatHelpers<ChatMessage>["status"];
-  selectedModelId: string;
-}) {
-  const isReasoningModel = selectedModelId === "chat-model-reasoning";
 
-  return (
-    <Button
-      className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
-      data-testid="attachments-button"
-      disabled={status !== "ready" || isReasoningModel}
-      onClick={(event) => {
-        event.preventDefault();
-        fileInputRef.current?.click();
-      }}
-      variant="ghost"
-    >
-      <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
-    </Button>
-  );
-}
 
-const AttachmentsButton = memo(PureAttachmentsButton);
 
-function PureModelSelectorCompact({
-  selectedModelId,
-  onModelChange,
-}: {
-  selectedModelId: string;
-  onModelChange?: (modelId: string) => void;
-}) {
-  const [optimisticModelId, setOptimisticModelId] = useState(selectedModelId);
-
-  useEffect(() => {
-    setOptimisticModelId(selectedModelId);
-  }, [selectedModelId]);
-
-  const selectedModel = chatModels.find(
-    (model) => model.id === optimisticModelId
-  );
-
-  return (
-    <PromptInputModelSelect
-      onValueChange={(modelName) => {
-        const model = chatModels.find((m) => m.name === modelName);
-        if (model) {
-          setOptimisticModelId(model.id);
-          onModelChange?.(model.id);
-          startTransition(() => {
-            saveChatModelAsCookie(model.id);
-          });
-        }
-      }}
-      value={selectedModel?.name}
-    >
-      <Trigger
-        className="flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-        type="button"
-      >
-        <CpuIcon size={16} />
-        <span className="hidden font-medium text-xs sm:block">
-          {selectedModel?.name}
-        </span>
-        <ChevronDownIcon size={16} />
-      </Trigger>
-      <PromptInputModelSelectContent className="min-w-[260px] p-0">
-        <div className="flex flex-col gap-px">
-          {chatModels.map((model) => (
-            <SelectItem key={model.id} value={model.name}>
-              <div className="truncate font-medium text-xs">{model.name}</div>
-              <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
-                {model.description}
-              </div>
-            </SelectItem>
-          ))}
-        </div>
-      </PromptInputModelSelectContent>
-    </PromptInputModelSelect>
-  );
-}
-
-const ModelSelectorCompact = memo(PureModelSelectorCompact);
 
 function PureStopButton({
   stop,
@@ -463,6 +580,7 @@ function PureStopButton({
 }) {
   return (
     <Button
+      type="button"
       className="size-7 rounded-full bg-foreground p-1 text-background transition-colors duration-200 hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground"
       data-testid="stop-button"
       onClick={(event) => {

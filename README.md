@@ -28,7 +28,7 @@ A powerful, production-ready AI chatbot application with comprehensive admin con
 - 📊 Personal usage analytics
 
 ### For Admins
-- ⚙️ **Admin Dashboard** - Configure routing, chat, document, Python code, Mermaid, and Git MCP agents
+- ⚙️ **Admin Dashboard** - Configure chat model, provider tools, document, Python code, Mermaid, and Git MCP agents
 - 📈 **Usage Analytics** - Track API calls, tokens, and costs across all users
 - 👥 **User Management** - RBAC with Supabase Auth
 - 🔧 **Rate Limiting** - Per-agent rate limits (hourly/daily)
@@ -228,7 +228,7 @@ Current focus areas:
 | `pnpm build` / `npm run build` | Build optimized production bundle | Before deploying to production |
 | `pnpm start` / `npm start` | Start production server | After build, for production deployment |
 | `pnpm db:migrate` / `npm run db:migrate` | Apply pending database migrations to your Supabase | **Run once during initial setup**, then whenever new migration files are added to `lib/db/migrations/` |
-| `pnpm db:generate` / `npm run db:generate` | Generate new migration file from Drizzle schema changes | When you modify `lib/db/schema.ts` and need to create a migration |
+| `pnpm db:generate` / `npm run db:generate` | Generate new migration file from Drizzle schema changes | When you modify `lib/db/drizzle-schema.ts` and need to create a migration |
 | `pnpm db:studio` / `npm run db:studio` | Open Drizzle Studio visual database browser | Anytime you want to view/edit database data with a GUI (useful for debugging) |
 
 ---

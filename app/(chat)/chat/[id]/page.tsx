@@ -1,12 +1,16 @@
 import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-import { auth } from "@/app/(auth)/auth";
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+// Default model constant
+const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/auth/server";
+
+// Force dynamic rendering for authenticated pages
+export const dynamic = 'force-dynamic'
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -17,18 +21,15 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     notFound();
   }
 
-  const session = await auth();
+  const user = await getCurrentUser();
 
-  if (!session) {
-    redirect("/api/auth/guest");
-  }
-
+  // Check if user can access this chat
   if (chat.visibility === "private") {
-    if (!session.user) {
+    if (!user) {
       return notFound();
     }
 
-    if (session.user.id !== chat.userId) {
+    if (user.id !== chat.user_id) {
       return notFound();
     }
   }
@@ -42,6 +43,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
 
+  // Determine if chat should be readonly based on user ownership
+  const isReadonly = !user || user.id !== chat.user_id;
+
   if (!chatModelFromCookie) {
     return (
       <>
@@ -49,10 +53,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           autoResume={true}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
-          initialLastContext={chat.lastContext ?? undefined}
+          initialLastContext={chat.lastContext as any ?? undefined}
           initialMessages={uiMessages}
-          initialVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
+          initialVisibilityType={chat.visibility as any}
+          isReadonly={isReadonly}
         />
         <DataStreamHandler />
       </>
@@ -65,10 +69,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         autoResume={true}
         id={chat.id}
         initialChatModel={chatModelFromCookie.value}
-        initialLastContext={chat.lastContext ?? undefined}
+        initialLastContext={chat.lastContext as any ?? undefined}
         initialMessages={uiMessages}
-        initialVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
+        initialVisibilityType={chat.visibility as any}
+        isReadonly={isReadonly}
       />
       <DataStreamHandler />
     </>

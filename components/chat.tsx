@@ -20,7 +20,7 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import type { Vote } from "@/lib/db/schema";
+import type { Vote } from "@/lib/db/drizzle-schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -32,6 +32,7 @@ import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
 import type { VisibilityType } from "./visibility-selector";
+import { storage } from "@/lib/storage";
 
 export function Chat({
   id,
@@ -85,14 +86,31 @@ export function Chat({
       api: "/api/chat",
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
+        // Get Google API key from localStorage
+        const googleApiKey = storage.apiKeys.get('google');
+
+        // Extract thinking mode from the last message's experimental metadata
+        const lastMessage = request.messages.at(-1);
+        const thinkingEnabled = (lastMessage as any)?.experimental_providerMetadata?.thinking || false;
+
+        const requestBody = {
+          id: request.id,
+          message: lastMessage,
+          selectedChatModel: currentModelIdRef.current,
+          selectedVisibilityType: visibilityType,
+          thinkingEnabled: thinkingEnabled,
+          ...request.body,
+        };
+
+        // Send API key in headers for security
+        const headers: Record<string, string> = {};
+        if (googleApiKey) {
+          headers['x-google-api-key'] = googleApiKey;
+        }
+
         return {
-          body: {
-            id: request.id,
-            message: request.messages.at(-1),
-            selectedChatModel: currentModelIdRef.current,
-            selectedVisibilityType: visibilityType,
-            ...request.body,
-          },
+          body: requestBody,
+          headers,
         };
       },
     }),
@@ -106,7 +124,18 @@ export function Chat({
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
     onError: (error) => {
+      console.error('💥 [DEBUG] Chat error occurred:', {
+        error: error,
+        errorType: error.constructor.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
       if (error instanceof ChatSDKError) {
+        console.log('🔍 [DEBUG] ChatSDKError details:', {
+          message: error.message
+        });
+        
         // Check if it's a credit card error
         if (
           error.message?.includes("AI Gateway requires a valid credit card")
@@ -118,6 +147,30 @@ export function Chat({
             description: error.message,
           });
         }
+      } else if (error instanceof Error) {
+        console.log('🔍 [DEBUG] Generic Error details:', {
+          name: error.name,
+          message: error.message
+        });
+        
+        // Handle API key errors
+        if (error.message?.includes("Google API key is required")) {
+          toast({
+            type: "error",
+            description: "Please configure your Google API key in Settings to use the chat.",
+          });
+        } else {
+          toast({
+            type: "error",
+            description: error.message,
+          });
+        }
+      } else {
+        console.log('🔍 [DEBUG] Unknown error type:', typeof error, error);
+        toast({
+          type: "error",
+          description: "An unexpected error occurred",
+        });
       }
     },
   });
@@ -192,6 +245,7 @@ export function Chat({
               status={status}
               stop={stop}
               usage={usage}
+              githubPAT={storage.github.getToken() || undefined}
             />
           )}
         </div>
