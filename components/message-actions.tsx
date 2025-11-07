@@ -3,10 +3,12 @@ import { memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
+import { BarChart3Icon } from "lucide-react";
 import type { Vote } from "@/lib/db/drizzle-schema";
 import type { ChatMessage } from "@/lib/types";
 import { Action, Actions } from "./elements/actions";
 import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
+import { MessageAnalyticsDialog } from "./message-analytics-dialog";
 
 export function PureMessageActions({
   chatId,
@@ -44,20 +46,25 @@ export function PureMessageActions({
     toast.success("Copied to clipboard!");
   };
 
-  // User messages get edit (on hover) and copy actions
+  // User messages get edit (on hover), analytics, and copy actions
   if (message.role === "user") {
     return (
       <Actions className="-mr-0.5 justify-end">
-        <div className="relative">
+        <div className="relative flex items-center gap-1">
           {setMode && (
             <Action
-              className="-left-10 absolute top-0 opacity-0 transition-opacity group-hover/message:opacity-100"
+              className="-left-12 absolute top-0 opacity-0 transition-opacity group-hover/message:opacity-100"
               onClick={() => setMode("edit")}
               tooltip="Edit"
             >
               <PencilEditIcon />
             </Action>
           )}
+          <MessageAnalyticsDialog messageId={message.id}>
+            <Action tooltip="View Analytics">
+              <BarChart3Icon className="size-4" />
+            </Action>
+          </MessageAnalyticsDialog>
           <Action onClick={handleCopy} tooltip="Copy">
             <CopyIcon />
           </Action>
@@ -71,6 +78,12 @@ export function PureMessageActions({
       <Action onClick={handleCopy} tooltip="Copy">
         <CopyIcon />
       </Action>
+
+      <MessageAnalyticsDialog messageId={message.id}>
+        <Action tooltip="View Analytics">
+          <BarChart3Icon className="size-4" />
+        </Action>
+      </MessageAnalyticsDialog>
 
       <Action
         data-testid="message-upvote"

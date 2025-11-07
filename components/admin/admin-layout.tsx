@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { ChatModelAgentConfig } from './agents/chat-model/chat-model-agent-config'
 import { ProviderToolsAgentConfig } from './agents/provider-tools/provider-tools-agent-config'
-// import { DocumentAgentConfig } from './agents/document/document-agent-config'
+import { DocumentAgentConfig } from './agents/document/document-agent-config'
 // import { PythonAgentConfig } from './agents/python/python-agent-config'
 // import { MermaidAgentConfig } from './agents/mermaid/mermaid-agent-config'
 // import { GitMCPAgentConfig } from './agents/git-mcp/git-mcp-agent-config'
@@ -257,10 +257,10 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
               {tab.id === 'provider-tools-agent' && (
                 <ProviderToolsAgentConfig configKey={tab.configKey} provider={provider} />
               )}
-              {/* {tab.id === 'document-agent' && (
+              {tab.id === 'document-agent' && (
                 <DocumentAgentConfig configKey={tab.configKey} provider={provider} />
               )}
-              {tab.id === 'python-agent' && (
+              {/* {tab.id === 'python-agent' && (
                 <PythonAgentConfig configKey={tab.configKey} provider={provider} />
               )}
               {tab.id === 'mermaid-agent' && (

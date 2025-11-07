@@ -110,94 +110,22 @@ const PurePreviewMessage = ({
             const { type } = part;
             const key = `message-${message.id}-part-${index}`;
 
-            // Collect tool execution info for reasoning section
-            const toolParts = message.parts?.filter(
-              (p) => p.type === "tool-call" || p.type === "tool-result"
-            ) || [];
-
-            // Build tool execution content for reasoning
-            let toolExecutionContent = '';
-            if (toolParts.length > 0 && type === "reasoning") {
-              toolExecutionContent = '\n\n**🔧 Tool Execution:**\n\n';
-
-              for (const toolPart of toolParts) {
-                if (toolPart.type === "tool-call") {
-                  const { toolName, args } = toolPart as any;
-                  toolExecutionContent += `**Called:** \`${toolName}\`\n`;
-                  toolExecutionContent += `**Input:**\n\`\`\`json\n${JSON.stringify(args, null, 2)}\n\`\`\`\n\n`;
-                } else if (toolPart.type === "tool-result") {
-                  const { toolName, result } = toolPart as any;
-                  let resultPreview = '';
-                  if (typeof result === 'string') {
-                    resultPreview = result.length > 500 ? result.substring(0, 500) + '...' : result;
-                  } else {
-                    resultPreview = JSON.stringify(result, null, 2);
-                  }
-                  toolExecutionContent += `**Result from \`${toolName}\`:**\n\`\`\`\n${resultPreview}\n\`\`\`\n\n`;
-                }
-              }
-            }
-
             if (type === "reasoning" && part.text?.trim().length > 0) {
-              // Combine tool execution with model reasoning
-              const combinedReasoning = part.text + toolExecutionContent;
+              // Find the last reasoning part index
+              const reasoningParts = message.parts?.filter((p) => p.type === "reasoning") || [];
+              const isLastReasoningPart = reasoningParts.length > 0 &&
+                reasoningParts[reasoningParts.length - 1] === part;
+
+              // Only the last reasoning part should be in loading state while streaming
+              // All previous reasoning parts are already complete
+              const isReasoningLoading = isLoading && isLastReasoningPart;
 
               return (
                 <MessageReasoning
-                  isLoading={isLoading}
+                  isLoading={isReasoningLoading}
                   key={key}
-                  reasoning={combinedReasoning}
+                  reasoning={part.text}
                 />
-              );
-            }
-
-            // If no reasoning part but tool parts exist, create reasoning section with tool info
-            if (type === "text" && index === 0 && toolParts.length > 0 && !message.parts?.some(p => p.type === "reasoning")) {
-              // Build tool-only reasoning content
-              let toolOnlyReasoning = '**🔧 Tool Execution:**\n\n';
-              for (const toolPart of toolParts) {
-                if (toolPart.type === "tool-call") {
-                  const { toolName, args } = toolPart as any;
-                  toolOnlyReasoning += `**Called:** \`${toolName}\`\n`;
-                  toolOnlyReasoning += `**Input:**\n\`\`\`json\n${JSON.stringify(args, null, 2)}\n\`\`\`\n\n`;
-                } else if (toolPart.type === "tool-result") {
-                  const { toolName, result } = toolPart as any;
-                  let resultPreview = '';
-                  if (typeof result === 'string') {
-                    resultPreview = result.length > 500 ? result.substring(0, 500) + '...' : result;
-                  } else {
-                    resultPreview = JSON.stringify(result, null, 2);
-                  }
-                  toolOnlyReasoning += `**Result from \`${toolName}\`:**\n\`\`\`\n${resultPreview}\n\`\`\`\n\n`;
-                }
-              }
-
-              return (
-                <>
-                  <MessageReasoning
-                    isLoading={isLoading}
-                    key={`${key}-tool-reasoning`}
-                    reasoning={toolOnlyReasoning}
-                  />
-                  <div key={key}>
-                    <MessageContent
-                      className={cn({
-                        "w-fit break-words rounded-2xl px-3 py-2 text-right text-white":
-                          message.role === "user",
-                        "bg-transparent px-0 py-0 text-left":
-                          message.role === "assistant",
-                      })}
-                      data-testid="message-content"
-                      style={
-                        message.role === "user"
-                          ? { backgroundColor: "#006cff" }
-                          : undefined
-                      }
-                    >
-                      <Response>{sanitizeText(part.text)}</Response>
-                    </MessageContent>
-                  </div>
-                </>
               );
             }
 
@@ -246,10 +174,76 @@ const PurePreviewMessage = ({
               }
             }
 
-            // Skip tool-call and tool-result rendering here
-            // They are now displayed in the reasoning section above
-            if (type === "tool-call" || type === "tool-result") {
-              return null; // Don't render separately, already shown in reasoning
+            // Generic tool call handling for provider tools (googleSearch, urlContext, codeExecution)
+            if (type === "tool-call") {
+              const { toolCallId, toolName, args } = part as any;
+
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader state="input-available" type={toolName} />
+                  <ToolContent>
+                    <ToolInput input={args} />
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            if (type === "tool-result") {
+              const { toolCallId, toolName, result } = part as any;
+
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader state="output-available" type={toolName} />
+                  <ToolContent>
+                    <ToolOutput
+                      errorText={undefined}
+                      output={
+                        <pre className="rounded bg-muted p-2 text-sm">
+                          {JSON.stringify(result, null, 2)}
+                        </pre>
+                      }
+                    />
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Handle documentAgent tool result - extract document info from output
+            if (type === "tool-documentAgent") {
+              console.log('🎨 [MESSAGE] Found tool-documentAgent part');
+              const output = (part as any).output;
+              console.log('🎨 [MESSAGE] Output:', JSON.stringify(output));
+
+              // Check if output has document structure { id, title, kind }
+              if (output && typeof output === 'object' && output.id && output.title) {
+                const toolCallId = output.id;
+                console.log('✅ [MESSAGE] Rendering DocumentPreview with:', output);
+
+                // Handle error case
+                if ("error" in output) {
+                  return (
+                    <div
+                      className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+                      key={toolCallId}
+                    >
+                      Error creating document: {String(output.error)}
+                    </div>
+                  );
+                }
+
+                // Render document preview for successful creation
+                return (
+                  <DocumentPreview
+                    isReadonly={isReadonly}
+                    key={toolCallId}
+                    result={output}
+                  />
+                );
+              }
+
+              // If output is not structured, skip rendering (will be null)
+              console.log('⚠️ [MESSAGE] tool-documentAgent part has no valid output, returning null');
+              return null;
             }
 
             if (type === "tool-getWeather") {

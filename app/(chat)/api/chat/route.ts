@@ -127,11 +127,13 @@ export async function POST(request: Request) {
     const chatAgent = await ChatAgentResolver.createChatAgent();
     chatAgent.setApiKey(apiKey);
 
-    // Load provider tools configuration for tool integration
+    // Load specialized agent configurations
     await chatAgent.loadProviderToolsConfig();
+    await chatAgent.loadDocumentAgentConfig();
 
-    // Set the selected model for provider tools agent (same model as chat)
+    // Set the selected model for specialized agents (same model as chat)
     chatAgent.setProviderToolsModel(selectedChatModel);
+    chatAgent.setDocumentAgentModel(selectedChatModel);
 
     // Check if thinking mode is supported by the selected model
     const modelSupportsThinking = chatAgent.supportsThinking(selectedChatModel);
@@ -158,8 +160,8 @@ export async function POST(request: Request) {
         // Build system prompt with tool descriptions from chat agent
         const systemPrompt = chatAgent.buildSystemPrompt();
 
-        // Build tools from chat agent (includes provider tools if enabled)
-        const tools = chatAgent.buildTools(dataStream);
+        // Build tools from chat agent (includes provider tools and document agent if enabled)
+        const tools = chatAgent.buildTools(dataStream, user);
 
         // Configure stream with Google's thinking config if enabled
         const streamConfig: any = {
@@ -215,19 +217,35 @@ export async function POST(request: Request) {
         const assistantMessages = messages.filter(msg => msg.role === 'assistant');
 
         if (assistantMessages.length > 0) {
+          console.log('🔍 [FINISH] Processing', assistantMessages.length, 'assistant messages');
+
           await saveMessages({
-            messages: assistantMessages.map((msg) => ({
-              id: msg.id,
-              chatId: id,
-              role: "assistant",
-              parts: msg.parts,
-              attachments: [],
-              createdAt: new Date(),
-              modelUsed: selectedChatModel,
-              inputTokens: null,
-              outputTokens: null,
-              cost: null,
-            })),
+            messages: assistantMessages.map((msg) => {
+              console.log('🔍 [FINISH] Message has', msg.parts.length, 'parts');
+
+              // Log message parts for debugging
+              msg.parts.forEach((part, index) => {
+                console.log(`🔍 [FINISH] Part ${index}: type=${part.type}`);
+
+                if (part.type === 'tool-documentAgent') {
+                  const output = (part as any).output;
+                  console.log(`🔍 [FINISH] documentAgent output:`, JSON.stringify(output));
+                }
+              });
+
+              return {
+                id: msg.id,
+                chatId: id,
+                role: "assistant",
+                parts: msg.parts,  // Use original parts, no post-processing needed
+                attachments: [],
+                createdAt: new Date(),
+                modelUsed: selectedChatModel,
+                inputTokens: null,
+                outputTokens: null,
+                cost: null,
+              };
+            }),
           });
         }
       },

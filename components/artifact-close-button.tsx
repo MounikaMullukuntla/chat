@@ -11,14 +11,10 @@ function PureArtifactCloseButton() {
       className="h-fit p-2 dark:hover:bg-zinc-700"
       data-testid="artifact-close-button"
       onClick={() => {
-        setArtifact((currentArtifact) =>
-          currentArtifact.status === "streaming"
-            ? {
-                ...currentArtifact,
-                isVisible: false,
-              }
-            : { ...initialArtifactData, status: "idle" }
-        );
+        setArtifact((currentArtifact) => ({
+          ...currentArtifact,
+          isVisible: false,
+        }));
       }}
       variant="outline"
     >

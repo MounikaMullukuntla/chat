@@ -61,8 +61,12 @@ INSERT INTO admin_config (config_key, config_data) VALUES
       "enabled": true
     },
     "documentAgent": {
-      "description": "Create and update text documents and reports",
-      "enabled": false
+      "description": "Delegate to specialized agent for creating and managing text documents, spreadsheets, and reports",
+      "tool_input": {
+        "parameter_name": "input",
+        "parameter_description": "The request for document creation or modification"
+      },
+      "enabled": true
     },
     "pythonAgent": {
       "description": "Generate and execute Python code for data analysis and programming tasks",
@@ -104,8 +108,8 @@ INSERT INTO admin_config (config_key, config_data) VALUES
 }'::jsonb),
 
 ('document_agent_google', '{
-  "enabled": false,
-  "systemPrompt": "You are a specialized document creation and editing assistant. Focus on creating well-structured, clear, and professional documents. Follow best practices for formatting and organization.",
+  "enabled": true,
+  "systemPrompt": "You are a specialized document creation and editing assistant. Focus on creating well-structured, clear, and professional documents. Follow best practices for formatting and organization.\n\nWhen creating documents:\n- Use proper markdown formatting for text documents\n- Structure content with clear headings and sections\n- Ensure content is accurate and well-organized\n\nWhen creating spreadsheets:\n- Use proper CSV format with headers\n- Organize data in logical columns and rows\n- Ensure data consistency and proper formatting\n\nWhen updating documents:\n- The user''s request will include context about which document to update\n- Look for document IDs mentioned in the conversation history or user''s request\n- If a document was recently created in the conversation, use that document''s ID\n- The document ID is provided in the input parameter when available",
   "rateLimit": {
     "perMinute": 5,
     "perHour": 50,
@@ -113,12 +117,36 @@ INSERT INTO admin_config (config_key, config_data) VALUES
   },
   "tools": {
     "createDocumentArtifact": {
-      "description": "Create new text documents and reports",
-      "enabled": false
+      "description": "Create a new text document or report with markdown formatting",
+      "tool_input": {
+        "parameter_name": "title",
+        "parameter_description": "The title of the document"
+      },
+      "enabled": true
     },
     "updateDocumentArtifact": {
-      "description": "Edit and update existing documents",
-      "enabled": false
+      "description": "Update or edit an existing text document",
+      "tool_input": {
+        "parameter_name": "id",
+        "parameter_description": "The ID of the document to update"
+      },
+      "enabled": true
+    },
+    "createSheetArtifact": {
+      "description": "Create a new spreadsheet with CSV data",
+      "tool_input": {
+        "parameter_name": "title",
+        "parameter_description": "The title of the spreadsheet"
+      },
+      "enabled": true
+    },
+    "updateSheetArtifact": {
+      "description": "Update or edit an existing spreadsheet",
+      "tool_input": {
+        "parameter_name": "id",
+        "parameter_description": "The ID of the spreadsheet to update"
+      },
+      "enabled": true
     }
   }
 }'::jsonb),

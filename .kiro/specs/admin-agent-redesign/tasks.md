@@ -390,7 +390,11 @@
   - Add validation to ensure file upload restrictions match enabled types
   - _Requirements: 14.2, 14.3, 14.5_
 
-- [ ]* 17. Add Comprehensive Testing
+- [ ] 17. Add Comprehensive Testing
+
+
+
+
 - [ ]* 17.1 Write unit tests for new agent configuration components
   - Test agent enable/disable functionality, form validation, save operations
   - Test model selector, capabilities, and tools configuration

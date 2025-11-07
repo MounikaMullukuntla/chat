@@ -1,30 +1,27 @@
 import "server-only";
 
 import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
-import { streamText, streamObject } from "ai";
+import { streamText, tool } from "ai";
 import type { UIMessageStreamWriter } from "ai";
-import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
-// Simple agent config interface
-interface AgentConfig {
-  systemPrompt: string;
-  enabled: boolean;
-  tools?: Record<string, { description: string; enabled: boolean; }>;
-}
-import { saveDocument, getDocumentById } from "@/lib/db/queries/document";
-import { generateUUID } from "@/lib/utils";
-import { getSheetPrompt, getUpdateDocumentPrompt } from "../../prompts";
+import type { DocumentAgentConfig } from "../../core/types";
+import type { ChatMessage } from "@/lib/types";
+import { createTextDocument } from "../../tools/document/createTextDocument";
+import { updateTextDocument } from "../../tools/document/updateTextDocument";
+import { createSheetDocument } from "../../tools/document/createSheetDocument";
+import { updateSheetDocument } from "../../tools/document/updateSheetDocument";
 
 /**
- * GoogleDocumentAgent handles text documents and spreadsheets
- * Supports both content generation and injection modes
- * Implements line-range updates and version control
+ * GoogleDocumentAgent - Specialized agent for document and spreadsheet operations
+ * This agent is only called by the Chat Agent when document/sheet operations are needed
+ * Implements four core tools: createDocumentArtifact, updateDocumentArtifact, createSheetArtifact, updateSheetArtifact
  */
 export class GoogleDocumentAgent {
   private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
+  private modelId?: string;
 
-  constructor(private config: AgentConfig) {
+  constructor(private config: DocumentAgentConfig) {
     this.validateConfig();
   }
 
@@ -39,15 +36,27 @@ export class GoogleDocumentAgent {
   }
 
   /**
+   * Set the model ID to use for tool execution
+   * This should be the same model as the chat agent
+   */
+  setModel(modelId: string): void {
+    this.modelId = modelId;
+  }
+
+  /**
    * Get the Google model instance for this agent
    */
   private getModel() {
-    if (this.googleProvider) {
-      return this.googleProvider(this.config.model);
+    if (!this.modelId) {
+      throw new Error("GoogleDocumentAgent: Model ID not set. Call setModel() before using tools.");
     }
-    
+
+    if (this.googleProvider) {
+      return this.googleProvider(this.modelId);
+    }
+
     // Fallback to environment variable if no API key is set
-    return google(this.config.model);
+    return google(this.modelId);
   }
 
   /**
@@ -61,369 +70,273 @@ export class GoogleDocumentAgent {
     if (!this.config.enabled) {
       throw new Error("GoogleDocumentAgent: Agent is disabled");
     }
-
-    if (!this.config.systemPrompt) {
-      throw new Error("GoogleDocumentAgent: System prompt is required");
-    }
-
-    if (!this.config.model) {
-      throw new Error("GoogleDocumentAgent: Model is required");
-    }
   }
 
   /**
-   * Create a new document by generating content with the AI model
+   * Execute document agent with input and return output
+   * This is the main method called by Chat Agent
    */
-  async createDocument(params: {
-    title: string;
-    prompt: string;
-    kind: 'text' | 'sheet';
-    dataStream: UIMessageStreamWriter;
-    user: User;
-    chatId: string;
-  }): Promise<{ documentId: string; content: string }> {
-    const { title, prompt, kind, dataStream, user, chatId } = params;
-    
+  async execute(params: {
+    input: string;
+    dataStream: UIMessageStreamWriter<ChatMessage>;
+    user?: any;
+  }): Promise<{ output: string; success: boolean; toolCalls?: any[]; reasoning?: string }> {
+    const { input, dataStream, user } = params;
+
     try {
-      const documentId = generateUUID();
-      
-      // Write initial metadata to stream
-      dataStream.write({
-        type: 'data-id',
-        data: documentId,
-      });
+      const model = this.getModel();
 
-      dataStream.write({
-        type: 'data-title',
-        data: title,
-      });
+      // Build tools for this agent
+      const tools = this.buildTools(dataStream, user);
 
-      dataStream.write({
-        type: 'data-kind',
-        data: kind,
-      });
+      console.log('📄 [DOCUMENT-AGENT] Starting with tools:', Object.keys(tools));
 
-      let generatedContent = '';
+      // Track tool results from callbacks
+      const collectedToolCalls: any[] = [];
 
-      if (kind === 'sheet') {
-        // Use streamObject for structured spreadsheet generation
-        const { partialObjectStream } = await streamObject({
-          model: this.getModel(),
-          system: this.config.systemPrompt,
-          prompt: `${sheetPrompt}\n\n${prompt}`,
-          schema: z.object({
-            content: z.string().describe('CSV formatted spreadsheet content with headers'),
-          }),
-        });
+      // Configure with Google-specific thinking support
+      const config: any = {
+        model,
+        system: this.config.systemPrompt,
+        prompt: input,
+        tools,
+        temperature: 0.7,
+        onStepFinish: async (event: any) => {
+          console.log('📄 [DOCUMENT-AGENT] onStepFinish event keys:', Object.keys(event));
+          console.log('📄 [DOCUMENT-AGENT] onStepFinish - toolResults:', event.toolResults?.length || 0);
+          console.log('📄 [DOCUMENT-AGENT] onStepFinish - toolCalls:', event.toolCalls?.length || 0);
 
-        for await (const partialObject of partialObjectStream) {
-          if (partialObject.content) {
-            const delta = partialObject.content.slice(generatedContent.length);
-            if (delta) {
-              generatedContent = partialObject.content;
-              dataStream.write({
-                type: 'data-sheetDelta',
-                data: delta,
+          // Try toolResults first
+          if (event.toolResults) {
+            for (const tr of event.toolResults) {
+              //console.log('📄 [DOCUMENT-AGENT] Tool result (from toolResults):', JSON.stringify(tr, null, 2));
+              collectedToolCalls.push({
+                toolName: tr.toolName,
+                args: tr.input,
+                result: tr.output,  // Use output instead of result!
               });
             }
           }
-        }
-      } else {
-        // Use streamText for text documents
-        const { textStream } = await streamText({
-          model: this.getModel(),
-          system: this.config.systemPrompt,
-          prompt: prompt,
-        });
 
-        for await (const delta of textStream) {
-          generatedContent += delta;
-          dataStream.write({
-            type: 'data-textDelta',
-            data: delta,
-          });
-        }
-      }
-
-      // Save document to database with version control
-      await saveDocument({
-        id: documentId,
-        title,
-        kind,
-        content: generatedContent,
-        userId: user.id,
-        chatId,
-        metadata: {
-          agent: 'GoogleDocumentAgent',
-          method: 'createDocument',
-          generatedAt: new Date().toISOString(),
-        },
-      });
-
-      return {
-        documentId,
-        content: generatedContent,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
-      dataStream.write({
-        type: 'error',
-        errorText: `Failed to create document: ${errorMessage}`,
-      });
-
-      throw new Error(`GoogleDocumentAgent.createDocument failed: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Inject pre-generated content directly into a new document
-   */
-  async injectDocument(params: {
-    title: string;
-    content: string;
-    kind: 'text' | 'sheet';
-    dataStream: UIMessageStreamWriter;
-    user: User;
-    chatId: string;
-  }): Promise<{ documentId: string; content: string }> {
-    const { title, content, kind, dataStream, user, chatId } = params;
-    
-    try {
-      const documentId = generateUUID();
-      
-      // Write metadata to stream
-      dataStream.write({
-        type: 'data-id',
-        data: documentId,
-      });
-
-      dataStream.write({
-        type: 'data-title',
-        data: title,
-      });
-
-      dataStream.write({
-        type: 'data-kind',
-        data: kind,
-      });
-
-      // Stream the pre-generated content
-      const deltaType = kind === 'sheet' ? 'data-sheetDelta' : 'data-textDelta';
-      dataStream.write({
-        type: deltaType,
-        data: content,
-      });
-
-      // Save document to database
-      await saveDocument({
-        id: documentId,
-        title,
-        kind,
-        content,
-        userId: user.id,
-        chatId,
-        metadata: {
-          agent: 'GoogleDocumentAgent',
-          method: 'injectDocument',
-          injectedAt: new Date().toISOString(),
-        },
-      });
-
-      return {
-        documentId,
-        content,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
-      dataStream.write({
-        type: 'error',
-        errorText: `Failed to inject document: ${errorMessage}`,
-      });
-
-      throw new Error(`GoogleDocumentAgent.injectDocument failed: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Update an existing document with new content or modifications
-   */
-  async updateDocument(params: {
-    documentId: string;
-    updatePrompt: string;
-    isPreGenerated: boolean;
-    lineRange?: { start: number; end: number };
-    dataStream: UIMessageStreamWriter;
-    user: User;
-    chatId: string;
-  }): Promise<{ documentId: string; content: string }> {
-    const { documentId, updatePrompt, isPreGenerated, lineRange, dataStream, user, chatId } = params;
-    
-    try {
-      // Get the current document
-      const currentDocument = await getDocumentById({ id: documentId });
-      if (!currentDocument) {
-        throw new Error(`Document with id ${documentId} not found`);
-      }
-
-      // Write metadata to stream
-      dataStream.write({
-        type: 'data-id',
-        data: documentId,
-      });
-
-      dataStream.write({
-        type: 'data-title',
-        data: currentDocument.title || 'Untitled Document',
-      });
-
-      dataStream.write({
-        type: 'data-kind',
-        data: currentDocument.kind,
-      });
-
-      let updatedContent: string;
-
-      if (isPreGenerated) {
-        // Use pre-generated content directly
-        if (lineRange) {
-          // Apply line-range update
-          updatedContent = this.applyLineRangeUpdate(
-            currentDocument.content || '',
-            updatePrompt,
-            lineRange
-          );
-        } else {
-          // Full content replacement
-          updatedContent = updatePrompt;
-        }
-
-        // Stream the updated content
-        const deltaType = currentDocument.kind === 'sheet' ? 'data-sheetDelta' : 'data-textDelta';
-        dataStream.write({
-          type: deltaType,
-          data: updatedContent,
-        });
-      } else {
-        // Generate updated content using AI
-        const systemPrompt = lineRange 
-          ? `${this.config.systemPrompt}\n\nYou are updating a specific section of a document. Focus only on the requested changes.`
-          : this.config.systemPrompt;
-
-        const fullPrompt = updateDocumentPrompt(currentDocument.content || '', currentDocument.kind as any);
-        const prompt = `${fullPrompt}\n\nUpdate instructions: ${updatePrompt}`;
-
-        updatedContent = '';
-
-        if (currentDocument.kind === 'sheet') {
-          // Use streamObject for structured spreadsheet updates
-          const { partialObjectStream } = await streamObject({
-            model: this.getModel(),
-            system: systemPrompt,
-            prompt: prompt,
-            schema: z.object({
-              content: z.string().describe('Updated CSV formatted spreadsheet content'),
-            }),
-          });
-
-          for await (const partialObject of partialObjectStream) {
-            if (partialObject.content) {
-              const delta = partialObject.content.slice(updatedContent.length);
-              if (delta) {
-                updatedContent = partialObject.content;
-                dataStream.write({
-                  type: 'data-sheetDelta',
-                  data: delta,
-                });
-              }
+          // Also check toolCalls
+          if (event.toolCalls) {
+            for (const tc of event.toolCalls) {
+              console.log('📄 [DOCUMENT-AGENT] Tool call (from toolCalls):', JSON.stringify(tc, null, 2));
             }
           }
-        } else {
-          // Use streamText for text documents
-          const { textStream } = await streamText({
-            model: this.getModel(),
-            system: systemPrompt,
-            prompt: prompt,
-          });
+        },
+      };
 
-          for await (const delta of textStream) {
-            updatedContent += delta;
-            dataStream.write({
-              type: 'data-textDelta',
-              data: delta,
-            });
+      // Enable thinking mode for delegated agent if supported
+      if (this.modelId?.includes('thinking')) {
+        config.providerOptions = {
+          google: {
+            thinkingConfig: {
+              thinkingBudget: 4096,
+              includeThoughts: true,
+            },
+          },
+        };
+      }
+
+      // Use streamText to get full result with tool calls and reasoning
+      const result = streamText(config);
+
+      // Collect the full text output
+      let fullOutput = '';
+      for await (const chunk of result.textStream) {
+        fullOutput += chunk;
+      }
+
+      // Get the final result to access reasoning
+      const finalResult = await result;
+      const reasoning = await finalResult.reasoning;
+
+      // Use collected tool calls from onStepFinish callback
+      const toolCalls = collectedToolCalls;
+
+      console.log('✅ [DOCUMENT-AGENT] Completed execution');
+      console.log('📄 [DOCUMENT-AGENT] Text output length:', fullOutput.length);
+      console.log('📄 [DOCUMENT-AGENT] Tool calls executed:', toolCalls?.length || 0);
+
+      // Log tool call details with FULL structure
+      if (toolCalls && toolCalls.length > 0) {
+        toolCalls.forEach((call: any, index: number) => {
+          console.log(`📄 [DOCUMENT-AGENT] Tool ${index + 1}:`, call.toolName);
+          console.log(`📄 [DOCUMENT-AGENT] Tool ${index + 1} result:`, JSON.stringify(call.result, null, 2));
+          if (call.args) {
+            const argsStr = JSON.stringify(call.args);
+            console.log(`📄 [DOCUMENT-AGENT] Tool ${index + 1} args:`, argsStr.substring(0, 200));
           }
-        }
+        });
+      }
 
-        // Apply line-range update if specified
-        if (lineRange) {
-          updatedContent = this.applyLineRangeUpdate(
-            currentDocument.content || '',
-            updatedContent,
-            lineRange
-          );
+      // When tools are executed, the text output is usually empty
+      // The tool itself handles streaming to the UI via dataStream
+      // Return the structured tool result directly for proper handling
+      let output: any = fullOutput || 'Document operation completed successfully.';
+
+      // If we have tool calls, return the structured result from the first tool
+      // This allows the chat agent to properly create document preview parts
+      if (toolCalls && toolCalls.length > 0) {
+        const firstToolCall = toolCalls[0];
+        if (firstToolCall.result && typeof firstToolCall.result === 'object') {
+          // Return the structured object (id, title, kind)
+          output = firstToolCall.result;
+          console.log('📄 [DOCUMENT-AGENT] Returning structured tool result:', JSON.stringify(output));
+        } else if (firstToolCall.result) {
+          output = firstToolCall.result;
+          console.log('📄 [DOCUMENT-AGENT] Returning string tool result:', output);
         }
       }
 
-      // Save updated document as new version with parent relationship
-      await saveDocument({
-        id: documentId,
-        title: currentDocument.title || 'Untitled Document',
-        kind: currentDocument.kind as 'text' | 'sheet' | 'code' | 'image',
-        content: updatedContent,
-        userId: user.id,
-        chatId,
-        parentVersionId: currentDocument.id,
-        metadata: {
-          agent: 'GoogleDocumentAgent',
-          method: 'updateDocument',
-          isPreGenerated,
-          lineRange,
-          updatedAt: new Date().toISOString(),
-          updateType: lineRange ? 'partial' : 'full',
-        },
-      });
-
       return {
-        documentId,
-        content: updatedContent,
+        output,
+        success: true,
+        toolCalls: toolCalls || [],
+        reasoning: reasoning?.map(r => r.text || '').join('\n') || undefined,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      dataStream.write({
-        type: 'error',
-        errorText: `Failed to update document: ${errorMessage}`,
-      });
+      console.error('❌ [DOCUMENT-AGENT] Execution failed:', errorMessage);
 
-      throw new Error(`GoogleDocumentAgent.updateDocument failed: ${errorMessage}`);
+      return {
+        output: `Error: ${errorMessage}`,
+        success: false,
+      };
     }
   }
 
   /**
-   * Apply line-range update to existing content
+   * Build the tools available to this agent
+   * Integrates with existing artifact handlers
    */
-  private applyLineRangeUpdate(
-    originalContent: string,
-    newContent: string,
-    lineRange: { start: number; end: number }
-  ): string {
-    const lines = originalContent.split('\n');
-    const newLines = newContent.split('\n');
-    
-    // Validate line range
-    const startIndex = Math.max(0, lineRange.start - 1); // Convert to 0-based index
-    const endIndex = Math.min(lines.length - 1, lineRange.end - 1);
-    
-    if (startIndex > endIndex) {
-      throw new Error('Invalid line range: start line must be less than or equal to end line');
+  private buildTools(dataStream: UIMessageStreamWriter<ChatMessage>, user?: any): Record<string, any> {
+    const tools: Record<string, any> = {};
+
+    // Create Document Artifact Tool
+    if (this.config.tools?.createDocumentArtifact?.enabled) {
+      tools.createDocumentArtifact = tool({
+        description: this.config.tools.createDocumentArtifact.description,
+        inputSchema: z.object({
+          title: z.string().describe("Title for the document"),
+          content: z.string().describe("The content for the document in markdown format")
+        }),
+        execute: async (params: { title: string; content: string }) => {
+          try {
+            console.log('📝 [CREATE-DOC] Creating document:', params.title);
+            console.log('📝 [CREATE-DOC] Content length:', params.content.length);
+
+            const documentId = await createTextDocument({
+              title: params.title,
+              content: params.content,
+              dataStream,
+              user: user || null
+            });
+
+            console.log('✅ [CREATE-DOC] Document created with ID:', documentId);
+
+            // Return structured data instead of string - AI SDK will handle this properly
+            const toolResult = {
+              id: documentId,
+              title: params.title,
+              kind: 'text',
+            };
+
+            console.log('📝 [CREATE-DOC] Returning tool result:', JSON.stringify(toolResult));
+
+            return toolResult;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ [CREATE-DOC] Failed:', errorMessage);
+            return { error: errorMessage };
+          }
+        }
+      });
     }
-    
-    // Replace the specified line range with new content
-    const beforeLines = lines.slice(0, startIndex);
-    const afterLines = lines.slice(endIndex + 1);
-    
-    return [...beforeLines, ...newLines, ...afterLines].join('\n');
+
+    // Update Document Artifact Tool
+    if (this.config.tools?.updateDocumentArtifact?.enabled) {
+      tools.updateDocumentArtifact = tool({
+        description: this.config.tools.updateDocumentArtifact.description,
+        inputSchema: z.object({
+          documentId: z.string().describe("ID of the document to update"),
+          content: z.string().describe("The updated content for the document")
+        }),
+        execute: async (params: { documentId: string; content: string }) => {
+          try {
+            const documentId = await updateTextDocument({
+              documentId: params.documentId,
+              content: params.content,
+              dataStream,
+              user: user || null
+            });
+
+            return `Updated document: ${params.documentId}`;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ [DOCUMENT-AGENT] Update document failed:', errorMessage);
+            return `Error updating document: ${errorMessage}`;
+          }
+        }
+      });
+    }
+
+    // Create Sheet Artifact Tool
+    if (this.config.tools?.createSheetArtifact?.enabled) {
+      tools.createSheetArtifact = tool({
+        description: this.config.tools.createSheetArtifact.description,
+        inputSchema: z.object({
+          title: z.string().describe("Title for the spreadsheet"),
+          csvData: z.string().describe("CSV data for the spreadsheet")
+        }),
+        execute: async (params: { title: string; csvData: string }) => {
+          try {
+            const sheetId = await createSheetDocument({
+              title: params.title,
+              csvData: params.csvData,
+              dataStream,
+              user: user || null
+            });
+
+            return `Created spreadsheet: ${params.title} (ID: ${sheetId})`;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ [DOCUMENT-AGENT] Create sheet failed:', errorMessage);
+            return `Error creating spreadsheet: ${errorMessage}`;
+          }
+        }
+      });
+    }
+
+    // Update Sheet Artifact Tool
+    if (this.config.tools?.updateSheetArtifact?.enabled) {
+      tools.updateSheetArtifact = tool({
+        description: this.config.tools.updateSheetArtifact.description,
+        inputSchema: z.object({
+          sheetId: z.string().describe("ID of the spreadsheet to update"),
+          csvData: z.string().describe("The updated CSV data for the spreadsheet")
+        }),
+        execute: async (params: { sheetId: string; csvData: string }) => {
+          try {
+            const sheetId = await updateSheetDocument({
+              sheetId: params.sheetId,
+              csvData: params.csvData,
+              dataStream,
+              user: user || null
+            });
+
+            return `Updated spreadsheet: ${params.sheetId}`;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ [DOCUMENT-AGENT] Update sheet failed:', errorMessage);
+            return `Error updating spreadsheet: ${errorMessage}`;
+          }
+        }
+      });
+    }
+
+    return tools;
   }
 }

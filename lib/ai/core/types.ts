@@ -134,6 +134,8 @@ export interface DocumentAgentConfig extends BaseProviderConfig {
   tools: {
     createDocumentArtifact: ToolConfig;
     updateDocumentArtifact: ToolConfig;
+    createSheetArtifact: ToolConfig;
+    updateSheetArtifact: ToolConfig;
   };
 }
 

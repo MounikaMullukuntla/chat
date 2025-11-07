@@ -4,6 +4,7 @@ import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { GoogleProviderToolsAgent } from './provider-tools-agent';
+import { GoogleDocumentAgent } from './document-agent';
 import { getAdminConfig } from '@/lib/db/queries/admin';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
@@ -43,6 +44,8 @@ export class GoogleChatAgent {
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private providerToolsAgent?: GoogleProviderToolsAgent;
   private providerToolsConfig?: any;
+  private documentAgent?: GoogleDocumentAgent;
+  private documentAgentConfig?: any;
 
   constructor(config: ChatModelAgentConfig) {
     this.config = config;
@@ -65,32 +68,56 @@ export class GoogleChatAgent {
    */
   async loadProviderToolsConfig() {
     try {
-      console.log('🔧 [DEBUG] Loading provider tools config...');
-      
       const config = await getAdminConfig({
         configKey: 'provider_tools_agent_google'
       });
 
-      console.log('🔧 [DEBUG] Provider tools config loaded:', !!config);
-      console.log('🔧 [DEBUG] Config data:', config?.configData);
-
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [DEBUG] Provider tools config is enabled, creating agent');
-        
+        console.log('✅ [AGENT-INIT] Provider Tools Agent loaded and enabled');
+
         this.providerToolsConfig = config.configData;
         this.providerToolsAgent = new GoogleProviderToolsAgent(config.configData as any);
-        
+
         if (this.apiKey) {
           this.providerToolsAgent.setApiKey(this.apiKey);
-          console.log('✅ [DEBUG] API key set for provider tools agent');
         } else {
-          console.log('⚠️ [DEBUG] No API key available for provider tools agent');
+          console.log('⚠️  [AGENT-INIT] Provider Tools Agent: No API key available');
         }
       } else {
-        console.log('❌ [DEBUG] Provider tools config not enabled or not found');
+        console.log('❌ [AGENT-INIT] Provider Tools Agent: disabled or not found');
       }
     } catch (error) {
-      console.error('❌ [DEBUG] Failed to load provider tools config:', error);
+      console.error('❌ [AGENT-INIT] Failed to load Provider Tools Agent:', error);
+      // Don't throw - tools are optional
+    }
+  }
+
+  /**
+   * Load document agent configuration
+   * Public method so it can be called before building tools
+   */
+  async loadDocumentAgentConfig() {
+    try {
+      const config = await getAdminConfig({
+        configKey: 'document_agent_google'
+      });
+
+      if (config?.configData && (config.configData as any).enabled) {
+        console.log('✅ [AGENT-INIT] Document Agent loaded and enabled');
+
+        this.documentAgentConfig = config.configData;
+        this.documentAgent = new GoogleDocumentAgent(config.configData as any);
+
+        if (this.apiKey) {
+          this.documentAgent.setApiKey(this.apiKey);
+        } else {
+          console.log('⚠️  [AGENT-INIT] Document Agent: No API key available');
+        }
+      } else {
+        console.log('❌ [AGENT-INIT] Document Agent: disabled or not found');
+      }
+    } catch (error) {
+      console.error('❌ [AGENT-INIT] Failed to load Document Agent:', error);
       // Don't throw - tools are optional
     }
   }
@@ -106,20 +133,28 @@ export class GoogleChatAgent {
   }
 
   /**
+   * Set the model for document agent
+   * Call this before building tools to ensure document agent uses the same model
+   */
+  setDocumentAgentModel(modelId: string) {
+    if (this.documentAgent) {
+      this.documentAgent.setModel(modelId);
+    }
+  }
+
+  /**
    * Generate streaming chat response
    */
   async *chat(params: ChatParams): AsyncGenerator<StreamingResponse, void, unknown> {
     try {
-      console.log('🤖 [DEBUG] GoogleChatAgent.chat() called with:', {
-        modelId: params.modelId,
-        messageCount: params.messages.length,
-        hasSystemPrompt: !!params.systemPrompt,
-        thinkingMode: params.thinkingMode
-      });
-
       // Load provider tools config if not already loaded
       if (!this.providerToolsAgent && this.apiKey) {
         await this.loadProviderToolsConfig();
+      }
+
+      // Load document agent config if not already loaded
+      if (!this.documentAgent && this.apiKey) {
+        await this.loadDocumentAgentConfig();
       }
 
       const model = this.getModel(params.modelId);
@@ -131,15 +166,8 @@ export class GoogleChatAgent {
         content: msg.content
       }));
 
-      console.log('🔧 [DEBUG] Prepared for streamText:', {
-        model: typeof model,
-        systemPromptLength: systemPrompt.length,
-        messagesCount: messages.length,
-        lastMessage: messages[messages.length - 1]?.content?.substring(0, 100) + '...'
-      });
-
       // Build tools from provider tools agent
-      const tools = this.buildTools(params.dataStream);
+      const tools = this.buildTools(params.dataStream, params.user);
 
       // Configure streaming with thinking mode if enabled
       const streamConfig: any = {
@@ -153,7 +181,6 @@ export class GoogleChatAgent {
       if (tools) {
         streamConfig.tools = tools;
         streamConfig.maxSteps = 5; // Limit tool call iterations
-        console.log('🔧 [DEBUG] Tools enabled:', Object.keys(tools));
       }
 
       // Add thinking mode middleware if enabled and supported
@@ -164,37 +191,19 @@ export class GoogleChatAgent {
         });
       }
 
-      console.log('🚀 [DEBUG] Starting streamText...');
       const result = streamText(streamConfig);
 
       // Stream the response
-      let hasStarted = false;
-      let chunkCount = 0;
-      
-      console.log('📡 [DEBUG] Starting to iterate over textStream...');
       for await (const chunk of result.textStream) {
-        chunkCount++;
-        
-        if (!hasStarted) {
-          hasStarted = true;
-          console.log('✨ [DEBUG] First chunk received, streaming started');
-        }
-
-        console.log(`📦 [DEBUG] Chunk ${chunkCount}: "${chunk.substring(0, 50)}${chunk.length > 50 ? '...' : ''}"`);
-
         yield {
           content: chunk,
           finished: false
         };
       }
 
-      console.log(`🏁 [DEBUG] Text stream completed. Total chunks: ${chunkCount}`);
-
       // Get final result
-      console.log('🔚 [DEBUG] Getting final result...');
       const finalResult = await result;
-      
-      console.log('✅ [DEBUG] Yielding finished signal');
+
       yield {
         content: '',
         finished: true
@@ -241,22 +250,19 @@ export class GoogleChatAgent {
   }
 
   /**
-   * Build AI SDK tools - Provider Tools Agent is treated as a single tool
+   * Build AI SDK tools - Specialized agents are treated as individual tools
    */
-  buildTools(dataStream: any): Record<string, any> | undefined {
-    console.log('🔧 [DEBUG] buildTools() called');
-    console.log('🔧 [DEBUG] Provider Tools Agent exists:', !!this.providerToolsAgent);
-    console.log('🔧 [DEBUG] Provider Tools Config:', this.providerToolsConfig);
-    console.log('🔧 [DEBUG] Chat Agent Config Tools:', this.config.tools);
-    
+  buildTools(dataStream: any, user?: any): Record<string, any> | undefined {
     const tools: Record<string, any> = {};
+    const enabledTools: string[] = [];
+
+    // Track recently created documents in this conversation for context
+    const recentDocuments: Array<{id: string, title: string}> = [];
 
     // Provider Tools Agent as a single tool
     if (this.providerToolsAgent && this.providerToolsConfig?.enabled && this.config.tools?.providerToolsAgent?.enabled) {
-      console.log('✅ [DEBUG] All conditions met - adding providerToolsAgent tool');
-      
       const providerToolsAgent = this.providerToolsAgent;
-      
+
       // Check if tool description is missing and throw error
       if (!this.config.tools.providerToolsAgent.description) {
         throw new AgentError(
@@ -281,35 +287,141 @@ export class GoogleChatAgent {
           input: z.string().describe(this.config.tools.providerToolsAgent.tool_input.parameter_description)
         }),
         execute: async (params: { input: string }) => {
-          console.log('🚀 [DEBUG] providerToolsAgent.execute() called with params:', JSON.stringify(params, null, 2));
-          console.log('🚀 [DEBUG] params type:', typeof params);
-          console.log('🚀 [DEBUG] params keys:', Object.keys(params || {}));
-
-          // Extract input from params
-          const input = params.input;
-          console.log('🚀 [DEBUG] Extracted input:', input);
+          console.log('🔧 [TOOL-CALL] Provider Tools Agent executing:', params.input.substring(0, 100));
 
           // Execute provider tools agent
-          const result = await providerToolsAgent.execute({ input });
-          console.log('🚀 [DEBUG] providerToolsAgent result:', result);
-          console.log('🚀 [DEBUG] providerToolsAgent output length:', result.output?.length || 0);
+          const result = await providerToolsAgent.execute({ input: params.input });
 
           // Return ONLY the output string - AI SDK will use this to continue generation
-          // The model will receive this as the tool result and generate a response
           return result.output;
         }
       });
-    } else {
-      console.log('❌ [DEBUG] Provider Tools Agent conditions not met:');
-      console.log('  - providerToolsAgent exists:', !!this.providerToolsAgent);
-      console.log('  - providerToolsConfig enabled:', this.providerToolsConfig?.enabled);
-      console.log('  - config.tools.providerToolsAgent enabled:', this.config.tools?.providerToolsAgent?.enabled);
+      enabledTools.push('providerToolsAgent');
     }
 
-    const hasTools = Object.keys(tools).length > 0;
-    console.log('🔧 [DEBUG] buildTools() returning:', hasTools ? Object.keys(tools) : 'undefined');
-    
-    return hasTools ? tools : undefined;
+    // Document Agent as a single tool
+    if (this.documentAgent && this.documentAgentConfig?.enabled && this.config.tools?.documentAgent?.enabled) {
+      const documentAgent = this.documentAgent;
+
+      // Check if tool description is missing and throw error
+      if (!this.config.tools.documentAgent.description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'documentAgent tool description is required when tool is enabled'
+        );
+      }
+
+      // Check if tool parameter description is missing and throw error
+      if (!this.config.tools.documentAgent.tool_input?.parameter_description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'documentAgent tool parameter description is required when tool is enabled'
+        );
+      }
+
+      tools.documentAgent = tool({
+        description: this.config.tools.documentAgent.description,
+        inputSchema: z.object({
+          input: z.string().describe(this.config.tools.documentAgent.tool_input.parameter_description)
+        }),
+        execute: async (params: { input: string }) => {
+          console.log('📄 [TOOL-CALL] Document Agent executing:', params.input.substring(0, 100));
+
+          // Enrich input with recent document context if available
+          let enrichedInput = params.input;
+          if (recentDocuments.length > 0) {
+            const docContext = recentDocuments
+              .map(doc => `Document ID: ${doc.id}, Title: "${doc.title}"`)
+              .join('\n');
+            enrichedInput = `${params.input}\n\nRecent documents in this conversation:\n${docContext}`;
+            console.log('📄 [TOOL-CALL] Added document context:', recentDocuments.length, 'documents');
+          }
+
+          // Execute document agent
+          const result = await documentAgent.execute({
+            input: enrichedInput,
+            dataStream,
+            user
+          });
+
+          // Track created documents from tool calls
+          if (result.toolCalls && result.toolCalls.length > 0) {
+            for (const toolCall of result.toolCalls) {
+              if (toolCall.toolName === 'createDocumentArtifact' && toolCall.result && typeof toolCall.result === 'object') {
+                // Use structured result
+                const docId = toolCall.result.id;
+                const title = toolCall.result.title;
+                const kind = toolCall.result.kind || 'text';
+
+                if (docId && title) {
+                  recentDocuments.push({ id: docId, title });
+                  console.log('📄 [CONTEXT] Tracked document:', docId, '-', title);
+
+                  // CRITICAL: Write data stream events to populate artifact state
+                  // This is what makes DocumentPreview work and enables reopening
+                  console.log('📄 [CONTEXT] Writing data stream events for artifact state');
+
+                  // These events are consumed by DataStreamHandler to populate useArtifact() hook
+                  dataStream.write({
+                    type: "data-kind",
+                    data: kind,
+                    transient: true,
+                  });
+
+                  dataStream.write({
+                    type: "data-id",
+                    data: docId,
+                    transient: true,
+                  });
+
+                  dataStream.write({
+                    type: "data-title",
+                    data: title,
+                    transient: true,
+                  });
+
+                  // Mark artifact as idle (streaming is done)
+                  dataStream.write({
+                    type: "data-finish",
+                    data: null,
+                    transient: true,
+                  });
+                }
+              }
+            }
+          }
+
+          // Return the structured output from document agent
+          console.log('📄 [TOOL-CALL] documentAgent returning type:', typeof result.output);
+          console.log('📄 [TOOL-CALL] documentAgent returning value:', JSON.stringify(result.output));
+
+          // IMPORTANT: Verify the return value is JSON serializable
+          if (result.output && typeof result.output === 'object') {
+            // Make sure it's a plain object without circular references
+            const cleanOutput = {
+              id: result.output.id,
+              title: result.output.title,
+              kind: result.output.kind || 'text'
+            };
+            console.log('📄 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            return cleanOutput;
+          }
+
+          return result.output;
+        }
+      });
+      enabledTools.push('documentAgent');
+    }
+
+    if (enabledTools.length > 0) {
+      console.log('🔧 [TOOLS-READY] Enabled tools:', enabledTools.join(', '));
+      return tools;
+    }
+
+    console.log('⚠️  [TOOLS-READY] No tools enabled');
+    return undefined;
   }
 
   /**
@@ -323,8 +435,16 @@ export class GoogleChatAgent {
       prompt += `\n\nWhen you need to search the web, analyze URLs, or execute code, use the providerToolsAgent tool. After receiving the tool result, incorporate the information into your response naturally and provide a comprehensive answer to the user.`;
     }
 
-    console.log('🔧 [DEBUG] Built system prompt length:', prompt.length);
-    console.log('🔧 [DEBUG] System prompt preview:', prompt.substring(0, 200) + '...');
+    // Add tool usage instructions if document agent is enabled
+    if (this.documentAgent && this.config.tools?.documentAgent?.enabled) {
+      prompt += `\n\nWhen you need to create or update documents, reports, or spreadsheets, use the documentAgent tool. This includes:
+- Creating text documents with markdown formatting
+- Updating existing text documents
+- Creating spreadsheets with CSV data
+- Updating existing spreadsheets
+
+After the document agent completes the operation, the artifact will be displayed to the user in a side panel. Inform the user about what was created or updated.`;
+    }
 
     return prompt;
   }
