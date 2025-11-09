@@ -291,6 +291,52 @@ const verifyMigration = async (): Promise<void> => {
 
         const googleCount = parseInt(googleConfigs[0]?.count || "0");
         seedResult.details.push(`✅ Found ${googleCount} Google provider configurations`);
+
+        // Verify document_agent_google has new structure
+        const documentAgentConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'document_agent_google'
+        `;
+
+        if (documentAgentConfig.length > 0) {
+          const configData = documentAgentConfig[0].config_data as any;
+
+          // Check for new prompts structure
+          if (configData.prompts && configData.prompts.createDocument && configData.prompts.updateDocument) {
+            seedResult.details.push("✅ Document agent has new prompts structure");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Document agent missing new prompts structure");
+          }
+
+          // Check that old systemPrompt is removed (should not exist)
+          if (configData.systemPrompt) {
+            seedResult.details.push("⚠️  Document agent still has old systemPrompt (should be removed)");
+          }
+
+          // Check that old tools are removed
+          if (configData.tools && Object.keys(configData.tools).length > 0) {
+            seedResult.details.push("⚠️  Document agent still has old tools structure (should be removed)");
+          }
+        }
+
+        // Verify chat_model_agent_google has new documentAgent tool structure
+        const chatAgentConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'chat_model_agent_google'
+        `;
+
+        if (chatAgentConfig.length > 0) {
+          const configData = chatAgentConfig[0].config_data as any;
+
+          if (configData.tools?.documentAgent?.tool_input?.operation &&
+              configData.tools?.documentAgent?.tool_input?.instruction) {
+            seedResult.details.push("✅ Chat agent has new documentAgent tool structure (operation + instruction)");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Chat agent missing new documentAgent tool structure");
+          }
+        }
       }
     } catch (error) {
       seedResult.passed = false;

@@ -61,10 +61,16 @@ INSERT INTO admin_config (config_key, config_data) VALUES
       "enabled": true
     },
     "documentAgent": {
-      "description": "Delegate to specialized agent for creating and managing text documents, spreadsheets, and reports",
+      "description": "Create or update text documents with real-time streaming. Use this tool when the user requests document creation or modification.",
       "tool_input": {
-        "parameter_name": "input",
-        "parameter_description": "The request for document creation or modification"
+        "operation": {
+          "parameter_name": "operation",
+          "parameter_description": "The operation to perform: ''create'' for new documents or ''update'' for existing documents"
+        },
+        "instruction": {
+          "parameter_name": "instruction",
+          "parameter_description": "For CREATE: The topic, title, or detailed description of what the document should contain. For UPDATE: The document ID (if available) and modification instructions (e.g., ''Update document abc-123 to add more examples'')"
+        }
       },
       "enabled": true
     },
@@ -109,45 +115,14 @@ INSERT INTO admin_config (config_key, config_data) VALUES
 
 ('document_agent_google', '{
   "enabled": true,
-  "systemPrompt": "You are a specialized document creation and editing assistant. Focus on creating well-structured, clear, and professional documents. Follow best practices for formatting and organization.\n\nWhen creating documents:\n- Use proper markdown formatting for text documents\n- Structure content with clear headings and sections\n- Ensure content is accurate and well-organized\n\nWhen creating spreadsheets:\n- Use proper CSV format with headers\n- Organize data in logical columns and rows\n- Ensure data consistency and proper formatting\n\nWhen updating documents:\n- The user''s request will include context about which document to update\n- Look for document IDs mentioned in the conversation history or user''s request\n- If a document was recently created in the conversation, use that document''s ID\n- The document ID is provided in the input parameter when available",
+  "prompts": {
+    "createDocument": "You are a skilled content writer. Create comprehensive, well-structured documents based on the user''s request.\n\nGuidelines:\n- Use proper markdown formatting with headers (##, ###), lists, and emphasis\n- Start with a clear introduction\n- Organize content with logical sections and subsections\n- Use bullet points or numbered lists where appropriate\n- Include relevant examples and explanations\n- Write in a clear, professional tone\n- Aim for comprehensive coverage of the topic\n- End with a brief conclusion or summary\n\nFocus on creating valuable, informative content that thoroughly covers the subject matter.",
+    "updateDocument": "You are a skilled content editor. Update and improve existing documents based on user instructions.\n\nGuidelines:\n- Carefully consider the existing content\n- Apply the requested changes while maintaining coherence\n- Preserve good sections unless specifically asked to change them\n- Use proper markdown formatting with headers (##, ###), lists, and emphasis\n- Ensure logical flow and organization\n- Maintain or improve the quality and depth of content\n- Keep the same general structure unless asked to reorganize\n\nFocus on making targeted improvements that enhance the document''s value and clarity. Provide the COMPLETE updated document (not just the changes)."
+  },
   "rateLimit": {
     "perMinute": 5,
     "perHour": 50,
     "perDay": 200
-  },
-  "tools": {
-    "createDocumentArtifact": {
-      "description": "Create a new text document or report with markdown formatting",
-      "tool_input": {
-        "parameter_name": "title",
-        "parameter_description": "The title of the document"
-      },
-      "enabled": true
-    },
-    "updateDocumentArtifact": {
-      "description": "Update or edit an existing text document",
-      "tool_input": {
-        "parameter_name": "id",
-        "parameter_description": "The ID of the document to update"
-      },
-      "enabled": true
-    },
-    "createSheetArtifact": {
-      "description": "Create a new spreadsheet with CSV data",
-      "tool_input": {
-        "parameter_name": "title",
-        "parameter_description": "The title of the spreadsheet"
-      },
-      "enabled": true
-    },
-    "updateSheetArtifact": {
-      "description": "Update or edit an existing spreadsheet",
-      "tool_input": {
-        "parameter_name": "id",
-        "parameter_description": "The ID of the spreadsheet to update"
-      },
-      "enabled": true
-    }
   }
 }'::jsonb),
 
@@ -202,4 +177,6 @@ INSERT INTO admin_config (config_key, config_data) VALUES
   "tools": {}
 }'::jsonb)
 
-ON CONFLICT (config_key) DO NOTHING;
+ON CONFLICT (config_key) DO UPDATE SET
+  config_data = EXCLUDED.config_data,
+  updated_at = CURRENT_TIMESTAMP;

@@ -194,22 +194,40 @@ BEGIN
     END IF;
 
     -- Validate new agent configuration structure
-    IF NEW.config_key LIKE 'chat_model_agent_%' OR 
+    IF NEW.config_key LIKE 'chat_model_agent_%' OR
        NEW.config_key LIKE 'provider_tools_agent_%' OR
        NEW.config_key LIKE 'document_agent_%' OR
        NEW.config_key LIKE 'python_agent_%' OR
        NEW.config_key LIKE 'mermaid_agent_%' OR
        NEW.config_key LIKE 'git_mcp_agent_%' THEN
-        
-        -- All new agent configs must have enabled, systemPrompt, and rateLimit
+
+        -- All new agent configs must have enabled and rateLimit
         IF NOT (NEW.config_data ? 'enabled') THEN
             RAISE EXCEPTION 'Admin config for % must include enabled field', NEW.config_key;
         END IF;
-        
-        IF NOT (NEW.config_data ? 'systemPrompt') THEN
-            RAISE EXCEPTION 'Admin config for % must include systemPrompt', NEW.config_key;
+
+        -- Document agents can have either systemPrompt OR prompts structure
+        IF NEW.config_key LIKE 'document_agent_%' THEN
+            IF NOT (NEW.config_data ? 'systemPrompt') AND NOT (NEW.config_data ? 'prompts') THEN
+                RAISE EXCEPTION 'Admin config for % must include either systemPrompt or prompts', NEW.config_key;
+            END IF;
+
+            -- If using prompts structure, validate required fields
+            IF (NEW.config_data ? 'prompts') THEN
+                IF NOT (NEW.config_data->'prompts' ? 'createDocument') THEN
+                    RAISE EXCEPTION 'Document agent prompts must include createDocument for %', NEW.config_key;
+                END IF;
+                IF NOT (NEW.config_data->'prompts' ? 'updateDocument') THEN
+                    RAISE EXCEPTION 'Document agent prompts must include updateDocument for %', NEW.config_key;
+                END IF;
+            END IF;
+        ELSE
+            -- All other agents require systemPrompt
+            IF NOT (NEW.config_data ? 'systemPrompt') THEN
+                RAISE EXCEPTION 'Admin config for % must include systemPrompt', NEW.config_key;
+            END IF;
         END IF;
-        
+
         IF NOT (NEW.config_data ? 'rateLimit') THEN
             RAISE EXCEPTION 'Admin config for % must include rateLimit', NEW.config_key;
         END IF;

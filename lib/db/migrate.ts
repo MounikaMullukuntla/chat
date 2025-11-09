@@ -38,10 +38,20 @@ const runMigrate = async () => {
       console.log(`📄 Running ${file}...`);
       const migrationPath = join(process.cwd(), "lib/db/migrations", file);
       const migrationSQL = readFileSync(migrationPath, "utf-8");
-      
-      // Execute the migration
-      await connection.unsafe(migrationSQL);
-      console.log(`✅ ${file} completed`);
+
+      try {
+        // Execute the migration
+        await connection.unsafe(migrationSQL);
+        console.log(`✅ ${file} completed`);
+      } catch (error: any) {
+        console.error(`❌ Error in ${file}:`);
+        console.error('Message:', error.message);
+        if (error.code) console.error('Code:', error.code);
+        if (error.position) console.error('Position:', error.position);
+        if (error.detail) console.error('Detail:', error.detail);
+        if (error.hint) console.error('Hint:', error.hint);
+        throw error;
+      }
     }
 
     const end = Date.now();

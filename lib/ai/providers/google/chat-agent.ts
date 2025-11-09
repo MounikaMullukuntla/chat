@@ -4,7 +4,8 @@ import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { GoogleProviderToolsAgent } from './provider-tools-agent';
-import { GoogleDocumentAgent } from './document-agent';
+//import { GoogleDocumentAgent } from './document-agent';
+import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
 import { getAdminConfig } from '@/lib/db/queries/admin';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
@@ -44,7 +45,8 @@ export class GoogleChatAgent {
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private providerToolsAgent?: GoogleProviderToolsAgent;
   private providerToolsConfig?: any;
-  private documentAgent?: GoogleDocumentAgent;
+  //private documentAgent?: GoogleDocumentAgent;
+  private documentAgentStreaming?: GoogleDocumentAgentStreaming;
   private documentAgentConfig?: any;
 
   constructor(config: ChatModelAgentConfig) {
@@ -103,13 +105,14 @@ export class GoogleChatAgent {
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Document Agent loaded and enabled');
+        console.log('✅ [AGENT-INIT] Document Agent loaded and enabled (STREAMING VERSION)');
 
         this.documentAgentConfig = config.configData;
-        this.documentAgent = new GoogleDocumentAgent(config.configData as any);
+        // Use new streaming version instead of old tool-based version
+        this.documentAgentStreaming = new GoogleDocumentAgentStreaming(config.configData as any);
 
         if (this.apiKey) {
-          this.documentAgent.setApiKey(this.apiKey);
+          this.documentAgentStreaming.setApiKey(this.apiKey);
         } else {
           console.log('⚠️  [AGENT-INIT] Document Agent: No API key available');
         }
@@ -137,8 +140,8 @@ export class GoogleChatAgent {
    * Call this before building tools to ensure document agent uses the same model
    */
   setDocumentAgentModel(modelId: string) {
-    if (this.documentAgent) {
-      this.documentAgent.setModel(modelId);
+    if (this.documentAgentStreaming) {
+      this.documentAgentStreaming.setModel(modelId);
     }
   }
 
@@ -153,7 +156,7 @@ export class GoogleChatAgent {
       }
 
       // Load document agent config if not already loaded
-      if (!this.documentAgent && this.apiKey) {
+      if (!this.documentAgentStreaming && this.apiKey) {
         await this.loadDocumentAgentConfig();
       }
 
@@ -299,9 +302,9 @@ export class GoogleChatAgent {
       enabledTools.push('providerToolsAgent');
     }
 
-    // Document Agent as a single tool
-    if (this.documentAgent && this.documentAgentConfig?.enabled && this.config.tools?.documentAgent?.enabled) {
-      const documentAgent = this.documentAgent;
+    // Document Agent as a single tool (using streaming version)
+    if (this.documentAgentStreaming && this.documentAgentConfig?.enabled && this.config.tools?.documentAgent?.enabled) {
+      const documentAgentStreaming = this.documentAgentStreaming;
 
       // Check if tool description is missing and throw error
       if (!this.config.tools.documentAgent.description) {
@@ -312,84 +315,52 @@ export class GoogleChatAgent {
         );
       }
 
-      // Check if tool parameter description is missing and throw error
-      if (!this.config.tools.documentAgent.tool_input?.parameter_description) {
+      // Check if tool parameter descriptions are missing and throw error
+      if (!this.config.tools.documentAgent.tool_input?.operation?.parameter_description ||
+          !this.config.tools.documentAgent.tool_input?.instruction?.parameter_description) {
         throw new AgentError(
           'google-chat',
           ErrorCodes.INVALID_CONFIGURATION,
-          'documentAgent tool parameter description is required when tool is enabled'
+          'documentAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
         );
       }
 
       tools.documentAgent = tool({
         description: this.config.tools.documentAgent.description,
         inputSchema: z.object({
-          input: z.string().describe(this.config.tools.documentAgent.tool_input.parameter_description)
+          operation: z.enum(['create', 'update']).describe(
+            this.config.tools.documentAgent.tool_input.operation.parameter_description
+          ),
+          instruction: z.string().describe(
+            this.config.tools.documentAgent.tool_input.instruction.parameter_description
+          )
         }),
-        execute: async (params: { input: string }) => {
-          console.log('📄 [TOOL-CALL] Document Agent executing:', params.input.substring(0, 100));
+        execute: async (params: { operation: 'create' | 'update'; instruction: string }) => {
+          console.log('📄 [TOOL-CALL] Document Agent executing');
+          console.log('📄 [TOOL-CALL] Operation:', params.operation);
+          console.log('📄 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
 
-          // Enrich input with recent document context if available
-          let enrichedInput = params.input;
-          if (recentDocuments.length > 0) {
-            const docContext = recentDocuments
-              .map(doc => `Document ID: ${doc.id}, Title: "${doc.title}"`)
-              .join('\n');
-            enrichedInput = `${params.input}\n\nRecent documents in this conversation:\n${docContext}`;
-            console.log('📄 [TOOL-CALL] Added document context:', recentDocuments.length, 'documents');
-          }
+          // TODO: Enrich input - feature can be added here
+          // Example: Add recent document context, conversation history, etc.
 
-          // Execute document agent
-          const result = await documentAgent.execute({
-            input: enrichedInput,
+          // Execute document agent (streaming version)
+          // The streaming agent handles data stream events internally
+          const result = await documentAgentStreaming.execute({
+            operation: params.operation,
+            instruction: params.instruction,
             dataStream,
-            user
+            user,
+            chatId: undefined // chatId not available in tool context
           });
 
-          // Track created documents from tool calls
-          if (result.toolCalls && result.toolCalls.length > 0) {
-            for (const toolCall of result.toolCalls) {
-              if (toolCall.toolName === 'createDocumentArtifact' && toolCall.result && typeof toolCall.result === 'object') {
-                // Use structured result
-                const docId = toolCall.result.id;
-                const title = toolCall.result.title;
-                const kind = toolCall.result.kind || 'text';
+          // Track created documents if operation was successful
+          if (result.success && result.output && typeof result.output === 'object') {
+            const docId = result.output.id;
+            const title = result.output.title;
 
-                if (docId && title) {
-                  recentDocuments.push({ id: docId, title });
-                  console.log('📄 [CONTEXT] Tracked document:', docId, '-', title);
-
-                  // CRITICAL: Write data stream events to populate artifact state
-                  // This is what makes DocumentPreview work and enables reopening
-                  console.log('📄 [CONTEXT] Writing data stream events for artifact state');
-
-                  // These events are consumed by DataStreamHandler to populate useArtifact() hook
-                  dataStream.write({
-                    type: "data-kind",
-                    data: kind,
-                    transient: true,
-                  });
-
-                  dataStream.write({
-                    type: "data-id",
-                    data: docId,
-                    transient: true,
-                  });
-
-                  dataStream.write({
-                    type: "data-title",
-                    data: title,
-                    transient: true,
-                  });
-
-                  // Mark artifact as idle (streaming is done)
-                  dataStream.write({
-                    type: "data-finish",
-                    data: null,
-                    transient: true,
-                  });
-                }
-              }
+            if (docId && title) {
+              recentDocuments.push({ id: docId, title });
+              console.log('📄 [CONTEXT] Tracked document:', docId, '-', title);
             }
           }
 
@@ -435,15 +406,15 @@ export class GoogleChatAgent {
       prompt += `\n\nWhen you need to search the web, analyze URLs, or execute code, use the providerToolsAgent tool. After receiving the tool result, incorporate the information into your response naturally and provide a comprehensive answer to the user.`;
     }
 
-    // Add tool usage instructions if document agent is enabled
-    if (this.documentAgent && this.config.tools?.documentAgent?.enabled) {
+    // Add tool usage instructions if document agent is enabled (streaming version)
+    if (this.documentAgentStreaming && this.config.tools?.documentAgent?.enabled) {
       prompt += `\n\nWhen you need to create or update documents, reports, or spreadsheets, use the documentAgent tool. This includes:
 - Creating text documents with markdown formatting
 - Updating existing text documents
 - Creating spreadsheets with CSV data
 - Updating existing spreadsheets
 
-After the document agent completes the operation, the artifact will be displayed to the user in a side panel. Inform the user about what was created or updated.`;
+The document will be streamed in real-time to the user's artifact panel. After the document agent completes, inform the user about what was created or updated.`;
     }
 
     return prompt;
