@@ -38,10 +38,13 @@ type ToolProps = {
   setIsToolbarVisible?: Dispatch<SetStateAction<boolean>>;
   isAnimating: boolean;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  documentId?: string;
   onClick: ({
     sendMessage,
+    documentId,
   }: {
     sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+    documentId?: string;
   }) => void;
 };
 
@@ -54,6 +57,7 @@ const Tool = ({
   setIsToolbarVisible,
   isAnimating,
   sendMessage,
+  documentId,
   onClick,
 }: ToolProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -80,7 +84,7 @@ const Tool = ({
       setSelectedTool(description);
     } else {
       setSelectedTool(null);
-      onClick({ sendMessage });
+      onClick({ sendMessage, documentId });
     }
   };
 
@@ -252,6 +256,7 @@ export const Tools = ({
   isAnimating,
   setIsToolbarVisible,
   tools,
+  documentId,
 }: {
   isToolbarVisible: boolean;
   selectedTool: string | null;
@@ -260,6 +265,7 @@ export const Tools = ({
   isAnimating: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
   tools: ArtifactToolbarItem[];
+  documentId?: string;
 }) => {
   const [primaryTool, ...secondaryTools] = tools;
 
@@ -275,6 +281,7 @@ export const Tools = ({
           secondaryTools.map((secondaryTool) => (
             <Tool
               description={secondaryTool.description}
+              documentId={documentId}
               icon={secondaryTool.icon}
               isAnimating={isAnimating}
               key={secondaryTool.description}
@@ -288,6 +295,7 @@ export const Tools = ({
 
       <Tool
         description={primaryTool.description}
+        documentId={documentId}
         icon={primaryTool.icon}
         isAnimating={isAnimating}
         isToolbarVisible={isToolbarVisible}
@@ -309,6 +317,7 @@ const PureToolbar = ({
   stop,
   setMessages,
   artifactKind,
+  documentId,
 }: {
   isToolbarVisible: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
@@ -317,6 +326,7 @@ const PureToolbar = ({
   stop: UseChatHelpers<ChatMessage>["stop"];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   artifactKind: ArtifactKind;
+  documentId?: string;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -446,6 +456,7 @@ const PureToolbar = ({
           />
         ) : (
           <Tools
+            documentId={documentId}
             isAnimating={isAnimating}
             isToolbarVisible={isToolbarVisible}
             key="tools"

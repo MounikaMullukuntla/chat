@@ -160,7 +160,7 @@ export class GoogleMermaidAgent {
       await saveDocument({
         id: documentId,
         title,
-        kind: 'code',
+        kind: 'mermaid code',
         content: generatedDiagram,
         userId: user.id,
         chatId,

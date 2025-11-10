@@ -147,13 +147,13 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
     {
       icon: <PenIcon />,
       description: "Add final polish",
-      onClick: ({ sendMessage }) => {
+      onClick: ({ sendMessage, documentId }) => {
         sendMessage({
           role: "user",
           parts: [
             {
               type: "text",
-              text: "Please add final polish and check for grammar, add section titles for better structure, and ensure everything reads smoothly.",
+              text: `Please add final polish to the document${documentId ? ` (Document ID: ${documentId})` : ''}. Check for grammar, add section titles for better structure, and ensure everything reads smoothly.`,
             },
           ],
         });
@@ -162,13 +162,13 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
     {
       icon: <MessageIcon />,
       description: "Request suggestions",
-      onClick: ({ sendMessage }) => {
+      onClick: ({ sendMessage, documentId }) => {
         sendMessage({
           role: "user",
           parts: [
             {
               type: "text",
-              text: "Please add suggestions you have that could improve the writing.",
+              text: `Please analyze the document${documentId ? ` (Document ID: ${documentId})` : ''} and provide inline suggestions for improvement.`,
             },
           ],
         });

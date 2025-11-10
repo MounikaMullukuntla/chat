@@ -15,6 +15,7 @@ export const buildDocumentFromContent = (content: string) => {
   const stringFromMarkdown = renderToString(<Response>{content}</Response>);
   const tempContainer = document.createElement("div");
   tempContainer.innerHTML = stringFromMarkdown;
+
   return parser.parse(tempContainer);
 };
 

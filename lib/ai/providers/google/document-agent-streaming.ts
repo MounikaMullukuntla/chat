@@ -6,6 +6,7 @@ import type { DocumentAgentConfig } from "../../core/types";
 import type { ChatMessage } from "@/lib/types";
 import { streamTextDocument } from "../../tools/document/streamTextDocument";
 import { streamTextDocumentUpdate } from "../../tools/document/streamTextDocumentUpdate";
+import { streamDocumentSuggestions } from "../../tools/document/streamDocumentSuggestions";
 import { getAdminConfig } from "@/lib/db/queries/admin";
 import { getDocumentById, getDocumentByIdAndVersion, saveDocument } from "@/lib/db/queries/document";
 
@@ -100,7 +101,7 @@ export class GoogleDocumentAgentStreaming {
    * Operation is determined by chat agent and passed directly
    */
   async execute(params: {
-    operation: 'create' | 'update' | 'revert';
+    operation: 'create' | 'update' | 'revert' | 'suggestion';
     instruction: string;
     documentId?: string;
     targetVersion?: number;
@@ -314,6 +315,45 @@ export class GoogleDocumentAgentStreaming {
             isRevert: true,
             revertedFrom: currentDocument.version_number,
             revertedTo: versionToRevert,
+          },
+          success: true,
+        };
+      }
+
+      if (operation === 'suggestion') {
+        console.log('📄 [DOC-AGENT-STREAMING] Operation: SUGGESTION');
+
+        // Document ID is required for suggestions
+        if (!documentId) {
+          throw new Error('Document ID is required for suggestion operations. The chat agent should extract it from artifact context and pass it explicitly.');
+        }
+
+        console.log('📄 [DOC-AGENT-STREAMING] Document ID:', documentId);
+
+        // Get the system prompt for suggestions
+        const systemPrompt = this.prompts?.updateDocument || "Analyze the document and provide constructive suggestions for improvement.";
+
+        // Generate and stream suggestions in real-time
+        const result = await streamDocumentSuggestions({
+          documentId,
+          instruction,
+          systemPrompt,
+          dataStream,
+          user,
+          chatId,
+          modelId: this.modelId!,
+          apiKey: this.apiKey,
+        });
+
+        console.log('✅ [DOC-AGENT-STREAMING] Suggestions generated:', result.suggestionCount);
+
+        // Return structured output for message part
+        return {
+          output: {
+            id: documentId,
+            kind: 'text',
+            isSuggestion: true,
+            suggestionCount: result.suggestionCount,
           },
           success: true,
         };

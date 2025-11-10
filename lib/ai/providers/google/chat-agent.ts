@@ -342,20 +342,20 @@ export class GoogleChatAgent {
       tools.documentAgent = tool({
         description: this.config.tools.documentAgent.description,
         inputSchema: z.object({
-          operation: z.enum(['create', 'update', 'revert']).describe(
+          operation: z.enum(['create', 'update', 'revert', 'suggestion']).describe(
             this.config.tools.documentAgent.tool_input.operation.parameter_description
           ),
           instruction: z.string().describe(
             this.config.tools.documentAgent.tool_input.instruction.parameter_description
           ),
           documentId: z.string().uuid().optional().describe(
-            'UUID of the document to update or revert. Required for update and revert operations. Extract from artifact context when user references a specific document.'
+            'UUID of the document to update, revert, or add suggestions to. Required for update, revert, and suggestion operations. Extract from artifact context when user references a specific document.'
           ),
           targetVersion: z.number().int().positive().optional().describe(
             'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
           )
         }),
-        execute: async (params: { operation: 'create' | 'update' | 'revert'; instruction: string; documentId?: string; targetVersion?: number }) => {
+        execute: async (params: { operation: 'create' | 'update' | 'revert' | 'suggestion'; instruction: string; documentId?: string; targetVersion?: number }) => {
           console.log('📄 [TOOL-CALL] Document Agent executing');
           console.log('📄 [TOOL-CALL] Operation:', params.operation);
           console.log('📄 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));

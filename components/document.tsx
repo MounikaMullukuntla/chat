@@ -5,7 +5,7 @@ import type { ArtifactKind } from "./artifact";
 import { FileIcon, LoaderIcon, MessageIcon, PencilEditIcon } from "./icons";
 
 const getActionText = (
-  type: "create" | "update" | "request-suggestions",
+  type: "create" | "update" | "request-suggestions" | "suggestion",
   tense: "present" | "past"
 ) => {
   switch (type) {
@@ -14,6 +14,7 @@ const getActionText = (
     case "update":
       return tense === "present" ? "Updating" : "Updated";
     case "request-suggestions":
+    case "suggestion":
       return tense === "present"
         ? "Adding suggestions"
         : "Added suggestions to";
@@ -23,7 +24,7 @@ const getActionText = (
 };
 
 type DocumentToolResultProps = {
-  type: "create" | "update" | "request-suggestions";
+  type: "create" | "update" | "request-suggestions" | "suggestion";
   result: { id: string; title: string; kind: ArtifactKind };
   isReadonly: boolean;
 };
@@ -72,7 +73,7 @@ function PureDocumentToolResult({
           <FileIcon />
         ) : type === "update" ? (
           <PencilEditIcon />
-        ) : type === "request-suggestions" ? (
+        ) : type === "request-suggestions" || type === "suggestion" ? (
           <MessageIcon />
         ) : null}
       </div>
@@ -86,11 +87,11 @@ function PureDocumentToolResult({
 export const DocumentToolResult = memo(PureDocumentToolResult, () => true);
 
 type DocumentToolCallProps = {
-  type: "create" | "update" | "request-suggestions";
+  type: "create" | "update" | "request-suggestions" | "suggestion";
   args:
     | { title: string; kind: ArtifactKind } // for create
     | { id: string; description: string } // for update
-    | { documentId: string }; // for request-suggestions
+    | { documentId: string }; // for request-suggestions or suggestion
   isReadonly: boolean;
 };
 
@@ -135,7 +136,7 @@ function PureDocumentToolCall({
             <FileIcon />
           ) : type === "update" ? (
             <PencilEditIcon />
-          ) : type === "request-suggestions" ? (
+          ) : type === "request-suggestions" || type === "suggestion" ? (
             <MessageIcon />
           ) : null}
         </div>
@@ -146,7 +147,7 @@ function PureDocumentToolCall({
               ? `"${args.title}"`
               : type === "update" && "description" in args
                 ? `"${args.description}"`
-                : type === "request-suggestions"
+                : type === "request-suggestions" || type === "suggestion"
                   ? "for document"
                   : ""
           }`}

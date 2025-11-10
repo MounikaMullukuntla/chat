@@ -483,6 +483,7 @@ function PureArtifact({
                 {isCurrentVersion && (
                   <Toolbar
                     artifactKind={artifact.kind}
+                    documentId={artifact.documentId}
                     isToolbarVisible={isToolbarVisible}
                     sendMessage={sendMessage}
                     setIsToolbarVisible={setIsToolbarVisible}
