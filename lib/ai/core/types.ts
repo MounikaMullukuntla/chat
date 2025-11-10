@@ -54,8 +54,10 @@ export interface ToolConfig {
   description: string;
   enabled: boolean;
   tool_input?: {
-    parameter_name: string;
-    parameter_description: string;
+    parameter_name?: string;
+    parameter_description?: string;
+    // Support nested structure for multi-parameter tools
+    [key: string]: any;
   };
 }
 
@@ -190,6 +192,8 @@ export interface ChatParams {
   userId?: string;
   conversationId?: string;
   dataStream?: any; // UIMessageStreamWriter for tool execution
+  artifactContext?: string; // Context about artifacts in the conversation
+  user?: any; // User object for tool execution context
 }
 
 /**

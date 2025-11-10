@@ -114,3 +114,62 @@ export function getTextFromMessage(message: ChatMessage): string {
     .map((part) => part.text)
     .join('');
 }
+
+export function buildArtifactContext(
+  allArtifacts: Array<{
+    id: string;
+    title: string;
+    kind: string;
+    version_number: number;
+    parent_version_id: string | null;
+    createdAt: Date;
+  }>,
+  lastDocument: Document | null
+): string {
+  if (allArtifacts.length === 0) {
+    return '';
+  }
+
+  let context = '\n\n## Artifacts in This Conversation\n\n';
+
+  // Add all documents section (metadata only)
+  context += '### All Documents\n';
+  allArtifacts.forEach((doc, index) => {
+    context += `${index + 1}. **[${doc.id}]** "${doc.title}" (v${doc.version_number}, ${doc.kind})\n`;
+  });
+
+  // Add last document section with full content
+  if (lastDocument && lastDocument.content) {
+    context += '\n### Last Document (Most Recent)\n';
+    context += `**ID:** ${lastDocument.id}\n`;
+    context += `**Title:** ${lastDocument.title}\n`;
+    context += `**Version:** ${lastDocument.version_number}\n`;
+    context += `**Kind:** ${lastDocument.kind}\n`;
+    context += `**Content:**\n\n${lastDocument.content}\n`;
+  }
+
+  return context;
+}
+
+/**
+ * Strip markdown code fences from LLM output
+ * Removes ```markdown, ```text, ``` at start and ``` at end
+ * This fixes the issue where LLMs wrap markdown content in code fences
+ */
+export function stripMarkdownCodeFences(content: string): string {
+  if (!content || typeof content !== 'string') {
+    return content;
+  }
+
+  let cleaned = content.trim();
+
+  // Remove opening code fence (```markdown, ```text, ```)
+  // Match: optional whitespace, ```, optional language identifier, newline
+  cleaned = cleaned.replace(/^\s*```(?:markdown|text|md)?\s*\n/, '');
+
+  // Remove closing code fence (```)
+  // Match: newline (optional), ```, optional whitespace at end
+  cleaned = cleaned.replace(/\n?\s*```\s*$/, '');
+
+  return cleaned.trim();
+}

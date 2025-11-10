@@ -6,6 +6,7 @@ import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
+import { stripMarkdownCodeFences } from "@/lib/utils";
 
 /**
  * Stream document update in real-time using AI SDK's streamText
@@ -43,6 +44,25 @@ export async function streamTextDocumentUpdate(params: {
   console.log('📝 [STREAM-UPDATE] Existing document found:', document.title);
   console.log('📝 [STREAM-UPDATE] Current content length:', document.content?.length || 0);
 
+  // Write artifact metadata to inform UI which document is being updated
+  dataStream.write({
+    type: "data-kind",
+    data: document.kind,
+    transient: true,
+  });
+
+  dataStream.write({
+    type: "data-id",
+    data: documentId,
+    transient: true,
+  });
+
+  dataStream.write({
+    type: "data-title",
+    data: document.title,
+    transient: true,
+  });
+
   // Clear the artifact panel for update
   dataStream.write({
     type: "data-clear",
@@ -50,7 +70,7 @@ export async function streamTextDocumentUpdate(params: {
     transient: true,
   });
 
-  console.log('📝 [STREAM-UPDATE] Cleared artifact panel, starting LLM generation');
+  console.log('📝 [STREAM-UPDATE] Metadata written, cleared artifact panel, starting LLM generation');
 
   // Get the Google model instance with proper API key handling
   let model;
@@ -112,13 +132,20 @@ Please provide the COMPLETE updated document (not just the changes).`;
     console.log('📝 [STREAM-UPDATE] Updated content length:', draftContent.length);
     console.log('📝 [STREAM-UPDATE] Total chunks streamed:', chunkCount);
 
+    // Strip markdown code fences if LLM wrapped the output
+    const cleanedContent = stripMarkdownCodeFences(draftContent);
+    if (cleanedContent !== draftContent) {
+      console.log('⚠️ [STREAM-UPDATE] Stripped markdown code fences from output');
+      console.log('📝 [STREAM-UPDATE] Cleaned content length:', cleanedContent.length);
+    }
+
     // Save updated document to database if user is provided
     if (user?.id) {
       console.log('📝 [STREAM-UPDATE] Saving to database for user:', user.id);
       await saveDocument({
         id: documentId,
         title: document.title,
-        content: draftContent,
+        content: cleanedContent,
         kind: "text",
         userId: user.id,
         chatId: chatId || document.chat_id || undefined,

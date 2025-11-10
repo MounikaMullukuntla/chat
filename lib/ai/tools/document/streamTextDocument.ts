@@ -6,7 +6,7 @@ import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
-import { generateUUID } from "@/lib/utils";
+import { generateUUID, stripMarkdownCodeFences } from "@/lib/utils";
 
 /**
  * Stream document creation in real-time using AI SDK's streamText
@@ -108,13 +108,20 @@ export async function streamTextDocument(params: {
     console.log('📄 [STREAM-CREATE] Total content length:', draftContent.length);
     console.log('📄 [STREAM-CREATE] Total chunks streamed:', chunkCount);
 
+    // Strip markdown code fences if LLM wrapped the output
+    const cleanedContent = stripMarkdownCodeFences(draftContent);
+    if (cleanedContent !== draftContent) {
+      console.log('⚠️ [STREAM-CREATE] Stripped markdown code fences from output');
+      console.log('📄 [STREAM-CREATE] Cleaned content length:', cleanedContent.length);
+    }
+
     // Save document to database if user is provided
     if (user?.id) {
       console.log('📄 [STREAM-CREATE] Saving to database for user:', user.id);
       await saveDocument({
         id: documentId,
         title,
-        content: draftContent,
+        content: cleanedContent,
         kind: "text",
         userId: user.id,
         chatId,

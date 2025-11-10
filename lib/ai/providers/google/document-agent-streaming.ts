@@ -7,6 +7,7 @@ import type { ChatMessage } from "@/lib/types";
 import { streamTextDocument } from "../../tools/document/streamTextDocument";
 import { streamTextDocumentUpdate } from "../../tools/document/streamTextDocumentUpdate";
 import { getAdminConfig } from "@/lib/db/queries/admin";
+import { getDocumentById, getDocumentByIdAndVersion, saveDocument } from "@/lib/db/queries/document";
 
 /**
  * GoogleDocumentAgentStreaming - Simplified streaming version of document agent
@@ -99,13 +100,15 @@ export class GoogleDocumentAgentStreaming {
    * Operation is determined by chat agent and passed directly
    */
   async execute(params: {
-    operation: 'create' | 'update';
+    operation: 'create' | 'update' | 'revert';
     instruction: string;
+    documentId?: string;
+    targetVersion?: number;
     dataStream: UIMessageStreamWriter<ChatMessage>;
     user?: any;
     chatId?: string;
   }): Promise<{ output: any; success: boolean; reasoning?: string }> {
-    const { operation, instruction, dataStream, user, chatId } = params;
+    const { operation, instruction, documentId, targetVersion, dataStream, user, chatId } = params;
 
     try {
       console.log('📄 [DOC-AGENT-STREAMING] Starting execution');
@@ -153,13 +156,9 @@ export class GoogleDocumentAgentStreaming {
       if (operation === 'update') {
         console.log('📄 [DOC-AGENT-STREAMING] Operation: UPDATE');
 
-        // Extract document ID from instruction
-        // Expected format: "Update document abc-123 to..." or just instructions if ID is in context
-        const docIdMatch = instruction.match(/document\s+([a-f0-9-]{36})/i);
-        const documentId = docIdMatch ? docIdMatch[1] : null;
-
+        // Document ID should be provided by chat agent
         if (!documentId) {
-          throw new Error('No document ID found in instruction. Please specify the document ID to update.');
+          throw new Error('Document ID is required for update operations. The chat agent should extract it from artifact context and pass it explicitly.');
         }
 
         console.log('📄 [DOC-AGENT-STREAMING] Document ID:', documentId);
@@ -187,6 +186,134 @@ export class GoogleDocumentAgentStreaming {
             id: documentId,
             kind: 'text',
             isUpdate: true,
+          },
+          success: true,
+        };
+      }
+
+      if (operation === 'revert') {
+        console.log('📄 [DOC-AGENT-STREAMING] Operation: REVERT');
+
+        // Document ID is required for revert
+        if (!documentId) {
+          throw new Error('Document ID is required for revert operations. The chat agent should extract it from artifact context and pass it explicitly.');
+        }
+
+        // Get current document to determine target version
+        const currentDocument = await getDocumentById({ id: documentId });
+        if (!currentDocument) {
+          throw new Error(`Document with ID ${documentId} not found`);
+        }
+
+        console.log('📄 [DOC-AGENT-STREAMING] Current document version:', currentDocument.version_number);
+
+        // Determine target version
+        let versionToRevert = targetVersion;
+        if (!versionToRevert) {
+          // Default to previous version if not specified
+          versionToRevert = currentDocument.version_number - 1;
+          console.log('📄 [DOC-AGENT-STREAMING] No target version specified, reverting to previous:', versionToRevert);
+        }
+
+        if (versionToRevert < 1) {
+          throw new Error('Cannot revert: No previous version exists');
+        }
+
+        if (versionToRevert >= currentDocument.version_number) {
+          throw new Error(`Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`);
+        }
+
+        // Fetch the target version
+        const targetDocument = await getDocumentByIdAndVersion({
+          id: documentId,
+          version: versionToRevert
+        });
+
+        if (!targetDocument) {
+          throw new Error(`Version ${versionToRevert} of document ${documentId} not found`);
+        }
+
+        console.log('📄 [DOC-AGENT-STREAMING] Reverting to version:', versionToRevert);
+        console.log('📄 [DOC-AGENT-STREAMING] Target content length:', targetDocument.content?.length || 0);
+
+        // Write artifact metadata to inform UI
+        dataStream.write({
+          type: "data-kind",
+          data: targetDocument.kind,
+          transient: true,
+        });
+
+        dataStream.write({
+          type: "data-id",
+          data: documentId,
+          transient: true,
+        });
+
+        dataStream.write({
+          type: "data-title",
+          data: targetDocument.title,
+          transient: true,
+        });
+
+        // Clear the artifact panel
+        dataStream.write({
+          type: "data-clear",
+          data: null,
+          transient: true,
+        });
+
+        // Stream the reverted content to the UI
+        const revertedContent = targetDocument.content || '';
+        const chunkSize = 100;
+
+        for (let i = 0; i < revertedContent.length; i += chunkSize) {
+          const chunk = revertedContent.substring(i, i + chunkSize);
+          dataStream.write({
+            type: "data-textDelta",
+            data: chunk,
+            transient: true,
+          });
+        }
+
+        // Save as new version (non-destructive revert)
+        if (user?.id) {
+          await saveDocument({
+            id: documentId,
+            title: targetDocument.title,
+            content: revertedContent,
+            kind: targetDocument.kind,
+            userId: user.id,
+            chatId: chatId || currentDocument.chat_id || undefined,
+            parentVersionId: `${documentId}`,
+            metadata: {
+              updateType: 'revert',
+              agentInfo: 'document-agent-streaming',
+              revertedFrom: currentDocument.version_number,
+              revertedTo: versionToRevert,
+              revertedAt: new Date().toISOString(),
+              modelUsed: this.modelId,
+            },
+          });
+          console.log('✅ [DOC-AGENT-STREAMING] Document reverted and saved as new version');
+        }
+
+        // Signal streaming complete
+        dataStream.write({
+          type: "data-finish",
+          data: null,
+          transient: true,
+        });
+
+        console.log('✅ [DOC-AGENT-STREAMING] Document reverted:', documentId);
+
+        // Return structured output for message part
+        return {
+          output: {
+            id: documentId,
+            kind: targetDocument.kind,
+            isRevert: true,
+            revertedFrom: currentDocument.version_number,
+            revertedTo: versionToRevert,
           },
           success: true,
         };

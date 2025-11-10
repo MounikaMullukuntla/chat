@@ -1,7 +1,7 @@
 import "server-only";
 
 import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, tool, type LanguageModel } from 'ai';
+import { tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { GoogleProviderToolsAgent } from './provider-tools-agent';
 //import { GoogleDocumentAgent } from './document-agent';
@@ -9,13 +9,10 @@ import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
 import { getAdminConfig } from '@/lib/db/queries/admin';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
-  ChatParams,
-  StreamingResponse
+  ChatParams
 } from '../../core/types';
 import {
-  ProviderError,
   AgentError,
-  StreamingError,
   ErrorCodes
 } from '../../core/errors';
 
@@ -146,121 +143,138 @@ export class GoogleChatAgent {
   }
 
   /**
-   * Generate streaming chat response
+   * Generate streaming chat response using AI SDK
+   * This method handles all provider-specific logic including:
+   * - Loading specialized agents
+   * - Building tools
+   * - Configuring thinking mode
+   * - Creating UI message stream
    */
-  async *chat(params: ChatParams): AsyncGenerator<StreamingResponse, void, unknown> {
+  async chat(params: ChatParams & {
+    chatId: string;
+    onFinish?: (event: { messages: any[] }) => Promise<void>;
+    generateId?: () => string;
+  }) {
     try {
-      // Load provider tools config if not already loaded
-      if (!this.providerToolsAgent && this.apiKey) {
-        await this.loadProviderToolsConfig();
-      }
+      const { streamText, createUIMessageStream, JsonToSseTransformStream, stepCountIs } = await import('ai');
 
-      // Load document agent config if not already loaded
-      if (!this.documentAgentStreaming && this.apiKey) {
-        await this.loadDocumentAgentConfig();
-      }
+      // Load specialized agent configurations
+      await this.loadProviderToolsConfig();
+      await this.loadDocumentAgentConfig();
 
-      const model = this.getModel(params.modelId);
-      const systemPrompt = this.buildSystemPrompt();
+      // Set the selected model for specialized agents (same model as chat)
+      this.setProviderToolsModel(params.modelId);
+      this.setDocumentAgentModel(params.modelId);
 
-      // Convert messages to AI SDK format
-      const messages = params.messages.map(msg => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content
-      }));
+      // Check if thinking mode is supported by the selected model
+      const modelSupportsThinking = this.supportsThinking(params.modelId);
+      const shouldEnableThinking = params.thinkingMode && modelSupportsThinking;
 
-      // Build tools from provider tools agent
-      const tools = this.buildTools(params.dataStream, params.user);
+      // Create proper UI message stream using AI SDK
+      const stream = createUIMessageStream({
+        execute: ({ writer: dataStream }) => {
+          // Use streamText directly with Google model from chat agent
+          const model = this.getModel(params.modelId);
 
-      // Configure streaming with thinking mode if enabled
-      const streamConfig: any = {
-        model,
-        system: systemPrompt,
-        messages,
-        temperature: 0.7
-      };
+          // Build system prompt with tool descriptions from chat agent
+          const systemPrompt = this.buildSystemPrompt();
 
-      // Add tools if available
-      if (tools) {
-        streamConfig.tools = tools;
-        streamConfig.maxSteps = 5; // Limit tool call iterations
-      }
+          // Build tools from chat agent (includes provider tools and document agent if enabled)
+          const tools = this.buildTools(dataStream, params.user, params.chatId);
 
-      // Add thinking mode middleware if enabled and supported
-      if (params.thinkingMode && this.supportsThinking(params.modelId)) {
-        const { extractReasoningMiddleware } = await import('ai');
-        streamConfig.experimental_transform = extractReasoningMiddleware({
-          tagName: "think"
-        });
-      }
+          // Add artifact context to the first user message if available
+          let messages = params.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
 
-      const result = streamText(streamConfig);
+          // Inject artifact context into the latest user message
+          if (params.artifactContext && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage.role === 'user') {
+              lastMessage.content = lastMessage.content + params.artifactContext;
+            }
+          }
 
-      // Stream the response
-      for await (const chunk of result.textStream) {
-        yield {
-          content: chunk,
-          finished: false
-        };
-      }
+          // Configure stream with Google's thinking config if enabled
+          const streamConfig: any = {
+            model,
+            system: systemPrompt,
+            messages: messages,
+            temperature: 0.7,
+          };
 
-      // Get final result
-      const finalResult = await result;
+          // Add tools if available
+          if (tools) {
+            streamConfig.tools = tools;
+            // Enable multi-step execution with stopWhen - this allows the model to:
+            // 1. Call tools
+            // 2. Receive tool results
+            // 3. Generate a final response using those results
+            streamConfig.stopWhen = stepCountIs(5); // Stop after 5 steps (tool calls + responses)
+            console.log('🔧 [CHAT-AGENT] Multi-step execution enabled with stopWhen');
+          }
 
-      yield {
-        content: '',
-        finished: true
-      };
+          // Add Google-specific thinking configuration
+          if (shouldEnableThinking) {
+            streamConfig.providerOptions = {
+              google: {
+                thinkingConfig: {
+                  thinkingBudget: 8192,
+                  includeThoughts: true,
+                },
+              },
+            };
+          }
+
+          console.log('🚀 [CHAT-AGENT] Starting streamText with tools:', tools ? Object.keys(tools) : 'none');
+          console.log('🚀 [CHAT-AGENT] Thinking mode enabled:', shouldEnableThinking);
+
+          const result = streamText(streamConfig);
+
+          // Merge the AI stream into the UI message stream with reasoning enabled
+          // The AI SDK will handle tool execution and streaming automatically
+          dataStream.merge(
+            result.toUIMessageStream({
+              sendReasoning: shouldEnableThinking,
+            })
+          );
+        },
+        generateId: params.generateId,
+        onFinish: async (event) => {
+          if (params.onFinish) {
+            await params.onFinish({ messages: event.messages });
+          }
+        },
+        onError: () => {
+          return "Oops, an error occurred!";
+        },
+      });
+
+      // Return direct streaming response
+      return new Response(stream.pipeThrough(new JsonToSseTransformStream()), {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-google-api-key',
+        },
+      });
 
     } catch (error) {
       console.error('Google Chat Agent error:', error);
-      
-      if (error instanceof Error) {
-        // Handle specific Google API errors
-        if (error.message.includes('API key')) {
-          throw new ProviderError(
-            'google',
-            ErrorCodes.AUTHENTICATION_FAILED,
-            'Google API authentication failed. Please check your API key.',
-            error
-          );
-        }
-        
-        if (error.message.includes('quota') || error.message.includes('rate limit')) {
-          throw new ProviderError(
-            'google',
-            ErrorCodes.RATE_LIMIT_EXCEEDED,
-            'Google API rate limit exceeded. Please try again later.',
-            error
-          );
-        }
-        
-        if (error.message.includes('model')) {
-          throw new ProviderError(
-            'google',
-            ErrorCodes.MODEL_NOT_SUPPORTED,
-            `Model ${params.modelId} is not supported or available.`,
-            error
-          );
-        }
-      }
-
-      throw new StreamingError(
-        `Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        error instanceof Error ? error : undefined
-      );
+      throw error;
     }
   }
 
   /**
    * Build AI SDK tools - Specialized agents are treated as individual tools
    */
-  buildTools(dataStream: any, user?: any): Record<string, any> | undefined {
+  buildTools(dataStream: any, user?: any, chatId?: string): Record<string, any> | undefined {
     const tools: Record<string, any> = {};
     const enabledTools: string[] = [];
-
-    // Track recently created documents in this conversation for context
-    const recentDocuments: Array<{id: string, title: string}> = [];
 
     // Provider Tools Agent as a single tool
     if (this.providerToolsAgent && this.providerToolsConfig?.enabled && this.config.tools?.providerToolsAgent?.enabled) {
@@ -328,41 +342,37 @@ export class GoogleChatAgent {
       tools.documentAgent = tool({
         description: this.config.tools.documentAgent.description,
         inputSchema: z.object({
-          operation: z.enum(['create', 'update']).describe(
+          operation: z.enum(['create', 'update', 'revert']).describe(
             this.config.tools.documentAgent.tool_input.operation.parameter_description
           ),
           instruction: z.string().describe(
             this.config.tools.documentAgent.tool_input.instruction.parameter_description
+          ),
+          documentId: z.string().uuid().optional().describe(
+            'UUID of the document to update or revert. Required for update and revert operations. Extract from artifact context when user references a specific document.'
+          ),
+          targetVersion: z.number().int().positive().optional().describe(
+            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
           )
         }),
-        execute: async (params: { operation: 'create' | 'update'; instruction: string }) => {
+        execute: async (params: { operation: 'create' | 'update' | 'revert'; instruction: string; documentId?: string; targetVersion?: number }) => {
           console.log('📄 [TOOL-CALL] Document Agent executing');
           console.log('📄 [TOOL-CALL] Operation:', params.operation);
           console.log('📄 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-
-          // TODO: Enrich input - feature can be added here
-          // Example: Add recent document context, conversation history, etc.
+          console.log('📄 [TOOL-CALL] Document ID:', params.documentId || 'not provided');
+          console.log('📄 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
 
           // Execute document agent (streaming version)
           // The streaming agent handles data stream events internally
           const result = await documentAgentStreaming.execute({
             operation: params.operation,
             instruction: params.instruction,
+            documentId: params.documentId,
+            targetVersion: params.targetVersion,
             dataStream,
             user,
-            chatId: undefined // chatId not available in tool context
+            chatId: chatId
           });
-
-          // Track created documents if operation was successful
-          if (result.success && result.output && typeof result.output === 'object') {
-            const docId = result.output.id;
-            const title = result.output.title;
-
-            if (docId && title) {
-              recentDocuments.push({ id: docId, title });
-              console.log('📄 [CONTEXT] Tracked document:', docId, '-', title);
-            }
-          }
 
           // Return the structured output from document agent
           console.log('📄 [TOOL-CALL] documentAgent returning type:', typeof result.output);

@@ -1,10 +1,5 @@
-import {
-  createUIMessageStream,
-  JsonToSseTransformStream,
-  streamText,
-  stepCountIs,
-} from "ai";
 import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
+import type { UIMessagePart } from "ai";
 
 // Import simple chat agent resolver
 import { ChatAgentResolver } from "@/lib/ai/chat-agent-resolver";
@@ -12,22 +7,17 @@ import { extractFileContent, validateFileAttachment } from "@/lib/ai/file-proces
 import {
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
   saveMessages,
 } from "@/lib/db/queries";
+import { getLatestDocumentVersionsByChat, getLastDocumentInChat } from "@/lib/db/queries/document";
 import { ChatSDKError } from "@/lib/errors";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import { convertToUIMessages, generateUUID, buildArtifactContext } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
-
-// Simple streaming without Redis dependency
-export function getStreamContext() {
-  return null; // No resumable streams - use direct streaming
-}
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -45,16 +35,6 @@ export async function POST(request: Request) {
     // Authenticate user
     const authResult = await requireAuth();
     const user = authResult.user;
-
-    // Simple rate limiting - 100 messages per day for all users
-    const messageCount = await getMessageCountByUserId({
-      id: user.id,
-      differenceInHours: 24,
-    });
-
-    if (messageCount > 100) {
-      return new ChatSDKError("rate_limit:chat").toResponse();
-    }
 
     // Chat management
     const chat = await getChatById({ id });
@@ -76,9 +56,14 @@ export async function POST(request: Request) {
     const messagesFromDb = await getMessagesByChatId({ id });
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
+    // Fetch all artifacts in the conversation
+    const allArtifacts = await getLatestDocumentVersionsByChat({ chatId: id });
+    const lastDocument = await getLastDocumentInChat({ chatId: id });
+    const artifactContext = buildArtifactContext(allArtifacts, lastDocument);
+
     const fileContexts: string[] = [];
     const fileParts = message.parts.filter(part => part.type === 'file');
-    
+
     for (const filePart of fileParts) {
       try {
         const attachment = {
@@ -86,7 +71,7 @@ export async function POST(request: Request) {
           url: filePart.url,
           mediaType: filePart.mediaType,
         };
-        
+
         const validation = validateFileAttachment(attachment);
         if (validation.valid) {
           const fileContent = await extractFileContent(attachment);
@@ -127,92 +112,20 @@ export async function POST(request: Request) {
     const chatAgent = await ChatAgentResolver.createChatAgent();
     chatAgent.setApiKey(apiKey);
 
-    // Load specialized agent configurations
-    await chatAgent.loadProviderToolsConfig();
-    await chatAgent.loadDocumentAgentConfig();
-
-    // Set the selected model for specialized agents (same model as chat)
-    chatAgent.setProviderToolsModel(selectedChatModel);
-    chatAgent.setDocumentAgentModel(selectedChatModel);
-
-    // Check if thinking mode is supported by the selected model
-    const modelSupportsThinking = chatAgent.supportsThinking(selectedChatModel);
-    const shouldEnableThinking = thinkingEnabled && modelSupportsThinking;
-
-    // Use chat agent to generate streaming response
-    const chatParams = {
+    // Use chat agent to generate streaming response with all provider-specific logic
+    return await chatAgent.chat({
+      chatId: id,
       modelId: selectedChatModel,
       messages: uiMessages.map(msg => ({
         id: msg.id,
         role: msg.role as "user" | "assistant" | "system",
-        content: msg.parts.map(part => part.type === 'text' ? part.text : '').join('\n') + fileContext
+        content: msg.parts.map((part: UIMessagePart) => part.type === 'text' ? part.text : '').join('\n') + fileContext
       })),
-      systemPrompt: fileContext, // Add file context to system prompt
-      thinkingMode: thinkingEnabled
-    };
-
-    // Create proper UI message stream using AI SDK
-    const stream = createUIMessageStream({
-      execute: ({ writer: dataStream }) => {
-        // Use streamText directly with Google model from chat agent
-        const model = chatAgent.getModel(selectedChatModel);
-
-        // Build system prompt with tool descriptions from chat agent
-        const systemPrompt = chatAgent.buildSystemPrompt();
-
-        // Build tools from chat agent (includes provider tools and document agent if enabled)
-        const tools = chatAgent.buildTools(dataStream, user);
-
-        // Configure stream with Google's thinking config if enabled
-        const streamConfig: any = {
-          model,
-          system: systemPrompt,
-          messages: chatParams.messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          temperature: 0.7,
-        };
-
-        // Add tools if available
-        if (tools) {
-          streamConfig.tools = tools;
-          // Enable multi-step execution with stopWhen - this allows the model to:
-          // 1. Call tools
-          // 2. Receive tool results
-          // 3. Generate a final response using those results
-          streamConfig.stopWhen = stepCountIs(5); // Stop after 5 steps (tool calls + responses)
-          console.log('🔧 [CHAT-ROUTE] Multi-step execution enabled with stopWhen');
-        }
-
-        // Add Google-specific thinking configuration
-        if (shouldEnableThinking) {
-          streamConfig.providerOptions = {
-            google: {
-              thinkingConfig: {
-                thinkingBudget: 8192,
-                includeThoughts: true,
-              },
-            },
-          };
-        }
-
-        console.log('🚀 [CHAT-ROUTE] Starting streamText with tools:', tools ? Object.keys(tools) : 'none');
-        console.log('🚀 [CHAT-ROUTE] Thinking mode enabled:', shouldEnableThinking);
-
-        const result = streamText(streamConfig);
-
-        // Merge the AI stream into the UI message stream with reasoning enabled
-        // The AI SDK will handle tool execution and streaming automatically
-        dataStream.merge(
-          result.toUIMessageStream({
-            sendReasoning: shouldEnableThinking,
-          })
-        );
-      },
+      artifactContext: artifactContext,
+      thinkingMode: thinkingEnabled,
+      user: user,
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
-
         // Save all assistant messages to database
         const assistantMessages = messages.filter(msg => msg.role === 'assistant');
 
@@ -237,7 +150,7 @@ export async function POST(request: Request) {
                 id: msg.id,
                 chatId: id,
                 role: "assistant",
-                parts: msg.parts,  // Use original parts, no post-processing needed
+                parts: msg.parts,
                 attachments: [],
                 createdAt: new Date(),
                 modelUsed: selectedChatModel,
@@ -248,21 +161,6 @@ export async function POST(request: Request) {
             }),
           });
         }
-      },
-      onError: () => {
-        return "Oops, an error occurred!";
-      },
-    });
-
-    // Return direct streaming response (no Redis dependency)
-    return new Response(stream.pipeThrough(new JsonToSseTransformStream()), {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-google-api-key',
       },
     });
   } catch (error) {

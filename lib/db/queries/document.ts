@@ -99,6 +99,33 @@ export async function getDocumentById({ id }: { id: string }) {
   }
 }
 
+export async function getDocumentByIdAndVersion({
+  id,
+  version
+}: {
+  id: string;
+  version: number;
+}) {
+  try {
+    const [selectedDocument] = await db
+      .select()
+      .from(document)
+      .where(
+        and(
+          eq(document.id, id),
+          eq(document.version_number, version)
+        )
+      );
+
+    return selectedDocument;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get document by id and version"
+    );
+  }
+}
+
 export async function getDocumentVersions({ id }: { id: string }) {
   try {
     const versions = await db
@@ -129,6 +156,62 @@ export async function getDocumentsByChat({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get documents by chat"
+    );
+  }
+}
+
+export async function getLatestDocumentVersionsByChat({ chatId }: { chatId: string }) {
+  try {
+    // Get only the latest version of each document in the chat
+    const documents = await db
+      .select({
+        id: document.id,
+        title: document.title,
+        kind: document.kind,
+        parent_version_id: document.parent_version_id,
+        version_number: document.version_number,
+        createdAt: document.createdAt,
+      })
+      .from(document)
+      .where(eq(document.chat_id, chatId))
+      .orderBy(desc(document.createdAt));
+
+    // Group by document ID and keep only the latest version
+    const latestVersionsMap = new Map();
+    for (const doc of documents) {
+      if (!latestVersionsMap.has(doc.id) ||
+          (doc.version_number && latestVersionsMap.get(doc.id).version_number < doc.version_number)) {
+        latestVersionsMap.set(doc.id, doc);
+      }
+    }
+
+    // Return as array sorted by creation date (most recent first)
+    return Array.from(latestVersionsMap.values()).sort((a, b) =>
+      b.createdAt.getTime() - a.createdAt.getTime()
+    );
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get latest document versions by chat"
+    );
+  }
+}
+
+export async function getLastDocumentInChat({ chatId }: { chatId: string }) {
+  try {
+    // Get the most recently created document with full content
+    const [lastDocument] = await db
+      .select()
+      .from(document)
+      .where(eq(document.chat_id, chatId))
+      .orderBy(desc(document.createdAt))
+      .limit(1);
+
+    return lastDocument || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get last document in chat"
     );
   }
 }
