@@ -6,9 +6,10 @@ import mermaid from "mermaid";
 interface MermaidViewerProps {
   content: string;
   status?: "streaming" | "idle";
+  onError?: (errorMessage: string) => void;
 }
 
-export function MermaidViewer({ content, status }: MermaidViewerProps) {
+export function MermaidViewer({ content, status, onError }: MermaidViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -71,16 +72,20 @@ export function MermaidViewer({ content, status }: MermaidViewerProps) {
         }
       } catch (err) {
         console.error("Mermaid rendering error:", err);
-        setError(
-          err instanceof Error 
-            ? `Diagram syntax error: ${err.message}` 
-            : "Failed to render diagram. Please check the Mermaid syntax."
-        );
+        const errorMessage = err instanceof Error
+          ? `Diagram syntax error: ${err.message}`
+          : "Failed to render diagram. Please check the Mermaid syntax.";
+        setError(errorMessage);
+
+        // Notify parent component about the error
+        if (onError) {
+          onError(errorMessage);
+        }
       }
     };
 
     renderDiagram();
-  }, [content, status, isInitialized]);
+  }, [content, status, isInitialized, onError]);
 
   if (status === "streaming") {
     return (

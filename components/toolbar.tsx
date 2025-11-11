@@ -257,6 +257,7 @@ export const Tools = ({
   setIsToolbarVisible,
   tools,
   documentId,
+  metadata,
 }: {
   isToolbarVisible: boolean;
   selectedTool: string | null;
@@ -266,8 +267,17 @@ export const Tools = ({
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
   tools: ArtifactToolbarItem[];
   documentId?: string;
+  metadata?: any;
 }) => {
-  const [primaryTool, ...secondaryTools] = tools;
+  // Filter tools based on isVisible
+  const visibleTools = tools.filter(tool => {
+    if (tool.isVisible) {
+      return tool.isVisible({ metadata });
+    }
+    return true; // Show by default if no isVisible function
+  });
+
+  const [primaryTool, ...secondaryTools] = visibleTools;
 
   return (
     <motion.div
@@ -318,6 +328,7 @@ const PureToolbar = ({
   setMessages,
   artifactKind,
   documentId,
+  metadata,
 }: {
   isToolbarVisible: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
@@ -327,6 +338,7 @@ const PureToolbar = ({
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   artifactKind: ArtifactKind;
   documentId?: string;
+  metadata?: any;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -465,6 +477,7 @@ const PureToolbar = ({
             setIsToolbarVisible={setIsToolbarVisible}
             setSelectedTool={setSelectedTool}
             tools={toolsByArtifactKind}
+            metadata={metadata}
           />
         )}
       </motion.div>

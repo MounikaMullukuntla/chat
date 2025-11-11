@@ -13,6 +13,7 @@ export type ArtifactActionContext<M = any> = {
   mode: "edit" | "diff";
   metadata: M;
   setMetadata: Dispatch<SetStateAction<M>>;
+  onSaveContent: (updatedContent: string, debounce: boolean) => void;
 };
 
 type ArtifactAction<M = any> = {
@@ -23,14 +24,17 @@ type ArtifactAction<M = any> = {
   isDisabled?: (context: ArtifactActionContext<M>) => boolean;
 };
 
-export type ArtifactToolbarContext = {
+export type ArtifactToolbarContext<M = any> = {
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  documentId?: string;
+  metadata?: M;
 };
 
-export type ArtifactToolbarItem = {
+export type ArtifactToolbarItem<M = any> = {
   description: string;
   icon: ReactNode;
-  onClick: (context: ArtifactToolbarContext) => void;
+  onClick: (context: ArtifactToolbarContext<M>) => void;
+  isVisible?: (context: { metadata?: M }) => boolean;
 };
 
 type ArtifactContent<M = any> = {

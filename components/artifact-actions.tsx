@@ -14,6 +14,7 @@ type ArtifactActionsProps = {
   mode: "edit" | "diff";
   metadata: any;
   setMetadata: Dispatch<SetStateAction<any>>;
+  onSaveContent: (updatedContent: string, debounce: boolean) => void;
 };
 
 function PureArtifactActions({
@@ -24,6 +25,7 @@ function PureArtifactActions({
   mode,
   metadata,
   setMetadata,
+  onSaveContent,
 }: ArtifactActionsProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,6 +45,7 @@ function PureArtifactActions({
     mode,
     metadata,
     setMetadata,
+    onSaveContent,
   };
 
   return (
@@ -99,6 +102,9 @@ export const ArtifactActions = memo(
       return false;
     }
     if (prevProps.artifact.content !== nextProps.artifact.content) {
+      return false;
+    }
+    if (prevProps.metadata !== nextProps.metadata) {
       return false;
     }
 

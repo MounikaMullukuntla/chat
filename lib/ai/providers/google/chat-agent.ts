@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { GoogleProviderToolsAgent } from './provider-tools-agent';
 //import { GoogleDocumentAgent } from './document-agent';
 import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
+import { GoogleMermaidAgentStreaming } from './mermaid-agent-streaming';
 import { getAdminConfig } from '@/lib/db/queries/admin';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
@@ -45,6 +46,8 @@ export class GoogleChatAgent {
   //private documentAgent?: GoogleDocumentAgent;
   private documentAgentStreaming?: GoogleDocumentAgentStreaming;
   private documentAgentConfig?: any;
+  private mermaidAgentStreaming?: GoogleMermaidAgentStreaming;
+  private mermaidAgentConfig?: any;
 
   constructor(config: ChatModelAgentConfig) {
     this.config = config;
@@ -123,6 +126,36 @@ export class GoogleChatAgent {
   }
 
   /**
+   * Load mermaid agent configuration
+   * Public method so it can be called before building tools
+   */
+  async loadMermaidAgentConfig() {
+    try {
+      const config = await getAdminConfig({
+        configKey: 'mermaid_agent_google'
+      });
+
+      if (config?.configData && (config.configData as any).enabled) {
+        console.log('✅ [AGENT-INIT] Mermaid Agent loaded and enabled (STREAMING VERSION)');
+
+        this.mermaidAgentConfig = config.configData;
+        this.mermaidAgentStreaming = new GoogleMermaidAgentStreaming(config.configData as any);
+
+        if (this.apiKey) {
+          this.mermaidAgentStreaming.setApiKey(this.apiKey);
+        } else {
+          console.log('⚠️  [AGENT-INIT] Mermaid Agent: No API key available');
+        }
+      } else {
+        console.log('❌ [AGENT-INIT] Mermaid Agent: disabled or not found');
+      }
+    } catch (error) {
+      console.error('❌ [AGENT-INIT] Failed to load Mermaid Agent:', error);
+      // Don't throw - tools are optional
+    }
+  }
+
+  /**
    * Set the model for provider tools agent
    * Call this before building tools to ensure provider tools use the same model
    */
@@ -139,6 +172,16 @@ export class GoogleChatAgent {
   setDocumentAgentModel(modelId: string) {
     if (this.documentAgentStreaming) {
       this.documentAgentStreaming.setModel(modelId);
+    }
+  }
+
+  /**
+   * Set the model for mermaid agent
+   * Call this before building tools to ensure mermaid agent uses the same model
+   */
+  setMermaidAgentModel(modelId: string) {
+    if (this.mermaidAgentStreaming) {
+      this.mermaidAgentStreaming.setModel(modelId);
     }
   }
 
@@ -161,10 +204,12 @@ export class GoogleChatAgent {
       // Load specialized agent configurations
       await this.loadProviderToolsConfig();
       await this.loadDocumentAgentConfig();
+      await this.loadMermaidAgentConfig();
 
       // Set the selected model for specialized agents (same model as chat)
       this.setProviderToolsModel(params.modelId);
       this.setDocumentAgentModel(params.modelId);
+      this.setMermaidAgentModel(params.modelId);
 
       // Check if thinking mode is supported by the selected model
       const modelSupportsThinking = this.supportsThinking(params.modelId);
@@ -394,6 +439,92 @@ export class GoogleChatAgent {
         }
       });
       enabledTools.push('documentAgent');
+    }
+
+    // Mermaid Agent as a single tool (using streaming version)
+    if (this.mermaidAgentStreaming && this.mermaidAgentConfig?.enabled && this.config.tools?.mermaidAgent?.enabled) {
+      const mermaidAgentStreaming = this.mermaidAgentStreaming;
+
+      // Check if tool description is missing and throw error
+      if (!this.config.tools.mermaidAgent.description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'mermaidAgent tool description is required when tool is enabled'
+        );
+      }
+
+      // Check if tool parameter descriptions are missing and throw error
+      if (!this.config.tools.mermaidAgent.tool_input?.operation?.parameter_description ||
+          !this.config.tools.mermaidAgent.tool_input?.instruction?.parameter_description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'mermaidAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
+        );
+      }
+
+      tools.mermaidAgent = tool({
+        description: this.config.tools.mermaidAgent.description,
+        inputSchema: z.object({
+          operation: z.enum(['generate', 'create', 'update', 'fix', 'revert']).describe(
+            this.config.tools.mermaidAgent.tool_input.operation.parameter_description
+          ),
+          instruction: z.string().describe(
+            this.config.tools.mermaidAgent.tool_input.instruction.parameter_description
+          ),
+          diagramId: z.string().uuid().optional().describe(
+            'UUID of the Mermaid diagram to update, fix, or revert. Required for update, fix, and revert operations. Extract from artifact context when user references a specific diagram.'
+          ),
+          targetVersion: z.number().int().positive().optional().describe(
+            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
+          )
+        }),
+        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'revert'; instruction: string; diagramId?: string; targetVersion?: number }) => {
+          console.log('🎨 [TOOL-CALL] Mermaid Agent executing');
+          console.log('🎨 [TOOL-CALL] Operation:', params.operation);
+          console.log('🎨 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
+          console.log('🎨 [TOOL-CALL] Diagram ID:', params.diagramId || 'not provided');
+          console.log('🎨 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
+
+          // Execute mermaid agent (streaming version)
+          // The streaming agent handles data stream events internally
+          const result = await mermaidAgentStreaming.execute({
+            operation: params.operation,
+            instruction: params.instruction,
+            diagramId: params.diagramId,
+            targetVersion: params.targetVersion,
+            dataStream,
+            user,
+            chatId: chatId
+          });
+
+          // Return the structured output from mermaid agent
+          console.log('🎨 [TOOL-CALL] mermaidAgent returning type:', typeof result.output);
+          console.log('🎨 [TOOL-CALL] mermaidAgent returning value:', JSON.stringify(result.output));
+
+          // IMPORTANT: Verify the return value is JSON serializable
+          if (result.output && typeof result.output === 'object') {
+            // For generate mode, return the code directly
+            if (result.output.generated && result.output.code) {
+              console.log('🎨 [TOOL-CALL] Returning generated code');
+              return { code: result.output.code, generated: true };
+            }
+
+            // For other modes, return clean metadata
+            const cleanOutput = {
+              id: result.output.id,
+              title: result.output.title,
+              kind: result.output.kind || 'mermaid code'
+            };
+            console.log('🎨 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            return cleanOutput;
+          }
+
+          return result.output;
+        }
+      });
+      enabledTools.push('mermaidAgent');
     }
 
     if (enabledTools.length > 0) {

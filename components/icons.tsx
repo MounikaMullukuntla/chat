@@ -1211,3 +1211,72 @@ export const WarningIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const DiffIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M3 3h4m-4 4h4m-4 4h4M10 3h4M10 7h4M10 11h4"
+      />
+    </svg>
+  );
+};
+
+export const WrenchIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M13.5 3.5L10 7l1 1 3.5-3.5a3 3 0 10-1-1zM7 10L3.5 13.5a1 1 0 01-1.5-1.5L6 8l1 1z"
+      />
+    </svg>
+  );
+};
+
+export const SaveIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h6.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V13.5a1 1 0 01-1 1z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M10.5 1.5v3a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5v-3M5.5 14.5v-4a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v4"
+      />
+    </svg>
+  );
+};

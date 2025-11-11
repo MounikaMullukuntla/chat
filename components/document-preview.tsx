@@ -19,6 +19,7 @@ import { DocumentToolCall, DocumentToolResult } from "./document";
 import { InlineDocumentSkeleton } from "./document-skeleton";
 import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from "./icons";
 import { ImageEditor } from "./image-editor";
+import { MermaidViewer } from "./mermaid-viewer";
 import { SpreadsheetEditor } from "./sheet-editor";
 import { Editor } from "./text-editor";
 
@@ -253,7 +254,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
     "h-[257px] overflow-y-scroll rounded-b-2xl border border-t-0 dark:border-zinc-700 dark:bg-muted",
     {
       "p-4 sm:px-14 sm:py-16": document.kind === "text",
-      "p-0": document.kind === "code",
+      "p-0": document.kind === "code" || document.kind === "mermaid code",
     }
   );
 
@@ -293,6 +294,15 @@ const DocumentContent = ({ document }: { document: Document }) => {
           status={artifact.status}
           title={document.title}
         />
+      ) : document.kind === "mermaid code" ? (
+        <div className="relative flex size-full flex-1 p-4">
+          <div className="absolute inset-0 overflow-auto">
+            <MermaidViewer
+              content={document.content ?? ""}
+              status={artifact.status}
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );

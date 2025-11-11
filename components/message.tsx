@@ -246,6 +246,44 @@ const PurePreviewMessage = ({
               return null;
             }
 
+            // Handle mermaidAgent tool result - extract diagram info from output
+            if (type === "tool-mermaidAgent") {
+              console.log('🎨 [MESSAGE] Found tool-mermaidAgent part');
+              const output = (part as any).output;
+              console.log('🎨 [MESSAGE] Output:', JSON.stringify(output));
+
+              // Check if output has diagram structure { id, title, kind }
+              if (output && typeof output === 'object' && output.id && output.title) {
+                const toolCallId = output.id;
+                console.log('✅ [MESSAGE] Rendering DocumentPreview (Mermaid) with:', output);
+
+                // Handle error case
+                if ("error" in output) {
+                  return (
+                    <div
+                      className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+                      key={toolCallId}
+                    >
+                      Error creating diagram: {String(output.error)}
+                    </div>
+                  );
+                }
+
+                // Render document preview for successful creation (works for mermaid too)
+                return (
+                  <DocumentPreview
+                    isReadonly={isReadonly}
+                    key={toolCallId}
+                    result={output}
+                  />
+                );
+              }
+
+              // If output is not structured, skip rendering (will be null)
+              console.log('⚠️ [MESSAGE] tool-mermaidAgent part has no valid output, returning null');
+              return null;
+            }
+
             if (type === "tool-getWeather") {
               const { toolCallId, state } = part;
 

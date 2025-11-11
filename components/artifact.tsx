@@ -455,6 +455,7 @@ function PureArtifact({
                 metadata={metadata}
                 mode={mode}
                 setMetadata={setMetadata}
+                onSaveContent={saveContent}
               />
             </div>
 
@@ -490,10 +491,10 @@ function PureArtifact({
                     setMessages={setMessages}
                     status={status}
                     stop={stop}
+                    metadata={metadata}
                   />
                 )}
-              </AnimatePresence>
-            </div>
+              </AnimatePresence>            </div>
 
             <AnimatePresence>
               {!isCurrentVersion && (
