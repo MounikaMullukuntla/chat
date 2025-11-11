@@ -1280,3 +1280,117 @@ export const SaveIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const ZoomInIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <circle
+        cx="7"
+        cy="7"
+        r="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M7 5v4M5 7h4M10 10l3.5 3.5"
+      />
+    </svg>
+  );
+};
+
+export const ZoomOutIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <circle
+        cx="7"
+        cy="7"
+        r="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M5 7h4M10 10l3.5 3.5"
+      />
+    </svg>
+  );
+};
+
+export const ZoomResetIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <circle
+        cx="7"
+        cy="7"
+        r="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M7 5v4M5 7h4M10 10l3.5 3.5"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M11.5 3.5l1-1M3.5 11.5l-1 1"
+      />
+    </svg>
+  );
+};
+
+export const PanIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M8 2.5v11M8 2.5l-2 2M8 2.5l2 2M8 13.5l-2-2M8 13.5l2-2M2.5 8h11M2.5 8l2-2M2.5 8l2 2M13.5 8l-2-2M13.5 8l-2 2"
+      />
+    </svg>
+  );
+};

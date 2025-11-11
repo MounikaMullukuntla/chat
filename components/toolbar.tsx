@@ -39,12 +39,18 @@ type ToolProps = {
   isAnimating: boolean;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   documentId?: string;
+  metadata?: any;
+  setMetadata?: Dispatch<SetStateAction<any>>;
   onClick: ({
     sendMessage,
     documentId,
+    metadata,
+    setMetadata,
   }: {
     sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
     documentId?: string;
+    metadata?: any;
+    setMetadata?: Dispatch<SetStateAction<any>>;
   }) => void;
 };
 
@@ -58,6 +64,8 @@ const Tool = ({
   isAnimating,
   sendMessage,
   documentId,
+  metadata,
+  setMetadata,
   onClick,
 }: ToolProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -84,7 +92,7 @@ const Tool = ({
       setSelectedTool(description);
     } else {
       setSelectedTool(null);
-      onClick({ sendMessage, documentId });
+      onClick({ sendMessage, documentId, metadata, setMetadata });
     }
   };
 
@@ -258,6 +266,7 @@ export const Tools = ({
   tools,
   documentId,
   metadata,
+  setMetadata,
 }: {
   isToolbarVisible: boolean;
   selectedTool: string | null;
@@ -268,6 +277,7 @@ export const Tools = ({
   tools: ArtifactToolbarItem[];
   documentId?: string;
   metadata?: any;
+  setMetadata?: Dispatch<SetStateAction<any>>;
 }) => {
   // Filter tools based on isVisible
   const visibleTools = tools.filter(tool => {
@@ -299,6 +309,8 @@ export const Tools = ({
               selectedTool={selectedTool}
               sendMessage={sendMessage}
               setSelectedTool={setSelectedTool}
+              metadata={metadata}
+              setMetadata={setMetadata}
             />
           ))}
       </AnimatePresence>
@@ -314,6 +326,8 @@ export const Tools = ({
         sendMessage={sendMessage}
         setIsToolbarVisible={setIsToolbarVisible}
         setSelectedTool={setSelectedTool}
+        metadata={metadata}
+        setMetadata={setMetadata}
       />
     </motion.div>
   );
@@ -329,6 +343,7 @@ const PureToolbar = ({
   artifactKind,
   documentId,
   metadata,
+  setMetadata,
 }: {
   isToolbarVisible: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
@@ -339,6 +354,7 @@ const PureToolbar = ({
   artifactKind: ArtifactKind;
   documentId?: string;
   metadata?: any;
+  setMetadata?: Dispatch<SetStateAction<any>>;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -478,6 +494,7 @@ const PureToolbar = ({
             setSelectedTool={setSelectedTool}
             tools={toolsByArtifactKind}
             metadata={metadata}
+            setMetadata={setMetadata}
           />
         )}
       </motion.div>

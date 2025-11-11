@@ -28,6 +28,7 @@ export type ArtifactToolbarContext<M = any> = {
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   documentId?: string;
   metadata?: M;
+  setMetadata?: Dispatch<SetStateAction<M>>;
 };
 
 export type ArtifactToolbarItem<M = any> = {

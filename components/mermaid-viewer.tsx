@@ -7,12 +7,18 @@ interface MermaidViewerProps {
   content: string;
   status?: "streaming" | "idle";
   onError?: (errorMessage: string) => void;
+  zoom?: number;
+  isPanning?: boolean;
 }
 
-export function MermaidViewer({ content, status, onError }: MermaidViewerProps) {
+export function MermaidViewer({ content, status, onError, zoom = 1, isPanning = false }: MermaidViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgWrapperRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isPanningActive, setIsPanningActive] = useState(false);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     // Initialize Mermaid only once
@@ -23,24 +29,25 @@ export function MermaidViewer({ content, status, onError }: MermaidViewerProps) 
         securityLevel: "loose",
         fontFamily: "inherit",
         fontSize: 14,
+        suppressErrorRendering: true,
         flowchart: {
-          useMaxWidth: true,
+          useMaxWidth: false,
           htmlLabels: true,
         },
         sequence: {
-          useMaxWidth: true,
+          useMaxWidth: false,
         },
         gantt: {
-          useMaxWidth: true,
+          useMaxWidth: false,
         },
         class: {
-          useMaxWidth: true,
+          useMaxWidth: false,
         },
         state: {
-          useMaxWidth: true,
+          useMaxWidth: false,
         },
         er: {
-          useMaxWidth: true,
+          useMaxWidth: false,
         },
       });
       setIsInitialized(true);
@@ -131,18 +138,55 @@ export function MermaidViewer({ content, status, onError }: MermaidViewerProps) 
     );
   }
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setIsPanningActive(true);
+      setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanningActive && isPanning) {
+      setPanPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanningActive(false);
+  };
+
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-auto">
-      <div 
-        ref={containerRef} 
-        className="mermaid-container max-w-full"
+    <div
+      className="flex h-full w-full items-center justify-center"
+      style={{ overflow: "hidden" }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      <div
+        ref={svgWrapperRef}
         style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "200px",
+          transform: `scale(${zoom}) translate(${panPosition.x / zoom}px, ${panPosition.y / zoom}px)`,
+          transformOrigin: "center center",
+          transition: isPanningActive ? "none" : "transform 0.2s ease-out",
+          cursor: isPanning ? (isPanningActive ? "grabbing" : "grab") : "default",
         }}
-      />
+      >
+        <div
+          ref={containerRef}
+          className="mermaid-container"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "200px",
+          }}
+        />
+      </div>
     </div>
   );
 }

@@ -389,7 +389,7 @@ function PureArtifact({
                     },
                   }
             }
-            className="fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted"
+            className="fixed flex h-dvh flex-col overflow-hidden border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted"
             exit={{
               opacity: 0,
               scale: 0.5,
@@ -459,7 +459,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="h-full max-w-full! items-center overflow-y-scroll bg-background dark:bg-muted">
+            <div className="h-full max-w-full! items-center overflow-hidden bg-background dark:bg-muted">
               <artifactDefinition.content
                 content={
                   isCurrentVersion
@@ -492,6 +492,7 @@ function PureArtifact({
                     status={status}
                     stop={stop}
                     metadata={metadata}
+                    setMetadata={setMetadata}
                   />
                 )}
               </AnimatePresence>            </div>

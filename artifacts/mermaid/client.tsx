@@ -9,6 +9,10 @@ import {
   CodeIcon,
   EyeIcon,
   SaveIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+  ZoomResetIcon,
+  PanIcon,
 } from "@/components/icons";
 import { MermaidViewer } from "@/components/mermaid-viewer";
 import { MermaidCodeEditor } from "@/components/mermaid-code-editor";
@@ -22,6 +26,8 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
   hasUnsavedChanges?: boolean;
   savedContent?: string;
   isRerendering?: boolean;
+  zoom?: number;
+  isPanning?: boolean;
 }>({
   kind: "mermaid code",
   description: "Useful for creating diagrams, flowcharts, and visualizations using Mermaid syntax.",
@@ -33,6 +39,8 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       hasUnsavedChanges: false,
       savedContent: "",
       isRerendering: false,
+      zoom: 1,
+      isPanning: false,
     });
   },
   onStreamPart: ({ streamPart, setArtifact, setMetadata }) => {
@@ -118,7 +126,7 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       const displayContent = draftContent || content;
 
       return (
-        <div className="h-full w-full px-4 py-8">
+        <div className="h-full w-full">
           <MermaidCodeEditor
             content={displayContent}
             onChange={(newContent) => {
@@ -156,9 +164,18 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       );
     }
 
+    const zoom = metadata?.zoom || 1;
+    const isPanning = metadata?.isPanning || false;
+
     return (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <MermaidViewer content={content} status={status} onError={handleError} />
+      <div className="flex h-full w-full items-center justify-center">
+        <MermaidViewer
+          content={content}
+          status={status}
+          onError={handleError}
+          zoom={zoom}
+          isPanning={isPanning}
+        />
       </div>
     );
   },
@@ -283,6 +300,39 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       onClick: ({ content }) => {
         navigator.clipboard.writeText(content);
         toast.success("Copied to clipboard!");
+      },
+    },
+    {
+      icon: <ZoomInIcon size={18} />,
+      description: "Zoom in",
+      onClick: ({ metadata, setMetadata }) => {
+        const currentZoom = metadata?.zoom || 1;
+        const newZoom = Math.min(currentZoom + 0.25, 3);
+        setMetadata({ ...metadata, zoom: newZoom });
+      },
+    },
+    {
+      icon: <ZoomOutIcon size={18} />,
+      description: "Zoom out",
+      onClick: ({ metadata, setMetadata }) => {
+        const currentZoom = metadata?.zoom || 1;
+        const newZoom = Math.max(currentZoom - 0.25, 0.5);
+        setMetadata({ ...metadata, zoom: newZoom });
+      },
+    },
+    {
+      icon: <ZoomResetIcon size={18} />,
+      description: "Reset zoom",
+      onClick: ({ metadata, setMetadata }) => {
+        setMetadata({ ...metadata, zoom: 1 });
+      },
+    },
+    {
+      icon: <PanIcon size={18} />,
+      description: "Toggle pan mode",
+      onClick: ({ metadata, setMetadata }) => {
+        const isPanning = metadata?.isPanning || false;
+        setMetadata({ ...metadata, isPanning: !isPanning });
       },
     },
   ],
