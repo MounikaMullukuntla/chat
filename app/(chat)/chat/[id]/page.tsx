@@ -15,6 +15,12 @@ export const dynamic = 'force-dynamic'
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { id } = params;
+
+  // Reject IDs that look like file paths (e.g., stackframe.js, *.map, etc.)
+  if (id.includes('.') || id.includes('/')) {
+    notFound();
+  }
+
   const chat = await getChatById({ id });
 
   if (!chat) {

@@ -15,6 +15,7 @@ import { useDebounceCallback, useWindowSize } from "usehooks-ts";
 import { codeArtifact } from "@/artifacts/code/client";
 import { imageArtifact } from "@/artifacts/image/client";
 import { mermaidArtifact } from "@/artifacts/mermaid/client";
+import { pythonArtifact } from "@/artifacts/python/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
@@ -34,6 +35,7 @@ export const artifactDefinitions = [
   textArtifact,
   codeArtifact,
   mermaidArtifact,
+  pythonArtifact,
   imageArtifact,
   sheetArtifact,
 ];
@@ -459,7 +461,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="h-full max-w-full! items-center overflow-hidden bg-background dark:bg-muted">
+            <div className="h-full max-w-full! items-center overflow-y-auto bg-background dark:bg-muted">
               <artifactDefinition.content
                 content={
                   isCurrentVersion

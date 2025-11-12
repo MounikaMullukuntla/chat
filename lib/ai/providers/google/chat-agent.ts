@@ -7,6 +7,7 @@ import { GoogleProviderToolsAgent } from './provider-tools-agent';
 //import { GoogleDocumentAgent } from './document-agent';
 import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
 import { GoogleMermaidAgentStreaming } from './mermaid-agent-streaming';
+import { GooglePythonAgentStreaming } from './python-agent-streaming';
 import { getAdminConfig } from '@/lib/db/queries/admin';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
@@ -48,6 +49,8 @@ export class GoogleChatAgent {
   private documentAgentConfig?: any;
   private mermaidAgentStreaming?: GoogleMermaidAgentStreaming;
   private mermaidAgentConfig?: any;
+  private pythonAgentStreaming?: GooglePythonAgentStreaming;
+  private pythonAgentConfig?: any;
 
   constructor(config: ChatModelAgentConfig) {
     this.config = config;
@@ -156,6 +159,36 @@ export class GoogleChatAgent {
   }
 
   /**
+   * Load python agent configuration
+   * Public method so it can be called before building tools
+   */
+  async loadPythonAgentConfig() {
+    try {
+      const config = await getAdminConfig({
+        configKey: 'python_agent_google'
+      });
+
+      if (config?.configData && (config.configData as any).enabled) {
+        console.log('✅ [AGENT-INIT] Python Agent loaded and enabled (STREAMING VERSION)');
+
+        this.pythonAgentConfig = config.configData;
+        this.pythonAgentStreaming = new GooglePythonAgentStreaming(config.configData as any);
+
+        if (this.apiKey) {
+          this.pythonAgentStreaming.setApiKey(this.apiKey);
+        } else {
+          console.log('⚠️  [AGENT-INIT] Python Agent: No API key available');
+        }
+      } else {
+        console.log('❌ [AGENT-INIT] Python Agent: disabled or not found');
+      }
+    } catch (error) {
+      console.error('❌ [AGENT-INIT] Failed to load Python Agent:', error);
+      // Don't throw - tools are optional
+    }
+  }
+
+  /**
    * Set the model for provider tools agent
    * Call this before building tools to ensure provider tools use the same model
    */
@@ -186,6 +219,16 @@ export class GoogleChatAgent {
   }
 
   /**
+   * Set the model for python agent
+   * Call this before building tools to ensure python agent uses the same model
+   */
+  setPythonAgentModel(modelId: string) {
+    if (this.pythonAgentStreaming) {
+      this.pythonAgentStreaming.setModel(modelId);
+    }
+  }
+
+  /**
    * Generate streaming chat response using AI SDK
    * This method handles all provider-specific logic including:
    * - Loading specialized agents
@@ -205,11 +248,13 @@ export class GoogleChatAgent {
       await this.loadProviderToolsConfig();
       await this.loadDocumentAgentConfig();
       await this.loadMermaidAgentConfig();
+      await this.loadPythonAgentConfig();
 
       // Set the selected model for specialized agents (same model as chat)
       this.setProviderToolsModel(params.modelId);
       this.setDocumentAgentModel(params.modelId);
       this.setMermaidAgentModel(params.modelId);
+      this.setPythonAgentModel(params.modelId);
 
       // Check if thinking mode is supported by the selected model
       const modelSupportsThinking = this.supportsThinking(params.modelId);
@@ -525,6 +570,92 @@ export class GoogleChatAgent {
         }
       });
       enabledTools.push('mermaidAgent');
+    }
+
+    // Python Agent as a single tool (using streaming version)
+    if (this.pythonAgentStreaming && this.pythonAgentConfig?.enabled && this.config.tools?.pythonAgent?.enabled) {
+      const pythonAgentStreaming = this.pythonAgentStreaming;
+
+      // Check if tool description is missing and throw error
+      if (!this.config.tools.pythonAgent.description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'pythonAgent tool description is required when tool is enabled'
+        );
+      }
+
+      // Check if tool parameter descriptions are missing and throw error
+      if (!this.config.tools.pythonAgent.tool_input?.operation?.parameter_description ||
+          !this.config.tools.pythonAgent.tool_input?.instruction?.parameter_description) {
+        throw new AgentError(
+          'google-chat',
+          ErrorCodes.INVALID_CONFIGURATION,
+          'pythonAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
+        );
+      }
+
+      tools.pythonAgent = tool({
+        description: this.config.tools.pythonAgent.description,
+        inputSchema: z.object({
+          operation: z.enum(['generate', 'create', 'update', 'fix', 'explain', 'revert']).describe(
+            this.config.tools.pythonAgent.tool_input.operation.parameter_description
+          ),
+          instruction: z.string().describe(
+            this.config.tools.pythonAgent.tool_input.instruction.parameter_description
+          ),
+          codeId: z.string().uuid().optional().describe(
+            'UUID of the Python code to update, fix, explain, or revert. Required for update, fix, explain, and revert operations. Extract from artifact context when user references a specific Python code artifact.'
+          ),
+          targetVersion: z.number().int().positive().optional().describe(
+            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
+          )
+        }),
+        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'explain' | 'revert'; instruction: string; codeId?: string; targetVersion?: number }) => {
+          console.log('🐍 [TOOL-CALL] Python Agent executing');
+          console.log('🐍 [TOOL-CALL] Operation:', params.operation);
+          console.log('🐍 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
+          console.log('🐍 [TOOL-CALL] Code ID:', params.codeId || 'not provided');
+          console.log('🐍 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
+
+          // Execute python agent (streaming version)
+          // The streaming agent handles data stream events internally
+          const result = await pythonAgentStreaming.execute({
+            operation: params.operation,
+            instruction: params.instruction,
+            codeId: params.codeId,
+            targetVersion: params.targetVersion,
+            dataStream,
+            user,
+            chatId: chatId
+          });
+
+          // Return the structured output from python agent
+          console.log('🐍 [TOOL-CALL] pythonAgent returning type:', typeof result.output);
+          console.log('🐍 [TOOL-CALL] pythonAgent returning value:', JSON.stringify(result.output));
+
+          // IMPORTANT: Verify the return value is JSON serializable
+          if (result.output && typeof result.output === 'object') {
+            // For generate mode, return the code directly
+            if (result.output.generated && result.output.code) {
+              console.log('🐍 [TOOL-CALL] Returning generated code');
+              return { code: result.output.code, generated: true };
+            }
+
+            // For other modes, return clean metadata
+            const cleanOutput = {
+              id: result.output.id,
+              title: result.output.title,
+              kind: result.output.kind || 'python code'
+            };
+            console.log('🐍 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            return cleanOutput;
+          }
+
+          return result.output;
+        }
+      });
+      enabledTools.push('pythonAgent');
     }
 
     if (enabledTools.length > 0) {

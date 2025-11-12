@@ -284,6 +284,44 @@ const PurePreviewMessage = ({
               return null;
             }
 
+            // Handle pythonAgent tool result - extract code info from output
+            if (type === "tool-pythonAgent") {
+              console.log('🐍 [MESSAGE] Found tool-pythonAgent part');
+              const output = (part as any).output;
+              console.log('🐍 [MESSAGE] Output:', JSON.stringify(output));
+
+              // Check if output has code structure { id, title, kind }
+              if (output && typeof output === 'object' && output.id && output.title) {
+                const toolCallId = output.id;
+                console.log('✅ [MESSAGE] Rendering DocumentPreview (Python) with:', output);
+
+                // Handle error case
+                if ("error" in output) {
+                  return (
+                    <div
+                      className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+                      key={toolCallId}
+                    >
+                      Error creating Python code: {String(output.error)}
+                    </div>
+                  );
+                }
+
+                // Render document preview for successful creation
+                return (
+                  <DocumentPreview
+                    isReadonly={isReadonly}
+                    key={toolCallId}
+                    result={output}
+                  />
+                );
+              }
+
+              // If output is not structured, skip rendering (will be null)
+              console.log('⚠️ [MESSAGE] tool-pythonAgent part has no valid output, returning null');
+              return null;
+            }
+
             if (type === "tool-getWeather") {
               const { toolCallId, state } = part;
 

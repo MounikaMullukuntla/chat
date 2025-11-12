@@ -20,6 +20,7 @@ import { InlineDocumentSkeleton } from "./document-skeleton";
 import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from "./icons";
 import { ImageEditor } from "./image-editor";
 import { MermaidViewer } from "./mermaid-viewer";
+import { PythonCodeEditor } from "./python-code-editor";
 import { SpreadsheetEditor } from "./sheet-editor";
 import { Editor } from "./text-editor";
 
@@ -254,7 +255,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
     "h-[257px] overflow-y-scroll rounded-b-2xl border border-t-0 dark:border-zinc-700 dark:bg-muted",
     {
       "p-4 sm:px-14 sm:py-16": document.kind === "text",
-      "p-0": document.kind === "code" || document.kind === "mermaid code",
+      "p-0": document.kind === "code" || document.kind === "mermaid code" || document.kind === "python code",
     }
   );
 
@@ -300,6 +301,16 @@ const DocumentContent = ({ document }: { document: Document }) => {
             <MermaidViewer
               content={document.content ?? ""}
               status={artifact.status}
+            />
+          </div>
+        </div>
+      ) : document.kind === "python code" ? (
+        <div className="relative flex w-full flex-1">
+          <div className="absolute inset-0">
+            <PythonCodeEditor
+              content={document.content ?? ""}
+              onChange={() => {}}
+              readOnly={true}
             />
           </div>
         </div>

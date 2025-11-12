@@ -102,7 +102,9 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/sitemap.xml") ||  // SEO files
       pathname.startsWith("/robots.txt") ||   // SEO files
       pathname.startsWith("/images/") ||      // Static images
-      pathname.startsWith("/icons/")) {       // Static icons
+      pathname.startsWith("/icons/") ||       // Static icons
+      pathname.startsWith("/.well-known/") || // Browser/DevTools config files
+      pathname.match(/\.(js|map|json)$/)) {   // JavaScript files, source maps, JSON files
     return NextResponse.next();
   }
 
@@ -235,12 +237,16 @@ export const config = {
      * - _next/image (image optimization files - no auth needed)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files - no auth needed)
      * - images/, icons/ (static assets - no auth needed)
-     * 
+     * - .well-known/ (browser/devtools config files)
+     *
+     * Note: File extensions (.js, .map, .json) are handled in the middleware function
+     * itself using runtime checks to avoid complex regex issues.
+     *
      * This ensures middleware runs on:
      * - All page routes (/, /login, /register, /chat/*, /admin/*)
      * - All API routes except auth (api/chat, api/history, etc.)
      * - Any other application routes
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|images/|icons/).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|images/|icons/|\\.well-known/).*)",
   ],
 };
