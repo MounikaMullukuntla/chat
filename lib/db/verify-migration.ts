@@ -283,10 +283,10 @@ const verifyMigration = async (): Promise<void> => {
           seedResult.details.push("❌ App settings configuration missing");
         }
 
-        // Check for provider configs
+        // Check for provider configs (agents only, not model configs)
         const googleConfigs = await connection`
           SELECT COUNT(*) as count FROM admin_config
-          WHERE config_key LIKE '%_google'
+          WHERE config_key LIKE '%_agent_google'
         `;
 
         const googleCount = parseInt(googleConfigs[0]?.count || "0");
