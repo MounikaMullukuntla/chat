@@ -57,8 +57,8 @@ function PureSuggestedActions({
 
               // Check if thinking mode is supported and enabled (same logic as multimodal-input)
               const providerConfig = selectedProvider && adminConfig?.providers?.[selectedProvider];
-              const modelConfig = selectedModelId && providerConfig?.models?.[selectedModelId];
-              const supportsThinkingMode = modelConfig?.supportsThinkingMode || false;
+              const modelConfig = selectedModelId && providerConfig && typeof providerConfig === 'object' && providerConfig.models?.[selectedModelId];
+              const supportsThinkingMode = (modelConfig && typeof modelConfig === 'object' && modelConfig.supportsThinkingMode) || false;
               const shouldIncludeThinkingMode = supportsThinkingMode && thinkingMode;
 
               const messageData: any = {

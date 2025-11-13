@@ -146,7 +146,7 @@ export async function POST(request: Request) {
               console.log('🔍 [FINISH] Message has', msg.parts.length, 'parts');
 
               // Log message parts for debugging
-              msg.parts.forEach((part, index) => {
+              msg.parts.forEach((part: any, index: number) => {
                 console.log(`🔍 [FINISH] Part ${index}: type=${part.type}`);
 
                 if (part.type === 'tool-documentAgent') {
