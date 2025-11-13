@@ -40,6 +40,7 @@ export async function streamPythonCodeUpdate(params: {
   codeId: string;
   updateInstruction: string; // The user's update request
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -47,7 +48,7 @@ export async function streamPythonCodeUpdate(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<void> {
-  const { codeId, updateInstruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { codeId, updateInstruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
 
   console.log('🐍 [STREAM-UPDATE] Starting real-time code update');
   console.log('🐍 [STREAM-UPDATE] Code ID:', codeId);
@@ -98,8 +99,10 @@ export async function streamPythonCodeUpdate(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for code update
-  const prompt = `Current Python code:\n\`\`\`python\n${currentDocument.content || ''}\n\`\`\`\n\nUpdate instructions: ${updateInstruction}\n\nProvide the COMPLETE updated code.`;
+  // Build the prompt for code update using template from config
+  const prompt = userPromptTemplate
+    .replace('{currentContent}', currentDocument.content || '')
+    .replace('{updateInstruction}', updateInstruction);
 
   try {
     // Use streamObject for structured code updates

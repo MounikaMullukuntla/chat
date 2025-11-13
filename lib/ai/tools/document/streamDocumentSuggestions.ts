@@ -16,13 +16,14 @@ export async function streamDocumentSuggestions(params: {
   documentId: string;
   instruction: string;
   systemPrompt: string;
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
   modelId: string;
   apiKey?: string;
 }): Promise<{ documentId: string; suggestionCount: number }> {
-  const { documentId, instruction, systemPrompt, dataStream, user, chatId, modelId, apiKey } = params;
+  const { documentId, instruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey } = params;
 
   console.log('💡 [SUGGESTIONS] Starting suggestion generation');
   console.log('💡 [SUGGESTIONS] Document ID:', documentId);
@@ -62,28 +63,10 @@ export async function streamDocumentSuggestions(params: {
     )
   });
 
-  // Build the prompt for suggestion generation
-  const userPrompt = `Analyze the following document and provide specific, actionable suggestions for improvement.
-
-DOCUMENT CONTENT:
-"""
-${document.content || ''}
-"""
-
-USER REQUEST:
-${instruction}
-
-IMPORTANT INSTRUCTIONS:
-1. Identify 3-7 specific areas that could be improved (grammar, clarity, style, structure, word choice)
-2. For each suggestion, provide:
-   - originalText: The exact text snippet from the document (5-15 words for context)
-   - suggestedText: Your improved version of that text
-   - description: A brief explanation of why your suggestion is better
-3. Focus on meaningful improvements, not trivial changes
-4. Ensure originalText matches exactly as it appears in the document
-5. Keep suggestions concise and actionable
-
-Generate suggestions as a JSON array following the specified schema.`;
+  // Build the prompt for suggestion generation using template from config
+  const userPrompt = userPromptTemplate
+    .replace('{currentContent}', document.content || '')
+    .replace('{instruction}', instruction);
 
   try {
     // Use streamObject to get structured suggestions

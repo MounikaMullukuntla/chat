@@ -24,9 +24,11 @@ export class GoogleDocumentAgentStreaming {
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
   private config: DocumentAgentConfig;
-  private prompts?: {
-    createDocument?: string;
-    updateDocument?: string;
+  private toolConfigs?: {
+    create?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    update?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    suggestion?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    revert?: { enabled: boolean };
   };
 
   constructor(config: DocumentAgentConfig) {
@@ -65,34 +67,43 @@ export class GoogleDocumentAgentStreaming {
   }
 
   /**
-   * Load prompts from database configuration
+   * Load tool configs from database configuration
    */
-  private async loadPrompts(): Promise<void> {
-    if (this.prompts) return; // Already loaded
+  private async loadToolConfigs(): Promise<void> {
+    if (this.toolConfigs) return; // Already loaded
 
     try {
       const config = await getAdminConfig({
         configKey: 'document_agent_google'
       });
 
-      if (config?.configData && (config.configData as any).prompts) {
-        this.prompts = (config.configData as any).prompts;
-        console.log('✅ [DOC-AGENT-STREAMING] Loaded prompts from database');
-      } else {
-        console.log('⚠️ [DOC-AGENT-STREAMING] No prompts found in config, using defaults');
-        // Fallback to hardcoded prompts
-        this.prompts = {
-          createDocument: "You are a skilled content writer. Create comprehensive, well-structured documents based on the user's request.\n\nUse proper markdown formatting, clear sections, and professional tone.",
-          updateDocument: "You are a skilled content editor. Update and improve existing documents based on user instructions.\n\nMaintain coherence and provide the COMPLETE updated document."
+      if (config?.configData && (config.configData as any).tools) {
+        const tools = (config.configData as any).tools;
+        this.toolConfigs = {
+          create: tools.create,
+          update: tools.update,
+          suggestion: tools.suggestion,
+          revert: tools.revert
         };
+        console.log('✅ [DOC-AGENT-STREAMING] Loaded tool configs from database');
+
+        // Validate all required tools are present and have required fields
+        if (!this.toolConfigs.create?.systemPrompt || !this.toolConfigs.create?.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: Missing systemPrompt or userPromptTemplate for create tool');
+        }
+        if (!this.toolConfigs.update?.systemPrompt || !this.toolConfigs.update?.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: Missing systemPrompt or userPromptTemplate for update tool');
+        }
+        if (!this.toolConfigs.suggestion?.systemPrompt || !this.toolConfigs.suggestion?.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: Missing systemPrompt or userPromptTemplate for suggestion tool');
+        }
+      } else {
+        throw new Error('GoogleDocumentAgentStreaming: Tools configuration not found in database. Please ensure document_agent_google config has tools defined.');
       }
     } catch (error) {
-      console.error('❌ [DOC-AGENT-STREAMING] Failed to load prompts:', error);
-      // Use fallback prompts
-      this.prompts = {
-        createDocument: "Create a comprehensive document based on the user's request.",
-        updateDocument: "Update the existing document based on user instructions."
-      };
+      console.error('❌ [DOC-AGENT-STREAMING] Failed to load tool configs:', error);
+      // Re-throw the error - no fallback configs allowed
+      throw error;
     }
   }
 
@@ -116,24 +127,31 @@ export class GoogleDocumentAgentStreaming {
       console.log('📄 [DOC-AGENT-STREAMING] Operation:', operation);
       console.log('📄 [DOC-AGENT-STREAMING] Instruction:', instruction.substring(0, 200));
 
-      // Load prompts from database if not already loaded
-      await this.loadPrompts();
+      // Load tool configs from database if not already loaded
+      await this.loadToolConfigs();
 
       if (operation === 'create') {
         console.log('📄 [DOC-AGENT-STREAMING] Operation: CREATE');
+
+        if (!this.toolConfigs?.create?.enabled) {
+          throw new Error('GoogleDocumentAgentStreaming: create tool is not enabled');
+        }
+
+        const toolConfig = this.toolConfigs.create;
+        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: create tool configuration incomplete');
+        }
 
         // Extract title from instruction (simple heuristic: first line or up to 100 chars)
         const title = instruction.split('\n')[0].substring(0, 100).trim();
         console.log('📄 [DOC-AGENT-STREAMING] Title:', title);
 
-        // Get the system prompt for document creation
-        const systemPrompt = this.prompts?.createDocument || "Create a comprehensive document.";
-
         // Stream document creation in real-time
         const documentId = await streamTextDocument({
           title,
           instruction,
-          systemPrompt,
+          systemPrompt: toolConfig.systemPrompt,
+          userPromptTemplate: toolConfig.userPromptTemplate,
           dataStream,
           user,
           chatId,
@@ -164,14 +182,21 @@ export class GoogleDocumentAgentStreaming {
 
         console.log('📄 [DOC-AGENT-STREAMING] Document ID:', documentId);
 
-        // Get the system prompt for document updates
-        const systemPrompt = this.prompts?.updateDocument || "Update the existing document.";
+        if (!this.toolConfigs?.update?.enabled) {
+          throw new Error('GoogleDocumentAgentStreaming: update tool is not enabled');
+        }
+
+        const toolConfig = this.toolConfigs.update;
+        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: update tool configuration incomplete');
+        }
 
         // Stream document update in real-time
         await streamTextDocumentUpdate({
           documentId,
           updateInstruction: instruction,
-          systemPrompt,
+          systemPrompt: toolConfig.systemPrompt,
+          userPromptTemplate: toolConfig.userPromptTemplate,
           dataStream,
           user,
           chatId,
@@ -330,14 +355,21 @@ export class GoogleDocumentAgentStreaming {
 
         console.log('📄 [DOC-AGENT-STREAMING] Document ID:', documentId);
 
-        // Get the system prompt for suggestions
-        const systemPrompt = this.prompts?.updateDocument || "Analyze the document and provide constructive suggestions for improvement.";
+        if (!this.toolConfigs?.suggestion?.enabled) {
+          throw new Error('GoogleDocumentAgentStreaming: suggestion tool is not enabled');
+        }
+
+        const toolConfig = this.toolConfigs.suggestion;
+        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+          throw new Error('GoogleDocumentAgentStreaming: suggestion tool configuration incomplete');
+        }
 
         // Generate and stream suggestions in real-time
         const result = await streamDocumentSuggestions({
           documentId,
           instruction,
-          systemPrompt,
+          systemPrompt: toolConfig.systemPrompt,
+          userPromptTemplate: toolConfig.userPromptTemplate,
           dataStream,
           user,
           chatId,

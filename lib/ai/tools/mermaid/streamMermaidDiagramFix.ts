@@ -41,6 +41,7 @@ export async function streamMermaidDiagramFix(params: {
   diagramId: string;
   errorInfo: string; // Error information from render failure
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -48,7 +49,7 @@ export async function streamMermaidDiagramFix(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<void> {
-  const { diagramId, errorInfo, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { diagramId, errorInfo, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
 
   console.log('🎨 [STREAM-FIX] Starting real-time diagram fix');
   console.log('🎨 [STREAM-FIX] Diagram ID:', diagramId);
@@ -99,8 +100,10 @@ export async function streamMermaidDiagramFix(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for diagram fix
-  const prompt = `Mermaid diagram with errors:\n\`\`\`mermaid\n${currentDocument.content || ''}\n\`\`\`\n\nError information: ${errorInfo}\n\nFix all syntax errors and provide the COMPLETE corrected diagram.`;
+  // Build the prompt for diagram fix using template from config
+  const prompt = userPromptTemplate
+    .replace('{currentContent}', currentDocument.content || '')
+    .replace('{errorInfo}', errorInfo);
 
   try {
     // Use streamObject for structured diagram fixes

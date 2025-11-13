@@ -41,6 +41,7 @@ export async function streamMermaidDiagramUpdate(params: {
   diagramId: string;
   updateInstruction: string; // The user's update request
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -48,7 +49,7 @@ export async function streamMermaidDiagramUpdate(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<void> {
-  const { diagramId, updateInstruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { diagramId, updateInstruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
 
   console.log('🎨 [STREAM-UPDATE] Starting real-time diagram update');
   console.log('🎨 [STREAM-UPDATE] Diagram ID:', diagramId);
@@ -99,8 +100,10 @@ export async function streamMermaidDiagramUpdate(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for diagram update
-  const prompt = `Current Mermaid diagram:\n\`\`\`mermaid\n${currentDocument.content || ''}\n\`\`\`\n\nUpdate instructions: ${updateInstruction}\n\nProvide the COMPLETE updated diagram.`;
+  // Build the prompt for diagram update using template from config
+  const prompt = userPromptTemplate
+    .replace('{currentContent}', currentDocument.content || '')
+    .replace('{updateInstruction}', updateInstruction);
 
   try {
     // Use streamObject for structured diagram updates

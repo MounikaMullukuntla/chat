@@ -16,6 +16,7 @@ export async function streamTextDocument(params: {
   title: string;
   instruction: string; // The user's request/instruction for document creation
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -23,7 +24,7 @@ export async function streamTextDocument(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<string> {
-  const { title, instruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { title, instruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
   const documentId = generateUUID();
 
   console.log('📄 [STREAM-CREATE] Starting real-time document creation');
@@ -67,8 +68,10 @@ export async function streamTextDocument(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for document creation
-  const userPrompt = `Create a document titled "${title}".\n\nUser request: ${instruction}`;
+  // Build the prompt for document creation using template from config
+  const userPrompt = userPromptTemplate
+    .replace('{title}', title)
+    .replace('{instruction}', instruction);
 
   try {
     // Use streamText to get real-time generation

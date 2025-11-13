@@ -66,7 +66,7 @@ export class AgentConfigLoader {
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load Provider Tools Agent:', error);
-      // Don't throw - tools are optional
+      throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
 
@@ -95,7 +95,7 @@ export class AgentConfigLoader {
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load Document Agent:', error);
-      // Don't throw - tools are optional
+      throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
 
@@ -124,7 +124,7 @@ export class AgentConfigLoader {
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load Mermaid Agent:', error);
-      // Don't throw - tools are optional
+      throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
 
@@ -153,7 +153,7 @@ export class AgentConfigLoader {
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load Python Agent:', error);
-      // Don't throw - tools are optional
+      throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
 
@@ -188,7 +188,7 @@ export class AgentConfigLoader {
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load GitHub MCP Agent:', error);
-      // Don't throw - tools are optional
+      throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
 

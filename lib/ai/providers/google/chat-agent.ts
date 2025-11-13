@@ -186,8 +186,8 @@ export class GoogleChatAgent {
           // Use streamText directly with Google model from chat agent
           const model = this.getModel(params.modelId);
 
-          // Build system prompt with tool descriptions from chat agent
-          const systemPrompt = this.buildSystemPrompt();
+          // Use system prompt directly from config (all tool descriptions are in database)
+          const systemPrompt = this.config.systemPrompt;
 
           // Build tools from chat agent (includes provider tools and document agent if enabled)
           const tools = this.toolBuilder.buildTools(dataStream, params.user, params.chatId);
@@ -280,31 +280,6 @@ export class GoogleChatAgent {
   }
 
 
-
-  /**
-   * Build system prompt with tool descriptions
-   */
-  buildSystemPrompt(): string {
-    let prompt = this.config.systemPrompt;
-
-    // Add tool usage instructions if provider tools are enabled
-    if (this.configLoader.getProviderToolsAgent() && this.config.tools?.providerToolsAgent?.enabled) {
-      prompt += `\n\nWhen you need to search the web, analyze URLs, or execute code, use the providerToolsAgent tool. After receiving the tool result, incorporate the information into your response naturally and provide a comprehensive answer to the user.`;
-    }
-
-    // Add tool usage instructions if document agent is enabled (streaming version)
-    if (this.configLoader.getDocumentAgentStreaming() && this.config.tools?.documentAgent?.enabled) {
-      prompt += `\n\nWhen you need to create or update documents, reports, or spreadsheets, use the documentAgent tool. This includes:
-- Creating text documents with markdown formatting
-- Updating existing text documents
-- Creating spreadsheets with CSV data
-- Updating existing spreadsheets
-
-The document will be streamed in real-time to the user's artifact panel. After the document agent completes, inform the user about what was created or updated.`;
-    }
-
-    return prompt;
-  }
 
   /**
    * Get the appropriate Google model instance

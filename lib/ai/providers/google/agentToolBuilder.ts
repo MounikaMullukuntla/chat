@@ -98,10 +98,10 @@ export class AgentToolBuilder {
             this.config.tools.documentAgent.tool_input.instruction.parameter_description
           ),
           documentId: z.string().uuid().optional().describe(
-            'UUID of the document to update, revert, or add suggestions to. Required for update, revert, and suggestion operations. Extract from artifact context when user references a specific document.'
+            this.config.tools.documentAgent.tool_input.documentId.parameter_description
           ),
           targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
+            this.config.tools.documentAgent.tool_input.targetVersion.parameter_description
           )
         }),
         execute: async (params: { operation: 'create' | 'update' | 'revert' | 'suggestion'; instruction: string; documentId?: string; targetVersion?: number }) => {
@@ -177,10 +177,10 @@ export class AgentToolBuilder {
             this.config.tools.mermaidAgent.tool_input.instruction.parameter_description
           ),
           diagramId: z.string().uuid().optional().describe(
-            'UUID of the Mermaid diagram to update, fix, or revert. Required for update, fix, and revert operations. Extract from artifact context when user references a specific diagram.'
+            this.config.tools.mermaidAgent.tool_input.diagramId.parameter_description
           ),
           targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
+            this.config.tools.mermaidAgent.tool_input.targetVersion.parameter_description
           )
         }),
         execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'revert'; instruction: string; diagramId?: string; targetVersion?: number }) => {
@@ -263,10 +263,10 @@ export class AgentToolBuilder {
             this.config.tools.pythonAgent.tool_input.instruction.parameter_description
           ),
           codeId: z.string().uuid().optional().describe(
-            'UUID of the Python code to update, fix, explain, or revert. Required for update, fix, explain, and revert operations. Extract from artifact context when user references a specific Python code artifact.'
+            this.config.tools.pythonAgent.tool_input.codeId.parameter_description
           ),
           targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
+            this.config.tools.pythonAgent.tool_input.targetVersion.parameter_description
           )
         }),
         execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'explain' | 'revert'; instruction: string; codeId?: string; targetVersion?: number }) => {

@@ -40,6 +40,7 @@ export async function streamPythonCodeFix(params: {
   codeId: string;
   errorInfo: string; // Error information from execution or syntax checking
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -47,7 +48,7 @@ export async function streamPythonCodeFix(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<void> {
-  const { codeId, errorInfo, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { codeId, errorInfo, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
 
   console.log('🐍 [STREAM-FIX] Starting real-time code fix');
   console.log('🐍 [STREAM-FIX] Code ID:', codeId);
@@ -98,8 +99,10 @@ export async function streamPythonCodeFix(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for code fix
-  const prompt = `Python code with errors:\n\`\`\`python\n${currentDocument.content || ''}\n\`\`\`\n\nError information: ${errorInfo}\n\nFix all errors and provide the COMPLETE corrected code.`;
+  // Build the prompt for code fix using template from config
+  const prompt = userPromptTemplate
+    .replace('{currentContent}', currentDocument.content || '')
+    .replace('{errorInfo}', errorInfo);
 
   try {
     // Use streamObject for structured code fixes

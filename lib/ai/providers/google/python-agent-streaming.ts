@@ -33,11 +33,13 @@ export class GooglePythonAgentStreaming {
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
   private config: PythonAgentConfig;
-  private prompts?: {
-    createPrompt?: string;
-    updatePrompt?: string;
-    fixPrompt?: string;
-    explainPrompt?: string;
+  private toolConfigs?: {
+    create?: { systemPrompt: string; enabled: boolean };
+    update?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    fix?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    explain?: { systemPrompt: string; userPromptTemplate: string; enabled: boolean };
+    generate?: { systemPrompt: string; enabled: boolean };
+    revert?: { enabled: boolean };
   };
 
   constructor(config: PythonAgentConfig) {
@@ -76,38 +78,51 @@ export class GooglePythonAgentStreaming {
   }
 
   /**
-   * Load prompts from database configuration
+   * Load tool configs from database configuration
    */
-  private async loadPrompts(): Promise<void> {
-    if (this.prompts) return; // Already loaded
+  private async loadToolConfigs(): Promise<void> {
+    if (this.toolConfigs) return; // Already loaded
 
     try {
       const config = await getAdminConfig({
         configKey: 'python_agent_google'
       });
 
-      if (config?.configData && (config.configData as any).prompts) {
-        this.prompts = (config.configData as any).prompts;
-        console.log('✅ [PYTHON-AGENT-STREAMING] Loaded prompts from database');
-      } else {
-        console.log('⚠️ [PYTHON-AGENT-STREAMING] No prompts found in config, using defaults');
-        // Fallback to hardcoded prompts
-        this.prompts = {
-          createPrompt: "You are an expert Python programmer. Create clear, well-structured Python code with proper error handling and documentation based on the user's request.",
-          updatePrompt: "You are an expert Python programmer. Modify the existing Python code based on user instructions while maintaining code quality, readability, and proper structure.",
-          fixPrompt: "You are an expert Python programmer. Analyze the code and fix any errors while preserving the intended functionality and maintaining code quality.",
-          explainPrompt: "You are an expert Python programmer. Add detailed comments to explain what the code does, including function purposes, complex logic, and key implementation details."
+      if (config?.configData && (config.configData as any).tools) {
+        const tools = (config.configData as any).tools;
+        this.toolConfigs = {
+          create: tools.create,
+          update: tools.update,
+          fix: tools.fix,
+          explain: tools.explain,
+          generate: tools.generate,
+          revert: tools.revert
         };
+        console.log('✅ [PYTHON-AGENT-STREAMING] Loaded tool configs from database');
+
+        // Validate required tools have required fields
+        if (!this.toolConfigs.create?.systemPrompt) {
+          throw new Error('GooglePythonAgentStreaming: Missing systemPrompt for create tool');
+        }
+        if (!this.toolConfigs.update?.systemPrompt || !this.toolConfigs.update?.userPromptTemplate) {
+          throw new Error('GooglePythonAgentStreaming: Missing systemPrompt or userPromptTemplate for update tool');
+        }
+        if (!this.toolConfigs.fix?.systemPrompt || !this.toolConfigs.fix?.userPromptTemplate) {
+          throw new Error('GooglePythonAgentStreaming: Missing systemPrompt or userPromptTemplate for fix tool');
+        }
+        if (!this.toolConfigs.explain?.systemPrompt || !this.toolConfigs.explain?.userPromptTemplate) {
+          throw new Error('GooglePythonAgentStreaming: Missing systemPrompt or userPromptTemplate for explain tool');
+        }
+        if (!this.toolConfigs.generate?.systemPrompt) {
+          throw new Error('GooglePythonAgentStreaming: Missing systemPrompt for generate tool');
+        }
+      } else {
+        throw new Error('GooglePythonAgentStreaming: Tools configuration not found in database. Please ensure python_agent_google config has tools defined.');
       }
     } catch (error) {
-      console.error('❌ [PYTHON-AGENT-STREAMING] Failed to load prompts:', error);
-      // Use fallback prompts
-      this.prompts = {
-        createPrompt: "Create Python code based on the user's request.",
-        updatePrompt: "Update the existing Python code based on user instructions.",
-        fixPrompt: "Fix errors in the Python code.",
-        explainPrompt: "Add comments to explain the Python code."
-      };
+      console.error('❌ [PYTHON-AGENT-STREAMING] Failed to load tool configs:', error);
+      // Re-throw the error - no fallback configs allowed
+      throw error;
     }
   }
 
@@ -132,7 +147,7 @@ export class GooglePythonAgentStreaming {
       console.log('🐍 [PYTHON-AGENT-STREAMING] Instruction:', instruction.substring(0, 200));
 
       // Load prompts from database if not already loaded
-      await this.loadPrompts();
+      await this.loadToolConfigs();
 
       if (operation === 'generate') {
         return await this.handleGenerate({ instruction });
@@ -181,7 +196,16 @@ export class GooglePythonAgentStreaming {
 
     console.log('🐍 [PYTHON-AGENT-STREAMING] Operation: GENERATE');
 
-    const systemPrompt = this.prompts?.createPrompt || "Create Python code.";
+    if (!this.toolConfigs?.generate?.enabled) {
+      throw new Error('GooglePythonAgentStreaming: generate tool is not enabled');
+    }
+
+    const toolConfig = this.toolConfigs.generate;
+    if (!toolConfig.systemPrompt) {
+      throw new Error('GooglePythonAgentStreaming: generate tool configuration incomplete');
+    }
+
+    const systemPrompt = toolConfig.systemPrompt;
     const title = instruction.split('\n')[0].substring(0, 100).trim() || 'Python Code';
 
     // Use streamPythonCode tool with streamToUI=false
@@ -220,9 +244,18 @@ export class GooglePythonAgentStreaming {
 
     console.log('🐍 [PYTHON-AGENT-STREAMING] Operation: CREATE');
 
+    if (!this.toolConfigs?.create?.enabled) {
+      throw new Error('GooglePythonAgentStreaming: create tool is not enabled');
+    }
+
+    const toolConfig = this.toolConfigs.create;
+    if (!toolConfig.systemPrompt) {
+      throw new Error('GooglePythonAgentStreaming: create tool configuration incomplete');
+    }
+
     // Extract title from instruction
     const title = instruction.split('\n')[0].substring(0, 100).trim() || 'Python Code';
-    const systemPrompt = this.prompts?.createPrompt || "Create Python code.";
+    const systemPrompt = toolConfig.systemPrompt;
 
     // Use streamPythonCode tool
     const result = await streamPythonCode({
@@ -264,13 +297,21 @@ export class GooglePythonAgentStreaming {
     console.log('🐍 [PYTHON-AGENT-STREAMING] Operation: UPDATE');
     console.log('🐍 [PYTHON-AGENT-STREAMING] Code ID:', codeId);
 
-    const systemPrompt = this.prompts?.updatePrompt || "Update the existing Python code.";
+    if (!this.toolConfigs?.update?.enabled) {
+      throw new Error('GooglePythonAgentStreaming: update tool is not enabled');
+    }
+
+    const toolConfig = this.toolConfigs.update;
+    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+      throw new Error('GooglePythonAgentStreaming: update tool configuration incomplete');
+    }
 
     // Use streamPythonCodeUpdate tool
     await streamPythonCodeUpdate({
       codeId,
       updateInstruction: instruction,
-      systemPrompt,
+      systemPrompt: toolConfig.systemPrompt,
+      userPromptTemplate: toolConfig.userPromptTemplate,
       dataStream,
       user,
       chatId,
@@ -305,13 +346,21 @@ export class GooglePythonAgentStreaming {
     console.log('🐍 [PYTHON-AGENT-STREAMING] Operation: FIX');
     console.log('🐍 [PYTHON-AGENT-STREAMING] Code ID:', codeId);
 
-    const systemPrompt = this.prompts?.fixPrompt || "Fix errors in the Python code.";
+    if (!this.toolConfigs?.fix?.enabled) {
+      throw new Error('GooglePythonAgentStreaming: fix tool is not enabled');
+    }
+
+    const toolConfig = this.toolConfigs.fix;
+    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+      throw new Error('GooglePythonAgentStreaming: fix tool configuration incomplete');
+    }
 
     // Use streamPythonCodeFix tool
     await streamPythonCodeFix({
       codeId,
       errorInfo: instruction,
-      systemPrompt,
+      systemPrompt: toolConfig.systemPrompt,
+      userPromptTemplate: toolConfig.userPromptTemplate,
       dataStream,
       user,
       chatId,
@@ -346,13 +395,21 @@ export class GooglePythonAgentStreaming {
     console.log('🐍 [PYTHON-AGENT-STREAMING] Operation: EXPLAIN');
     console.log('🐍 [PYTHON-AGENT-STREAMING] Code ID:', codeId);
 
-    const systemPrompt = this.prompts?.explainPrompt || "Add comments to explain the Python code.";
+    if (!this.toolConfigs?.explain?.enabled) {
+      throw new Error('GooglePythonAgentStreaming: explain tool is not enabled');
+    }
+
+    const toolConfig = this.toolConfigs.explain;
+    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+      throw new Error('GooglePythonAgentStreaming: explain tool configuration incomplete');
+    }
 
     // Use streamPythonCodeUpdate with explain-specific system prompt
     await streamPythonCodeUpdate({
       codeId,
       updateInstruction: instruction || "Add detailed comments to explain what this code does, including function purposes, complex logic, and key implementation details.",
-      systemPrompt,
+      systemPrompt: toolConfig.systemPrompt,
+      userPromptTemplate: toolConfig.userPromptTemplate,
       dataStream,
       user,
       chatId,

@@ -16,6 +16,7 @@ export async function streamTextDocumentUpdate(params: {
   documentId: string;
   updateInstruction: string;
   systemPrompt: string; // System prompt from database config
+  userPromptTemplate: string; // User prompt template from database config
   dataStream: UIMessageStreamWriter<ChatMessage>;
   user?: User | null;
   chatId?: string;
@@ -23,7 +24,7 @@ export async function streamTextDocumentUpdate(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<string> {
-  const { documentId, updateInstruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const { documentId, updateInstruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
 
   console.log('📝 [STREAM-UPDATE] Starting real-time document update');
   console.log('📝 [STREAM-UPDATE] Document ID:', documentId);
@@ -81,18 +82,10 @@ export async function streamTextDocumentUpdate(params: {
     model = google(modelId); // Fallback to environment variable
   }
 
-  // Build the prompt for document update
-  const userPrompt = `Update the following document based on the user's instruction.
-
-CURRENT DOCUMENT:
-"""
-${document.content || ''}
-"""
-
-USER INSTRUCTION:
-${updateInstruction}
-
-Please provide the COMPLETE updated document (not just the changes).`;
+  // Build the prompt for document update using template from config
+  const userPrompt = userPromptTemplate
+    .replace('{currentContent}', document.content || '')
+    .replace('{updateInstruction}', updateInstruction);
 
   try {
     // Use streamText to get real-time generation
