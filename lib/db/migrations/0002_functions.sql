@@ -206,39 +206,35 @@ BEGIN
             RAISE EXCEPTION 'Admin config for % must include enabled field', NEW.config_key;
         END IF;
 
-        -- Document agents can have either systemPrompt OR prompts structure
-        IF NEW.config_key LIKE 'document_agent_%' THEN
-            IF NOT (NEW.config_data ? 'systemPrompt') AND NOT (NEW.config_data ? 'prompts') THEN
-                RAISE EXCEPTION 'Admin config for % must include either systemPrompt or prompts', NEW.config_key;
-            END IF;
+        IF NOT (NEW.config_data ? 'rateLimit') THEN
+            RAISE EXCEPTION 'Admin config for % must include rateLimit', NEW.config_key;
+        END IF;
 
-            -- If using prompts structure, validate required fields
-            IF (NEW.config_data ? 'prompts') THEN
-                IF NOT (NEW.config_data->'prompts' ? 'createDocument') THEN
-                    RAISE EXCEPTION 'Document agent prompts must include createDocument for %', NEW.config_key;
-                END IF;
-                IF NOT (NEW.config_data->'prompts' ? 'updateDocument') THEN
-                    RAISE EXCEPTION 'Document agent prompts must include updateDocument for %', NEW.config_key;
-                END IF;
+        -- Validate new rateLimit structure: { "perMinute": 10, "perHour": 100, "perDay": 1000 }
+        IF NOT (NEW.config_data->'rateLimit' ? 'perMinute') OR
+           NOT (NEW.config_data->'rateLimit' ? 'perHour') OR
+           NOT (NEW.config_data->'rateLimit' ? 'perDay') THEN
+            RAISE EXCEPTION 'rateLimit must include perMinute, perHour, and perDay for %', NEW.config_key;
+        END IF;
+
+        -- Tool-based agents validation (new structure with tools object)
+        IF NEW.config_key LIKE 'document_agent_%' OR
+           NEW.config_key LIKE 'python_agent_%' OR
+           NEW.config_key LIKE 'mermaid_agent_%' OR
+           NEW.config_key LIKE 'git_mcp_agent_%' THEN
+            -- These agents must have tools configuration
+            IF NOT (NEW.config_data ? 'tools') THEN
+                RAISE EXCEPTION 'Admin config for % must include tools configuration', NEW.config_key;
             END IF;
-        ELSE
-            -- All other agents require systemPrompt
+        END IF;
+
+        -- Provider tools agent requires systemPrompt at top level
+        IF NEW.config_key LIKE 'provider_tools_agent_%' THEN
             IF NOT (NEW.config_data ? 'systemPrompt') THEN
                 RAISE EXCEPTION 'Admin config for % must include systemPrompt', NEW.config_key;
             END IF;
         END IF;
 
-        IF NOT (NEW.config_data ? 'rateLimit') THEN
-            RAISE EXCEPTION 'Admin config for % must include rateLimit', NEW.config_key;
-        END IF;
-        
-        -- Validate new rateLimit structure: { "perMinute": 10, "perHour": 100, "perDay": 1000 }
-        IF NOT (NEW.config_data->'rateLimit' ? 'perMinute') OR 
-           NOT (NEW.config_data->'rateLimit' ? 'perHour') OR
-           NOT (NEW.config_data->'rateLimit' ? 'perDay') THEN
-            RAISE EXCEPTION 'rateLimit must include perMinute, perHour, and perDay for %', NEW.config_key;
-        END IF;
-        
         -- Chat Model Agent specific validation
         IF NEW.config_key LIKE 'chat_model_agent_%' THEN
             -- Chat Model Agent must have capabilities with fileInput
