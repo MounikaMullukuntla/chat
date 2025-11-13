@@ -1,325 +1,406 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { AgentConfigForm } from '../../shared/agent-config-form'
-import { SystemPromptEditor } from '../../shared/system-prompt-editor'
-import { EnhancedModelSelector } from '../../shared/enhanced-model-selector'
-
-import { EnhancedRateLimitConfiguration } from '../../shared/enhanced-rate-limit-configuration'
-import { ToolsConfiguration } from '../../shared/tools-configuration'
-import { FileTypeConfiguration } from '../../shared/file-type-configuration'
-
-interface ModelConfig {
-  id: string
-  name: string
-  description: string
-  pricingPerMillionTokens: {
-    input: number
-    output: number
-  }
-  enabled: boolean
-  isDefault: boolean
-  thinkingEnabled?: boolean
-}
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, Save, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ToolConfig {
-  description: string
-  enabled: boolean
-  agentEnabled?: boolean
-  tool_input?: {
-    parameter_name: string
-    parameter_description: string
-  }
+  description: string;
+  enabled: boolean;
+  tool_input?: Record<string, any>;
 }
 
 interface FileTypeConfig {
-  enabled: boolean
-}
-
-interface FileTypeCategory {
-  [key: string]: FileTypeConfig
-}
-
-interface FileInputTypes {
-  codeFiles: FileTypeCategory
-  textFiles: FileTypeCategory
-  pdf: FileTypeConfig
-  ppt: FileTypeConfig
-  excel: FileTypeConfig
-  images: FileTypeConfig
+  enabled: boolean;
 }
 
 interface ChatModelAgentConfig {
-  enabled: boolean
-  systemPrompt: string
-  availableModels: ModelConfig[]
+  enabled: boolean;
+  systemPrompt: string;
   capabilities: {
-    thinkingReasoning: boolean
-    fileInput: boolean
-  }
-  fileInputTypes?: FileInputTypes
+    fileInput: boolean;
+  };
+  fileInputTypes: {
+    codeFiles: Record<string, FileTypeConfig>;
+    textFiles: Record<string, FileTypeConfig>;
+    pdf: FileTypeConfig;
+    ppt: FileTypeConfig;
+    excel: FileTypeConfig;
+    images: FileTypeConfig;
+  };
   rateLimit: {
-    perMinute: number
-    perHour: number
-    perDay: number
-  }
+    perMinute: number;
+    perHour: number;
+    perDay: number;
+  };
   tools: {
-    providerToolsAgent: ToolConfig
-    documentAgent: ToolConfig
-    pythonAgent: ToolConfig
-    mermaidAgent: ToolConfig
-    gitMcpAgent: ToolConfig
-  }
+    providerToolsAgent?: ToolConfig;
+    documentAgent?: ToolConfig;
+    pythonAgent?: ToolConfig;
+    mermaidAgent?: ToolConfig;
+    gitMcpAgent?: ToolConfig;
+  };
 }
 
 interface ChatModelAgentConfigProps {
-  configKey: string
-  provider?: string
+  provider: string;
+  initialConfig: ChatModelAgentConfig;
+  onSave: (config: ChatModelAgentConfig) => Promise<void>;
 }
 
-export function ChatModelAgentConfig({ configKey, provider = 'google' }: ChatModelAgentConfigProps) {
-  const [config, setConfig] = useState<ChatModelAgentConfig | null>(null)
-  const [toolAgentStatuses, setToolAgentStatuses] = useState<Record<string, boolean>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const TOOL_INFO = {
+  providerToolsAgent: { title: "Provider Tools Agent", description: "Web search, URL analysis, code execution" },
+  documentAgent: { title: "Document Agent", description: "Create, update, and manage text documents" },
+  pythonAgent: { title: "Python Agent", description: "Create, update, and execute Python code" },
+  mermaidAgent: { title: "Mermaid Agent", description: "Create and update Mermaid diagrams" },
+  gitMcpAgent: { title: "GitHub MCP Agent", description: "GitHub repository operations and code search" },
+} as const;
 
-  // Load configuration from database
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+const CODE_FILES = ["py", "ipynb", "js", "jsx", "ts", "tsx", "html", "css", "json", "xml", "sql", "sh", "bat", "ps1"];
+const TEXT_FILES = ["txt", "md", "yaml", "yml", "toml", "ini", "cfg", "conf", "log", "csv"];
 
-        // Fetch the main configuration
-        const configResponse = await fetch(`/api/admin/config/${configKey}`)
-        let configData: ChatModelAgentConfig
+export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatModelAgentConfigProps) {
+  const [config, setConfig] = useState<ChatModelAgentConfig>(initialConfig);
+  const [saving, setSaving] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    fileTypes: false,
+    tools: false,
+  });
 
-        if (configResponse.ok) {
-          const data = await configResponse.json()
-          configData = data.configData
-        } else {
-          throw new Error(`Failed to fetch configuration: ${configResponse.statusText}`)
-        }
-
-        // Models will be loaded by the EnhancedModelSelector component
-        // Initialize with empty array - the selector will fetch and manage models
-        configData.availableModels = []
-
-        setConfig(configData)
-      } catch (err) {
-        console.error('Failed to load configuration:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load configuration')
-      } finally {
-        setLoading(false)
-      }
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(config);
+      toast.success("Chat model agent configuration saved successfully");
+    } catch (error) {
+      toast.error("Failed to save configuration");
+      console.error(error);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    loadConfig()
-  }, [configKey, provider])
-
-  // Load tool agent statuses to show dependency warnings
-  useEffect(() => {
-    const loadToolAgentStatuses = async () => {
-      try {
-        const agentKeys = [
-          `provider_tools_agent_${provider}`,
-          `document_agent_${provider}`,
-          `python_agent_${provider}`,
-          `mermaid_agent_${provider}`,
-          `git_mcp_agent_${provider}`
-        ]
-
-        const statuses: Record<string, boolean> = {}
-        
-        for (const key of agentKeys) {
-          try {
-            const response = await fetch(`/api/admin/config/${key}`)
-            if (response.ok) {
-              const data = await response.json()
-              const agentType = key.replace(`_${provider}`, '').replace('_agent', '')
-              statuses[agentType] = data.configData?.enabled ?? false
-            } else {
-              // If config doesn't exist, assume agent is disabled
-              const agentType = key.replace(`_${provider}`, '').replace('_agent', '')
-              statuses[agentType] = false
-            }
-          } catch {
-            // If there's an error, assume agent is disabled
-            const agentType = key.replace(`_${provider}`, '').replace('_agent', '')
-            statuses[agentType] = false
-          }
-        }
-
-        setToolAgentStatuses(statuses)
-      } catch (error) {
-        console.error('Failed to load tool agent statuses:', error)
-      }
-    }
-
-    loadToolAgentStatuses()
-  }, [provider])
-
-  if (loading) {
-    return <div className="flex items-center justify-center p-8">Loading configuration...</div>
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center p-8 text-red-600">Error: {error}</div>
-  }
-
-  if (!config) {
-    return <div className="flex items-center justify-center p-8">No configuration found</div>
-  }
-
-  // Update tools with agent status for dependency warnings
-  const toolsWithAgentStatus = {
-    ...config.tools,
-    providerToolsAgent: {
-      ...config.tools.providerToolsAgent,
-      agentEnabled: toolAgentStatuses.provider_tools ?? false
-    },
-    documentAgent: {
-      ...config.tools.documentAgent,
-      agentEnabled: toolAgentStatuses.document ?? false
-    },
-    pythonAgent: {
-      ...config.tools.pythonAgent,
-      agentEnabled: toolAgentStatuses.python ?? false
-    },
-    mermaidAgent: {
-      ...config.tools.mermaidAgent,
-      agentEnabled: toolAgentStatuses.mermaid ?? false
-    },
-    gitMcpAgent: {
-      ...config.tools.gitMcpAgent,
-      agentEnabled: toolAgentStatuses.git_mcp ?? false
-    }
-  }
-
-  const handleConfigChange = (newConfig: any) => {
-    // Handle the base config change from AgentConfigForm
-    setConfig(prev => prev ? ({ ...prev, ...newConfig }) : null)
-  }
-
-  const handleSystemPromptChange = (systemPrompt: string) => {
-    setConfig(prev => prev ? ({ ...prev, systemPrompt }) : null)
-  }
-
-  const handleModelsChange = (availableModels: ModelConfig[]) => {
-    setConfig(prev => prev ? ({ ...prev, availableModels }) : null)
-  }
-
-  const handleFileInputChange = (fileInput: boolean) => {
-    setConfig(prev => prev ? ({
+  const updateTool = (toolName: keyof typeof config.tools, updates: Partial<ToolConfig>) => {
+    setConfig((prev) => ({
       ...prev,
-      capabilities: {
-        ...prev.capabilities,
-        fileInput
-      }
-    }) : null)
-  }
+      tools: {
+        ...prev.tools,
+        [toolName]: {
+          ...prev.tools[toolName],
+          ...updates,
+        },
+      },
+    }));
+  };
 
-  const handleRateLimitChange = (rateLimitConfig: any) => {
-    // Convert from the enhanced rate limit format to our format
-    const rateLimit = {
-      perMinute: 10, // Default fallback
-      perHour: rateLimitConfig.hourly?.value || 100,
-      perDay: rateLimitConfig.daily?.value || 1000
-    }
-    setConfig(prev => prev ? ({ ...prev, rateLimit }) : null)
-  }
+  const toggleFileType = (category: "codeFiles" | "textFiles", ext: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      fileInputTypes: {
+        ...prev.fileInputTypes,
+        [category]: {
+          ...prev.fileInputTypes[category],
+          [ext]: {
+            enabled: !prev.fileInputTypes[category][ext]?.enabled,
+          },
+        },
+      },
+    }));
+  };
 
-  const handleToolsChange = (tools: Record<string, ToolConfig>) => {
-    setConfig(prev => {
-      if (!prev) return null
-      
-      // Ensure we maintain the specific tool structure
-      const typedTools = {
-        providerToolsAgent: tools.providerToolsAgent || prev.tools.providerToolsAgent,
-        documentAgent: tools.documentAgent || prev.tools.documentAgent,
-        pythonAgent: tools.pythonAgent || prev.tools.pythonAgent,
-        mermaidAgent: tools.mermaidAgent || prev.tools.mermaidAgent,
-        gitMcpAgent: tools.gitMcpAgent || prev.tools.gitMcpAgent
-      }
-      return { ...prev, tools: typedTools }
-    })
-  }
+  const toggleSpecialFileType = (type: "pdf" | "ppt" | "excel" | "images") => {
+    setConfig((prev) => ({
+      ...prev,
+      fileInputTypes: {
+        ...prev.fileInputTypes,
+        [type]: {
+          enabled: !prev.fileInputTypes[type].enabled,
+        },
+      },
+    }));
+  };
 
-  const handleFileInputTypesChange = (fileInputTypes: FileInputTypes) => {
-    setConfig(prev => prev ? ({ ...prev, fileInputTypes }) : null)
-  }
-
-  // Convert our rate limit format to enhanced rate limit format
-  const enhancedRateLimit = {
-    hourly: {
-      type: 'hourly' as const,
-      value: config.rateLimit.perHour
-    },
-    daily: {
-      type: 'daily' as const,
-      value: config.rateLimit.perDay
-    }
-  }
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   return (
-    <AgentConfigForm
-      configKey={configKey}
-      title="Chat Model Agent"
-      description="Primary conversational agent that handles user interactions and delegates tasks to specialized agents"
-      value={config}
-      onChange={handleConfigChange}
-      className="space-y-6"
-      systemPromptSection={
-        <SystemPromptEditor
-          value={config.systemPrompt}
-          onChange={handleSystemPromptChange}
-          label="System Prompt"
-          description="Define how the Chat Model Agent should behave and respond to user requests"
-          placeholder="Enter the system prompt that defines the agent's behavior, capabilities, and how it should interact with users..."
-        />
-      }
-      rateLimitSection={
-        <EnhancedRateLimitConfiguration
-          value={enhancedRateLimit}
-          onChange={handleRateLimitChange}
-          label="Rate Limits"
-          description="Configure request limits for the Chat Model Agent"
-        />
-      }
-    >
-      <EnhancedModelSelector
-        onModelsChange={handleModelsChange}
-        provider={provider}
-        label="Available Models"
-        description="Configure which models are available for the Chat Model Agent with pricing information"
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Chat Model Agent ({provider})</CardTitle>
+              <CardDescription>
+                Configure the main chat agent with file input and tool delegation
+              </CardDescription>
+            </div>
+            <Switch
+              checked={config.enabled}
+              onCheckedChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+            />
+          </div>
+        </CardHeader>
+      </Card>
 
-      {/* <FileTypeConfiguration
-        value={config.fileInputTypes || {
-          codeFiles: {},
-          textFiles: {},
-          pdf: { enabled: true },
-          ppt: { enabled: true },
-          excel: { enabled: true },
-          images: { enabled: true }
-        }}
-        onChange={handleFileInputTypesChange}
-        label="File Input Types"
-        description="Configure file input and which file types users can upload for processing"
-        configKey={configKey}
-        enableInstantUpdates={true}
-        fileInputEnabled={config.capabilities.fileInput}
-        onFileInputChange={handleFileInputChange}
-      /> */}
+      {/* System Prompt */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System Prompt</CardTitle>
+          <CardDescription>Define the agent's behavior, personality, and tool usage instructions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={config.systemPrompt}
+            onChange={(e) => setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+            rows={20}
+            className="font-mono text-sm"
+            placeholder="Enter the system prompt that defines the agent's behavior..."
+          />
+        </CardContent>
+      </Card>
 
-      <ToolsConfiguration
-        value={toolsWithAgentStatus}
-        onChange={handleToolsChange}
-        label="Available Tools"
-        description="Configure which specialized agents the Chat Model Agent can use as tools"
-        configKey={configKey}
-        enableInstantUpdates={true}
-      />
-    </AgentConfigForm>
-  )
+      {/* Rate Limits */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Rate Limits</CardTitle>
+          <CardDescription>Control usage limits for the chat agent</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="perMinute">Per Minute</Label>
+            <Input
+              id="perMinute"
+              type="number"
+              min={1}
+              max={1000}
+              value={config.rateLimit.perMinute}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perMinute: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perHour">Per Hour</Label>
+            <Input
+              id="perHour"
+              type="number"
+              min={1}
+              max={10000}
+              value={config.rateLimit.perHour}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perHour: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perDay">Per Day</Label>
+            <Input
+              id="perDay"
+              type="number"
+              min={1}
+              max={100000}
+              value={config.rateLimit.perDay}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perDay: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* File Input Configuration */}
+      <Card>
+        <Collapsible open={openSections.fileTypes} onOpenChange={() => toggleSection("fileTypes")}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${openSections.fileTypes ? "rotate-180" : ""}`}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <div>
+                  <CardTitle>File Input</CardTitle>
+                  <CardDescription>Configure which file types can be uploaded</CardDescription>
+                </div>
+              </div>
+              <Switch
+                checked={config.capabilities.fileInput}
+                onCheckedChange={(fileInput) =>
+                  setConfig((prev) => ({ ...prev, capabilities: { ...prev.capabilities, fileInput } }))
+                }
+              />
+            </div>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="space-y-6 border-t pt-6">
+              {/* Code Files */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Code Files</Label>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                  {CODE_FILES.map((ext) => (
+                    <div key={ext} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                      <Switch
+                        id={`code-${ext}`}
+                        checked={config.fileInputTypes.codeFiles[ext]?.enabled || false}
+                        onCheckedChange={() => toggleFileType("codeFiles", ext)}
+                      />
+                      <Label htmlFor={`code-${ext}`} className="text-xs font-mono cursor-pointer">
+                        {ext}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Files */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Text Files</Label>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                  {TEXT_FILES.map((ext) => (
+                    <div key={ext} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                      <Switch
+                        id={`text-${ext}`}
+                        checked={config.fileInputTypes.textFiles[ext]?.enabled || false}
+                        onCheckedChange={() => toggleFileType("textFiles", ext)}
+                      />
+                      <Label htmlFor={`text-${ext}`} className="text-xs font-mono cursor-pointer">
+                        {ext}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Special File Types */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Document & Media Types</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    { key: "pdf", label: "PDF" },
+                    { key: "ppt", label: "PowerPoint" },
+                    { key: "excel", label: "Excel" },
+                    { key: "images", label: "Images" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                      <Switch
+                        id={key}
+                        checked={config.fileInputTypes[key as keyof typeof config.fileInputTypes].enabled || false}
+                        onCheckedChange={() => toggleSpecialFileType(key as "pdf" | "ppt" | "excel" | "images")}
+                      />
+                      <Label htmlFor={key} className="text-xs cursor-pointer">
+                        {label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* Delegated Tools */}
+      <Card>
+        <Collapsible open={openSections.tools} onOpenChange={() => toggleSection("tools")}>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${openSections.tools ? "rotate-180" : ""}`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <div>
+                <CardTitle>Delegated Agent Tools</CardTitle>
+                <CardDescription>Configure which specialized agents the chat agent can use</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CollapsibleContent>
+            <CardContent className="space-y-4 border-t pt-4">
+              {Object.entries(TOOL_INFO).map(([toolKey, toolInfo]) => {
+                const toolName = toolKey as keyof typeof config.tools;
+                const tool = config.tools[toolName];
+
+                if (!tool) return null;
+
+                return (
+                  <div key={toolName} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{toolInfo.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            {tool.enabled ? "Enabled" : "Disabled"}
+                          </span>
+                          <Switch
+                            checked={tool.enabled}
+                            onCheckedChange={(enabled) => updateTool(toolName, { enabled })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`${toolName}-description`} className="text-xs">
+                          Description
+                        </Label>
+                        <Textarea
+                          id={`${toolName}-description`}
+                          value={tool.description}
+                          onChange={(e) => updateTool(toolName, { description: e.target.value })}
+                          rows={2}
+                          className="resize-none text-sm"
+                          placeholder={toolInfo.description}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Configuration
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 }
