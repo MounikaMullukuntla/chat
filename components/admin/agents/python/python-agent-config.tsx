@@ -236,7 +236,6 @@ export function PythonAgentConfig({ configKey, provider = 'google' }: PythonAgen
         provider={provider}
         label="Available Models"
         description="Configure which models are available for the Python Agent with pricing information"
-        configKey={configKey}
       />
 
 

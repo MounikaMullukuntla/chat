@@ -223,7 +223,7 @@ export class GoogleGitMcpAgent {
             throw error;
           }
         },
-      });
+      } as any);
     }
 
     return aiSdkTools;
@@ -288,7 +288,7 @@ export class GoogleGitMcpAgent {
           console.log('🧹 [MCP-CLIENT] Cleaning up connection...');
           await this.closeMcpClient();
         },
-      });
+      } as any);
 
       // Collect the response
       console.log('📡 [STREAM] Processing model output stream...');
@@ -302,30 +302,33 @@ export class GoogleGitMcpAgent {
 
       for await (const chunk of result.fullStream) {
         if (chunk.type === 'text-delta') {
-          fullOutput += chunk.textDelta;
+          const text = (chunk as any).text || '';
+          fullOutput += text;
           // Log first few characters of each text chunk
-          if (chunk.textDelta.length > 0) {
-            const preview = chunk.textDelta.substring(0, 50).replace(/\n/g, '↵');
-            console.log('💬 [MODEL-OUTPUT] Text chunk:', preview + (chunk.textDelta.length > 50 ? '...' : ''));
+          if (text.length > 0) {
+            const preview = text.substring(0, 50).replace(/\n/g, '↵');
+            console.log('💬 [MODEL-OUTPUT] Text chunk:', preview + (text.length > 50 ? '...' : ''));
           }
         } else if (chunk.type === 'tool-call') {
           stepCount++;
           console.log('\n' + '─'.repeat(80));
           console.log(`🔧 [TOOL-CALL] Step ${stepCount}: Model decided to call tool`);
           console.log('   Tool name:', chunk.toolName);
-          const argsStr = JSON.stringify(chunk.args || {}, null, 2);
+          const input = (chunk as any).input || {};
+          const argsStr = JSON.stringify(input, null, 2);
           const formattedArgs = argsStr.split('\n').map((line, i) => i === 0 ? line : '              ' + line).join('\n');
           console.log('   Arguments:', formattedArgs);
           console.log('─'.repeat(80));
 
           toolCalls.push({
             toolName: chunk.toolName,
-            args: chunk.args,
+            args: input,
             result: null, // Will be filled in by tool-result
           });
         } else if (chunk.type === 'tool-result') {
           console.log('📥 [TOOL-RESULT] Received result from MCP server');
-          const resultStr = JSON.stringify(chunk.result || {});
+          const output = (chunk as any).output || {};
+          const resultStr = JSON.stringify(output);
           const resultPreview = resultStr.substring(0, 200);
           console.log('   Result preview:', resultPreview + (resultStr.length > 200 ? '...' : ''));
           console.log('   Result length:', resultStr.length, 'chars');
@@ -333,11 +336,11 @@ export class GoogleGitMcpAgent {
           // Find the corresponding tool call and add the result
           const lastCall = toolCalls[toolCalls.length - 1];
           if (lastCall) {
-            lastCall.result = chunk.result;
+            lastCall.result = output;
           }
-        } else if (chunk.type === 'step-start') {
+        } else if (chunk.type === 'start-step') {
           console.log(`\n🚀 [STEP-START] Model starting step ${stepCount + 1}`);
-        } else if (chunk.type === 'step-finish') {
+        } else if (chunk.type === 'finish-step') {
           console.log(`✓ [STEP-FINISH] Step ${stepCount} completed`);
         }
       }

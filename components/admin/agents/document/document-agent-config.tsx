@@ -167,7 +167,6 @@ export function DocumentAgentConfig({ configKey, provider = 'google' }: Document
         provider={provider}
         label="Available Models"
         description="Configure which models are available for the Document Agent with pricing information"
-        configKey={configKey}
       />
 
 
