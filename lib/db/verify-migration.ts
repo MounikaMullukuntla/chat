@@ -290,7 +290,38 @@ const verifyMigration = async (): Promise<void> => {
         `;
 
         const googleCount = parseInt(googleConfigs[0]?.count || "0");
-        seedResult.details.push(`✅ Found ${googleCount} Google provider configurations`);
+        const expectedGoogleConfigs = 6; // chat_model, provider_tools, document, python, mermaid, git_mcp
+
+        if (googleCount === expectedGoogleConfigs) {
+          seedResult.details.push(`✅ Found ${googleCount} Google provider configurations`);
+        } else {
+          seedResult.passed = false;
+          seedResult.details.push(`❌ Expected ${expectedGoogleConfigs} Google configs, found ${googleCount}`);
+        }
+
+        // Check for specific Google agent configs
+        const expectedGoogleAgents = [
+          'chat_model_agent_google',
+          'provider_tools_agent_google',
+          'document_agent_google',
+          'python_agent_google',
+          'mermaid_agent_google',
+          'git_mcp_agent_google'
+        ];
+
+        for (const agentKey of expectedGoogleAgents) {
+          const exists = await connection`
+            SELECT EXISTS (
+              SELECT FROM admin_config
+              WHERE config_key = ${agentKey}
+            )
+          `;
+
+          if (!exists[0]?.exists) {
+            seedResult.passed = false;
+            seedResult.details.push(`❌ Missing Google agent config: ${agentKey}`);
+          }
+        }
 
         // Verify document_agent_google has new structure
         const documentAgentConfig = await connection`
@@ -301,26 +332,123 @@ const verifyMigration = async (): Promise<void> => {
         if (documentAgentConfig.length > 0) {
           const configData = documentAgentConfig[0].config_data as any;
 
-          // Check for new prompts structure
-          if (configData.prompts && configData.prompts.createDocument && configData.prompts.updateDocument) {
-            seedResult.details.push("✅ Document agent has new prompts structure");
+          // Check for new tools-based structure
+          if (configData.tools &&
+              configData.tools.create &&
+              configData.tools.update &&
+              configData.tools.suggestion &&
+              configData.tools.revert) {
+            seedResult.details.push("✅ Document agent has new tools structure (create, update, suggestion, revert)");
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Document agent missing new prompts structure");
+            seedResult.details.push("❌ Document agent missing new tools structure");
           }
 
-          // Check that old systemPrompt is removed (should not exist)
-          if (configData.systemPrompt) {
-            seedResult.details.push("⚠️  Document agent still has old systemPrompt (should be removed)");
+          // Check for tool-specific prompts
+          if (configData.tools?.create?.systemPrompt &&
+              configData.tools?.update?.systemPrompt) {
+            seedResult.details.push("✅ Document agent tools have systemPrompts");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Document agent tools missing systemPrompts");
           }
 
-          // Check that old tools are removed
-          if (configData.tools && Object.keys(configData.tools).length > 0) {
-            seedResult.details.push("⚠️  Document agent still has old tools structure (should be removed)");
+          // Check for rateLimit
+          if (configData.rateLimit &&
+              configData.rateLimit.perMinute &&
+              configData.rateLimit.perHour &&
+              configData.rateLimit.perDay) {
+            seedResult.details.push("✅ Document agent has rateLimit configuration");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Document agent missing rateLimit configuration");
           }
         }
 
-        // Verify chat_model_agent_google has new documentAgent tool structure
+        // Verify python_agent_google has new structure
+        const pythonAgentConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'python_agent_google'
+        `;
+
+        if (pythonAgentConfig.length > 0) {
+          const configData = pythonAgentConfig[0].config_data as any;
+
+          // Check for new tools-based structure
+          if (configData.tools &&
+              configData.tools.create &&
+              configData.tools.update &&
+              configData.tools.fix &&
+              configData.tools.explain &&
+              configData.tools.generate &&
+              configData.tools.revert) {
+            seedResult.details.push("✅ Python agent has new tools structure (create, update, fix, explain, generate, revert)");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Python agent missing new tools structure");
+          }
+
+          // Check for rateLimit
+          if (configData.rateLimit) {
+            seedResult.details.push("✅ Python agent has rateLimit configuration");
+          }
+        }
+
+        // Verify mermaid_agent_google has new structure
+        const mermaidAgentConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'mermaid_agent_google'
+        `;
+
+        if (mermaidAgentConfig.length > 0) {
+          const configData = mermaidAgentConfig[0].config_data as any;
+
+          // Check for new tools-based structure
+          if (configData.tools &&
+              configData.tools.create &&
+              configData.tools.update &&
+              configData.tools.fix &&
+              configData.tools.generate &&
+              configData.tools.revert) {
+            seedResult.details.push("✅ Mermaid agent has new tools structure (create, update, fix, generate, revert)");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Mermaid agent missing new tools structure");
+          }
+
+          // Check for rateLimit
+          if (configData.rateLimit) {
+            seedResult.details.push("✅ Mermaid agent has rateLimit configuration");
+          }
+        }
+
+        // Verify git_mcp_agent_google has structure
+        const gitMcpAgentConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'git_mcp_agent_google'
+        `;
+
+        if (gitMcpAgentConfig.length > 0) {
+          const configData = gitMcpAgentConfig[0].config_data as any;
+
+          // Check for tools structure
+          if (configData.tools &&
+              configData.tools.repos &&
+              configData.tools.issues &&
+              configData.tools.pull_requests) {
+            seedResult.details.push("✅ GitHub MCP agent has tools structure");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ GitHub MCP agent missing tools structure");
+          }
+
+          // Check for systemPrompt and rateLimit
+          if (configData.systemPrompt && configData.rateLimit) {
+            seedResult.details.push("✅ GitHub MCP agent has systemPrompt and rateLimit");
+          }
+        }
+
+        // Verify chat_model_agent_google has new tool structure
         const chatAgentConfig = await connection`
           SELECT config_data FROM admin_config
           WHERE config_key = 'chat_model_agent_google'
@@ -329,12 +457,55 @@ const verifyMigration = async (): Promise<void> => {
         if (chatAgentConfig.length > 0) {
           const configData = chatAgentConfig[0].config_data as any;
 
-          if (configData.tools?.documentAgent?.tool_input?.operation &&
-              configData.tools?.documentAgent?.tool_input?.instruction) {
-            seedResult.details.push("✅ Chat agent has new documentAgent tool structure (operation + instruction)");
+          // Check for all agent tools
+          if (configData.tools?.providerToolsAgent &&
+              configData.tools?.documentAgent &&
+              configData.tools?.pythonAgent &&
+              configData.tools?.mermaidAgent &&
+              configData.tools?.gitMcpAgent) {
+            seedResult.details.push("✅ Chat agent has all specialized agent tools");
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Chat agent missing new documentAgent tool structure");
+            seedResult.details.push("❌ Chat agent missing some specialized agent tools");
+          }
+
+          // Check for documentAgent operation/instruction structure
+          if (configData.tools?.documentAgent?.tool_input?.operation &&
+              configData.tools?.documentAgent?.tool_input?.instruction) {
+            seedResult.details.push("✅ Chat agent documentAgent tool has operation + instruction structure");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Chat agent documentAgent tool missing operation/instruction structure");
+          }
+
+          // Check for pythonAgent operation/instruction structure
+          if (configData.tools?.pythonAgent?.tool_input?.operation &&
+              configData.tools?.pythonAgent?.tool_input?.instruction) {
+            seedResult.details.push("✅ Chat agent pythonAgent tool has operation + instruction structure");
+          }
+
+          // Check for systemPrompt
+          if (configData.systemPrompt && configData.systemPrompt.length > 100) {
+            seedResult.details.push("✅ Chat agent has comprehensive systemPrompt");
+          }
+        }
+
+        // Verify provider_tools_agent_google structure
+        const providerToolsConfig = await connection`
+          SELECT config_data FROM admin_config
+          WHERE config_key = 'provider_tools_agent_google'
+        `;
+
+        if (providerToolsConfig.length > 0) {
+          const configData = providerToolsConfig[0].config_data as any;
+
+          if (configData.tools?.googleSearch &&
+              configData.tools?.urlContext &&
+              configData.tools?.codeExecution) {
+            seedResult.details.push("✅ Provider tools agent has all tools (googleSearch, urlContext, codeExecution)");
+          } else {
+            seedResult.passed = false;
+            seedResult.details.push("❌ Provider tools agent missing some tools");
           }
         }
       }

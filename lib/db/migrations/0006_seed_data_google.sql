@@ -200,7 +200,7 @@ INSERT INTO admin_config (config_key, config_data) VALUES
     "perMinute": 5,
     "perHour": 50,
     "perDay": 200
-  },i
+  },
   "tools": {
     "create": {
       "description": "Create new Python code with proper structure and documentation",
