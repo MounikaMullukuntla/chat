@@ -10,7 +10,7 @@ export * from './core/errors';
 export { ChatAgentResolver } from './chat-agent-resolver';
 
 // Google agents (for direct usage if needed)
-export * from './providers/google';
+export { GoogleChatAgent } from './providers/google/chat-agent';
 
 // Default model constant
 export const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";

@@ -1,14 +1,9 @@
 import "server-only";
 
 import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
-import { tool, type LanguageModel } from 'ai';
-import { z } from 'zod';
-import { GoogleProviderToolsAgent } from './provider-tools-agent';
-//import { GoogleDocumentAgent } from './document-agent';
-import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
-import { GoogleMermaidAgentStreaming } from './mermaid-agent-streaming';
-import { GooglePythonAgentStreaming } from './python-agent-streaming';
-import { getAdminConfig } from '@/lib/db/queries/admin';
+import { type LanguageModel } from 'ai';
+import { AgentConfigLoader } from './agentConfigLoader';
+import { AgentToolBuilder } from './agentToolBuilder';
 import type { ChatModelAgentConfig } from '../../core/types';
 import type {
   ChatParams
@@ -42,18 +37,13 @@ export class GoogleChatAgent {
   private config: ChatModelAgentConfig;
   private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
-  private providerToolsAgent?: GoogleProviderToolsAgent;
-  private providerToolsConfig?: any;
-  //private documentAgent?: GoogleDocumentAgent;
-  private documentAgentStreaming?: GoogleDocumentAgentStreaming;
-  private documentAgentConfig?: any;
-  private mermaidAgentStreaming?: GoogleMermaidAgentStreaming;
-  private mermaidAgentConfig?: any;
-  private pythonAgentStreaming?: GooglePythonAgentStreaming;
-  private pythonAgentConfig?: any;
+  private configLoader: AgentConfigLoader;
+  private toolBuilder: AgentToolBuilder;
 
   constructor(config: ChatModelAgentConfig) {
     this.config = config;
+    this.configLoader = new AgentConfigLoader();
+    this.toolBuilder = new AgentToolBuilder(config, this.configLoader);
     this.validateConfig();
   }
 
@@ -65,6 +55,7 @@ export class GoogleChatAgent {
     this.googleProvider = createGoogleGenerativeAI({
       apiKey: apiKey,
     });
+    this.configLoader.setApiKey(apiKey);
   }
 
   /**
@@ -72,29 +63,7 @@ export class GoogleChatAgent {
    * Public method so it can be called before building tools
    */
   async loadProviderToolsConfig() {
-    try {
-      const config = await getAdminConfig({
-        configKey: 'provider_tools_agent_google'
-      });
-
-      if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Provider Tools Agent loaded and enabled');
-
-        this.providerToolsConfig = config.configData;
-        this.providerToolsAgent = new GoogleProviderToolsAgent(config.configData as any);
-
-        if (this.apiKey) {
-          this.providerToolsAgent.setApiKey(this.apiKey);
-        } else {
-          console.log('⚠️  [AGENT-INIT] Provider Tools Agent: No API key available');
-        }
-      } else {
-        console.log('❌ [AGENT-INIT] Provider Tools Agent: disabled or not found');
-      }
-    } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Provider Tools Agent:', error);
-      // Don't throw - tools are optional
-    }
+    return this.configLoader.loadProviderToolsConfig();
   }
 
   /**
@@ -102,30 +71,7 @@ export class GoogleChatAgent {
    * Public method so it can be called before building tools
    */
   async loadDocumentAgentConfig() {
-    try {
-      const config = await getAdminConfig({
-        configKey: 'document_agent_google'
-      });
-
-      if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Document Agent loaded and enabled (STREAMING VERSION)');
-
-        this.documentAgentConfig = config.configData;
-        // Use new streaming version instead of old tool-based version
-        this.documentAgentStreaming = new GoogleDocumentAgentStreaming(config.configData as any);
-
-        if (this.apiKey) {
-          this.documentAgentStreaming.setApiKey(this.apiKey);
-        } else {
-          console.log('⚠️  [AGENT-INIT] Document Agent: No API key available');
-        }
-      } else {
-        console.log('❌ [AGENT-INIT] Document Agent: disabled or not found');
-      }
-    } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Document Agent:', error);
-      // Don't throw - tools are optional
-    }
+    return this.configLoader.loadDocumentAgentConfig();
   }
 
   /**
@@ -133,29 +79,7 @@ export class GoogleChatAgent {
    * Public method so it can be called before building tools
    */
   async loadMermaidAgentConfig() {
-    try {
-      const config = await getAdminConfig({
-        configKey: 'mermaid_agent_google'
-      });
-
-      if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Mermaid Agent loaded and enabled (STREAMING VERSION)');
-
-        this.mermaidAgentConfig = config.configData;
-        this.mermaidAgentStreaming = new GoogleMermaidAgentStreaming(config.configData as any);
-
-        if (this.apiKey) {
-          this.mermaidAgentStreaming.setApiKey(this.apiKey);
-        } else {
-          console.log('⚠️  [AGENT-INIT] Mermaid Agent: No API key available');
-        }
-      } else {
-        console.log('❌ [AGENT-INIT] Mermaid Agent: disabled or not found');
-      }
-    } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Mermaid Agent:', error);
-      // Don't throw - tools are optional
-    }
+    return this.configLoader.loadMermaidAgentConfig();
   }
 
   /**
@@ -163,29 +87,23 @@ export class GoogleChatAgent {
    * Public method so it can be called before building tools
    */
   async loadPythonAgentConfig() {
-    try {
-      const config = await getAdminConfig({
-        configKey: 'python_agent_google'
-      });
+    return this.configLoader.loadPythonAgentConfig();
+  }
 
-      if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Python Agent loaded and enabled (STREAMING VERSION)');
+  /**
+   * Load GitHub MCP agent configuration
+   * Public method so it can be called before building tools
+   */
+  async loadGitMcpAgentConfig() {
+    return this.configLoader.loadGitMcpAgentConfig();
+  }
 
-        this.pythonAgentConfig = config.configData;
-        this.pythonAgentStreaming = new GooglePythonAgentStreaming(config.configData as any);
-
-        if (this.apiKey) {
-          this.pythonAgentStreaming.setApiKey(this.apiKey);
-        } else {
-          console.log('⚠️  [AGENT-INIT] Python Agent: No API key available');
-        }
-      } else {
-        console.log('❌ [AGENT-INIT] Python Agent: disabled or not found');
-      }
-    } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Python Agent:', error);
-      // Don't throw - tools are optional
-    }
+  /**
+   * Set GitHub Personal Access Token for MCP agent
+   * Call this to enable GitHub operations
+   */
+  setGitHubPAT(pat: string) {
+    this.configLoader.setGitHubPAT(pat);
   }
 
   /**
@@ -193,9 +111,7 @@ export class GoogleChatAgent {
    * Call this before building tools to ensure provider tools use the same model
    */
   setProviderToolsModel(modelId: string) {
-    if (this.providerToolsAgent) {
-      this.providerToolsAgent.setModel(modelId);
-    }
+    this.configLoader.setProviderToolsModel(modelId);
   }
 
   /**
@@ -203,9 +119,7 @@ export class GoogleChatAgent {
    * Call this before building tools to ensure document agent uses the same model
    */
   setDocumentAgentModel(modelId: string) {
-    if (this.documentAgentStreaming) {
-      this.documentAgentStreaming.setModel(modelId);
-    }
+    this.configLoader.setDocumentAgentModel(modelId);
   }
 
   /**
@@ -213,9 +127,7 @@ export class GoogleChatAgent {
    * Call this before building tools to ensure mermaid agent uses the same model
    */
   setMermaidAgentModel(modelId: string) {
-    if (this.mermaidAgentStreaming) {
-      this.mermaidAgentStreaming.setModel(modelId);
-    }
+    this.configLoader.setMermaidAgentModel(modelId);
   }
 
   /**
@@ -223,9 +135,15 @@ export class GoogleChatAgent {
    * Call this before building tools to ensure python agent uses the same model
    */
   setPythonAgentModel(modelId: string) {
-    if (this.pythonAgentStreaming) {
-      this.pythonAgentStreaming.setModel(modelId);
-    }
+    this.configLoader.setPythonAgentModel(modelId);
+  }
+
+  /**
+   * Set the model for GitHub MCP agent
+   * Call this before building tools to ensure GitHub MCP agent uses the same model
+   */
+  setGitMcpAgentModel(modelId: string) {
+    this.configLoader.setGitMcpAgentModel(modelId);
   }
 
   /**
@@ -249,12 +167,14 @@ export class GoogleChatAgent {
       await this.loadDocumentAgentConfig();
       await this.loadMermaidAgentConfig();
       await this.loadPythonAgentConfig();
+      await this.loadGitMcpAgentConfig();
 
       // Set the selected model for specialized agents (same model as chat)
       this.setProviderToolsModel(params.modelId);
       this.setDocumentAgentModel(params.modelId);
       this.setMermaidAgentModel(params.modelId);
       this.setPythonAgentModel(params.modelId);
+      this.setGitMcpAgentModel(params.modelId);
 
       // Check if thinking mode is supported by the selected model
       const modelSupportsThinking = this.supportsThinking(params.modelId);
@@ -270,7 +190,7 @@ export class GoogleChatAgent {
           const systemPrompt = this.buildSystemPrompt();
 
           // Build tools from chat agent (includes provider tools and document agent if enabled)
-          const tools = this.buildTools(dataStream, params.user, params.chatId);
+          const tools = this.toolBuilder.buildTools(dataStream, params.user, params.chatId);
 
           // Add artifact context to the first user message if available
           let messages = params.messages.map(msg => ({
@@ -359,313 +279,7 @@ export class GoogleChatAgent {
     }
   }
 
-  /**
-   * Build AI SDK tools - Specialized agents are treated as individual tools
-   */
-  buildTools(dataStream: any, user?: any, chatId?: string): Record<string, any> | undefined {
-    const tools: Record<string, any> = {};
-    const enabledTools: string[] = [];
 
-    // Provider Tools Agent as a single tool
-    if (this.providerToolsAgent && this.providerToolsConfig?.enabled && this.config.tools?.providerToolsAgent?.enabled) {
-      const providerToolsAgent = this.providerToolsAgent;
-
-      // Check if tool description is missing and throw error
-      if (!this.config.tools.providerToolsAgent.description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'providerToolsAgent tool description is required when tool is enabled'
-        );
-      }
-
-      // Check if tool parameter description is missing and throw error
-      if (!this.config.tools.providerToolsAgent.tool_input?.parameter_description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'providerToolsAgent tool parameter description is required when tool is enabled'
-        );
-      }
-
-      tools.providerToolsAgent = tool({
-        description: this.config.tools.providerToolsAgent.description,
-        inputSchema: z.object({
-          input: z.string().describe(this.config.tools.providerToolsAgent.tool_input.parameter_description)
-        }),
-        execute: async (params: { input: string }) => {
-          console.log('🔧 [TOOL-CALL] Provider Tools Agent executing:', params.input.substring(0, 100));
-
-          // Execute provider tools agent
-          const result = await providerToolsAgent.execute({ input: params.input });
-
-          // Return ONLY the output string - AI SDK will use this to continue generation
-          return result.output;
-        }
-      });
-      enabledTools.push('providerToolsAgent');
-    }
-
-    // Document Agent as a single tool (using streaming version)
-    if (this.documentAgentStreaming && this.documentAgentConfig?.enabled && this.config.tools?.documentAgent?.enabled) {
-      const documentAgentStreaming = this.documentAgentStreaming;
-
-      // Check if tool description is missing and throw error
-      if (!this.config.tools.documentAgent.description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'documentAgent tool description is required when tool is enabled'
-        );
-      }
-
-      // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.documentAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.documentAgent.tool_input?.instruction?.parameter_description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'documentAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
-        );
-      }
-
-      tools.documentAgent = tool({
-        description: this.config.tools.documentAgent.description,
-        inputSchema: z.object({
-          operation: z.enum(['create', 'update', 'revert', 'suggestion']).describe(
-            this.config.tools.documentAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.documentAgent.tool_input.instruction.parameter_description
-          ),
-          documentId: z.string().uuid().optional().describe(
-            'UUID of the document to update, revert, or add suggestions to. Required for update, revert, and suggestion operations. Extract from artifact context when user references a specific document.'
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
-          )
-        }),
-        execute: async (params: { operation: 'create' | 'update' | 'revert' | 'suggestion'; instruction: string; documentId?: string; targetVersion?: number }) => {
-          console.log('📄 [TOOL-CALL] Document Agent executing');
-          console.log('📄 [TOOL-CALL] Operation:', params.operation);
-          console.log('📄 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('📄 [TOOL-CALL] Document ID:', params.documentId || 'not provided');
-          console.log('📄 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
-
-          // Execute document agent (streaming version)
-          // The streaming agent handles data stream events internally
-          const result = await documentAgentStreaming.execute({
-            operation: params.operation,
-            instruction: params.instruction,
-            documentId: params.documentId,
-            targetVersion: params.targetVersion,
-            dataStream,
-            user,
-            chatId: chatId
-          });
-
-          // Return the structured output from document agent
-          console.log('📄 [TOOL-CALL] documentAgent returning type:', typeof result.output);
-          console.log('📄 [TOOL-CALL] documentAgent returning value:', JSON.stringify(result.output));
-
-          // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
-            // Make sure it's a plain object without circular references
-            const cleanOutput = {
-              id: result.output.id,
-              title: result.output.title,
-              kind: result.output.kind || 'text'
-            };
-            console.log('📄 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
-            return cleanOutput;
-          }
-
-          return result.output;
-        }
-      });
-      enabledTools.push('documentAgent');
-    }
-
-    // Mermaid Agent as a single tool (using streaming version)
-    if (this.mermaidAgentStreaming && this.mermaidAgentConfig?.enabled && this.config.tools?.mermaidAgent?.enabled) {
-      const mermaidAgentStreaming = this.mermaidAgentStreaming;
-
-      // Check if tool description is missing and throw error
-      if (!this.config.tools.mermaidAgent.description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'mermaidAgent tool description is required when tool is enabled'
-        );
-      }
-
-      // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.mermaidAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.mermaidAgent.tool_input?.instruction?.parameter_description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'mermaidAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
-        );
-      }
-
-      tools.mermaidAgent = tool({
-        description: this.config.tools.mermaidAgent.description,
-        inputSchema: z.object({
-          operation: z.enum(['generate', 'create', 'update', 'fix', 'revert']).describe(
-            this.config.tools.mermaidAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.mermaidAgent.tool_input.instruction.parameter_description
-          ),
-          diagramId: z.string().uuid().optional().describe(
-            'UUID of the Mermaid diagram to update, fix, or revert. Required for update, fix, and revert operations. Extract from artifact context when user references a specific diagram.'
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
-          )
-        }),
-        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'revert'; instruction: string; diagramId?: string; targetVersion?: number }) => {
-          console.log('🎨 [TOOL-CALL] Mermaid Agent executing');
-          console.log('🎨 [TOOL-CALL] Operation:', params.operation);
-          console.log('🎨 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('🎨 [TOOL-CALL] Diagram ID:', params.diagramId || 'not provided');
-          console.log('🎨 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
-
-          // Execute mermaid agent (streaming version)
-          // The streaming agent handles data stream events internally
-          const result = await mermaidAgentStreaming.execute({
-            operation: params.operation,
-            instruction: params.instruction,
-            diagramId: params.diagramId,
-            targetVersion: params.targetVersion,
-            dataStream,
-            user,
-            chatId: chatId
-          });
-
-          // Return the structured output from mermaid agent
-          console.log('🎨 [TOOL-CALL] mermaidAgent returning type:', typeof result.output);
-          console.log('🎨 [TOOL-CALL] mermaidAgent returning value:', JSON.stringify(result.output));
-
-          // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
-            // For generate mode, return the code directly
-            if (result.output.generated && result.output.code) {
-              console.log('🎨 [TOOL-CALL] Returning generated code');
-              return { code: result.output.code, generated: true };
-            }
-
-            // For other modes, return clean metadata
-            const cleanOutput = {
-              id: result.output.id,
-              title: result.output.title,
-              kind: result.output.kind || 'mermaid code'
-            };
-            console.log('🎨 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
-            return cleanOutput;
-          }
-
-          return result.output;
-        }
-      });
-      enabledTools.push('mermaidAgent');
-    }
-
-    // Python Agent as a single tool (using streaming version)
-    if (this.pythonAgentStreaming && this.pythonAgentConfig?.enabled && this.config.tools?.pythonAgent?.enabled) {
-      const pythonAgentStreaming = this.pythonAgentStreaming;
-
-      // Check if tool description is missing and throw error
-      if (!this.config.tools.pythonAgent.description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'pythonAgent tool description is required when tool is enabled'
-        );
-      }
-
-      // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.pythonAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.pythonAgent.tool_input?.instruction?.parameter_description) {
-        throw new AgentError(
-          'google-chat',
-          ErrorCodes.INVALID_CONFIGURATION,
-          'pythonAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
-        );
-      }
-
-      tools.pythonAgent = tool({
-        description: this.config.tools.pythonAgent.description,
-        inputSchema: z.object({
-          operation: z.enum(['generate', 'create', 'update', 'fix', 'explain', 'revert']).describe(
-            this.config.tools.pythonAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.pythonAgent.tool_input.instruction.parameter_description
-          ),
-          codeId: z.string().uuid().optional().describe(
-            'UUID of the Python code to update, fix, explain, or revert. Required for update, fix, explain, and revert operations. Extract from artifact context when user references a specific Python code artifact.'
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            'Target version number for revert operations. When user says "revert to version 2" or "go back to previous version", extract this number. For "previous version", use current version - 1.'
-          )
-        }),
-        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'explain' | 'revert'; instruction: string; codeId?: string; targetVersion?: number }) => {
-          console.log('🐍 [TOOL-CALL] Python Agent executing');
-          console.log('🐍 [TOOL-CALL] Operation:', params.operation);
-          console.log('🐍 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('🐍 [TOOL-CALL] Code ID:', params.codeId || 'not provided');
-          console.log('🐍 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
-
-          // Execute python agent (streaming version)
-          // The streaming agent handles data stream events internally
-          const result = await pythonAgentStreaming.execute({
-            operation: params.operation,
-            instruction: params.instruction,
-            codeId: params.codeId,
-            targetVersion: params.targetVersion,
-            dataStream,
-            user,
-            chatId: chatId
-          });
-
-          // Return the structured output from python agent
-          console.log('🐍 [TOOL-CALL] pythonAgent returning type:', typeof result.output);
-          console.log('🐍 [TOOL-CALL] pythonAgent returning value:', JSON.stringify(result.output));
-
-          // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
-            // For generate mode, return the code directly
-            if (result.output.generated && result.output.code) {
-              console.log('🐍 [TOOL-CALL] Returning generated code');
-              return { code: result.output.code, generated: true };
-            }
-
-            // For other modes, return clean metadata
-            const cleanOutput = {
-              id: result.output.id,
-              title: result.output.title,
-              kind: result.output.kind || 'python code'
-            };
-            console.log('🐍 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
-            return cleanOutput;
-          }
-
-          return result.output;
-        }
-      });
-      enabledTools.push('pythonAgent');
-    }
-
-    if (enabledTools.length > 0) {
-      console.log('🔧 [TOOLS-READY] Enabled tools:', enabledTools.join(', '));
-      return tools;
-    }
-
-    console.log('⚠️  [TOOLS-READY] No tools enabled');
-    return undefined;
-  }
 
   /**
    * Build system prompt with tool descriptions
@@ -674,12 +288,12 @@ export class GoogleChatAgent {
     let prompt = this.config.systemPrompt;
 
     // Add tool usage instructions if provider tools are enabled
-    if (this.providerToolsAgent && this.config.tools?.providerToolsAgent?.enabled) {
+    if (this.configLoader.getProviderToolsAgent() && this.config.tools?.providerToolsAgent?.enabled) {
       prompt += `\n\nWhen you need to search the web, analyze URLs, or execute code, use the providerToolsAgent tool. After receiving the tool result, incorporate the information into your response naturally and provide a comprehensive answer to the user.`;
     }
 
     // Add tool usage instructions if document agent is enabled (streaming version)
-    if (this.documentAgentStreaming && this.config.tools?.documentAgent?.enabled) {
+    if (this.configLoader.getDocumentAgentStreaming() && this.config.tools?.documentAgent?.enabled) {
       prompt += `\n\nWhen you need to create or update documents, reports, or spreadsheets, use the documentAgent tool. This includes:
 - Creating text documents with markdown formatting
 - Updating existing text documents

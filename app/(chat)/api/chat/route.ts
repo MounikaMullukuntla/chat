@@ -92,6 +92,9 @@ export async function POST(request: Request) {
       return new ChatSDKError("bad_request:api").toResponse();
     }
 
+    // Get GitHub PAT (optional - for GitHub MCP agent)
+    const githubPAT = request.headers.get('x-github-pat');
+
     // Save user message
     await saveMessages({
       messages: [{
@@ -111,6 +114,12 @@ export async function POST(request: Request) {
     // Create chat agent using simple resolver
     const chatAgent = await ChatAgentResolver.createChatAgent();
     chatAgent.setApiKey(apiKey);
+
+    // Set GitHub PAT if provided (for GitHub MCP agent)
+    if (githubPAT?.trim()) {
+      chatAgent.setGitHubPAT(githubPAT);
+      console.log('🐙 [GITHUB-PAT] GitHub PAT provided for MCP agent');
+    }
 
     // Use chat agent to generate streaming response with all provider-specific logic
     return await chatAgent.chat({

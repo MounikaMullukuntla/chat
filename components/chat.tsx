@@ -89,6 +89,9 @@ export function Chat({
         // Get Google API key from localStorage
         const googleApiKey = storage.apiKeys.get('google');
 
+        // Get GitHub PAT from localStorage (for GitHub MCP agent)
+        const githubPAT = storage.github.getToken();
+
         // Extract thinking mode from the last message's experimental metadata
         const lastMessage = request.messages.at(-1);
         const thinkingEnabled = (lastMessage as any)?.experimental_providerMetadata?.thinking || false;
@@ -102,10 +105,13 @@ export function Chat({
           ...request.body,
         };
 
-        // Send API key in headers for security
+        // Send API keys in headers for security
         const headers: Record<string, string> = {};
         if (googleApiKey) {
           headers['x-google-api-key'] = googleApiKey;
+        }
+        if (githubPAT) {
+          headers['x-github-pat'] = githubPAT;
         }
 
         return {

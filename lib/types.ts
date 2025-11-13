@@ -122,3 +122,122 @@ export interface GitHubContextState {
   isLoading: boolean;
   error: string | null;
 }
+
+// GitHub MCP Agent Types
+export interface RateLimit {
+  perMinute: number;
+  perHour: number;
+  perDay: number;
+}
+
+export interface GitMcpAgentConfig {
+  enabled: boolean;
+  systemPrompt: string;
+  rateLimit: RateLimit;
+  tools: Record<string, {
+    description: string;
+    enabled: boolean;
+  }>;
+}
+
+export interface AgentResult {
+  output: string;
+  success: boolean;
+  toolCalls?: Array<{
+    toolName: string;
+    args: Record<string, any>;
+    result: any;
+  }>;
+  reasoning?: string;
+  error?: string;
+}
+
+export interface GitHubFile {
+  path: string;
+  name: string;
+  type: 'file';
+  size?: number;
+  sha?: string;
+  content?: string;
+  url?: string;
+}
+
+export interface GitHubFolder {
+  path: string;
+  name: string;
+  type: 'dir';
+  contents?: Array<GitHubFile | GitHubFolder>;
+  url?: string;
+}
+
+export interface GitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  protected: boolean;
+}
+
+export interface GitHubCommit {
+  sha: string;
+  commit: {
+    message: string;
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+  };
+  author?: {
+    login: string;
+    avatar_url: string;
+  };
+  url: string;
+}
+
+export interface GitHubIssue {
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  created_at: string;
+  updated_at: string;
+  labels: Array<{
+    name: string;
+    color: string;
+  }>;
+  body?: string;
+}
+
+export interface GitHubPullRequest {
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  created_at: string;
+  updated_at: string;
+  head: {
+    ref: string;
+    sha: string;
+  };
+  base: {
+    ref: string;
+    sha: string;
+  };
+  draft: boolean;
+  merged: boolean;
+}
+
+export interface GitHubContext {
+  repos: GitHubRepo[];
+  files: GitHubFile[];
+  folders: GitHubFolder[];
+  branches?: GitHubBranch[];
+}
