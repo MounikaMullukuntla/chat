@@ -17,12 +17,12 @@ import {
   Brain,
   Zap
 } from 'lucide-react'
-import { ChatModelAgentConfigV2 as ChatModelAgentConfig } from './agents/chat-model/chat-model-agent-config'
-import { ProviderToolsAgentConfigV2 as ProviderToolsAgentConfig } from './agents/provider-tools/provider-tools-agent-config'
-import { DocumentAgentConfigV2 as DocumentAgentConfig } from './agents/document/document-agent-config'
-import { PythonAgentConfigV2 as PythonAgentConfig } from './agents/python/python-agent-config'
-import { MermaidAgentConfigV2 as MermaidAgentConfig } from './agents/mermaid/mermaid-agent-config'
-import { GitMcpAgentConfigV2 as GitMcpAgentConfig } from './agents/git-mcp/git-mcp-agent-config'
+import { ChatModelAgentConfig } from './agents/chat-model/chat-model-agent-config'
+import { ProviderToolsAgentConfig } from './agents/provider-tools/provider-tools-agent-config'
+import { DocumentAgentConfig } from './agents/document/document-agent-config'
+import { PythonAgentConfig } from './agents/python/python-agent-config'
+import { MermaidAgentConfig } from './agents/mermaid/mermaid-agent-config'
+import { GitMcpAgentConfig } from './agents/git-mcp/git-mcp-agent-config'
 import { toast } from 'sonner'
 
 interface AdminLayoutProps {
@@ -319,42 +319,42 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
                       <ChatModelAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                     {tab.id === 'provider-tools-agent' && (
                       <ProviderToolsAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                     {tab.id === 'document-agent' && (
                       <DocumentAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                     {tab.id === 'python-agent' && (
                       <PythonAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                     {tab.id === 'mermaid-agent' && (
                       <MermaidAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                     {tab.id === 'git-mcp-agent' && (
                       <GitMcpAgentConfig
                         provider={provider}
                         initialConfig={config}
-                        onSave={(cfg) => handleSaveConfig(tab.configKey, cfg)}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
                       />
                     )}
                   </TabsContent>

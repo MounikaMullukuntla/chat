@@ -302,18 +302,22 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                     { key: "ppt", label: "PowerPoint" },
                     { key: "excel", label: "Excel" },
                     { key: "images", label: "Images" },
-                  ].map(({ key, label }) => (
-                    <div key={key} className="flex items-center space-x-2 rounded-md border px-3 py-2">
-                      <Switch
-                        id={key}
-                        checked={config.fileInputTypes[key as keyof typeof config.fileInputTypes].enabled || false}
-                        onCheckedChange={() => toggleSpecialFileType(key as "pdf" | "ppt" | "excel" | "images")}
-                      />
-                      <Label htmlFor={key} className="text-xs cursor-pointer">
-                        {label}
-                      </Label>
-                    </div>
-                  ))}
+                  ].map(({ key, label }) => {
+                    const fileType = config.fileInputTypes[key as keyof typeof config.fileInputTypes];
+                    const isEnabled = Boolean(typeof fileType === 'object' && 'enabled' in fileType ? fileType.enabled : false);
+                    return (
+                      <div key={key} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                        <Switch
+                          id={key}
+                          checked={isEnabled as boolean}
+                          onCheckedChange={() => toggleSpecialFileType(key as "pdf" | "ppt" | "excel" | "images")}
+                        />
+                        <Label htmlFor={key} className="text-xs cursor-pointer">
+                          {label}
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </CardContent>
