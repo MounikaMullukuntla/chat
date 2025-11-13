@@ -11,10 +11,19 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+interface ToolInputParameter {
+  parameter_name: string;
+  parameter_description: string;
+}
+
 interface ToolConfig {
   description: string;
   enabled: boolean;
-  tool_input?: Record<string, any>;
+  tool_input?: {
+    parameter_name?: string;
+    parameter_description?: string;
+    [key: string]: ToolInputParameter | string | undefined;
+  };
 }
 
 interface FileTypeConfig {
@@ -98,6 +107,66 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
         },
       },
     }));
+  };
+
+  const updateToolInputParameter = (
+    toolName: keyof typeof config.tools,
+    paramKey: string,
+    field: 'parameter_name' | 'parameter_description',
+    value: string
+  ) => {
+    setConfig((prev) => {
+      const tool = prev.tools[toolName];
+      if (!tool || !tool.tool_input) return prev;
+
+      const isSimpleFormat = 'parameter_name' in tool.tool_input && typeof tool.tool_input.parameter_name === 'string';
+
+      let updatedToolInput;
+      if (isSimpleFormat && paramKey === 'root') {
+        // Simple format: direct parameter_name and parameter_description
+        updatedToolInput = {
+          ...tool.tool_input,
+          [field]: value,
+        };
+      } else {
+        // Complex format: nested parameters
+        const param = tool.tool_input[paramKey] as ToolInputParameter;
+        updatedToolInput = {
+          ...tool.tool_input,
+          [paramKey]: {
+            ...param,
+            [field]: value,
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        tools: {
+          ...prev.tools,
+          [toolName]: {
+            ...tool,
+            tool_input: updatedToolInput,
+          },
+        },
+      };
+    });
+  };
+
+  const isSimpleToolInput = (toolInput: ToolConfig['tool_input']): boolean => {
+    if (!toolInput) return false;
+    return 'parameter_name' in toolInput && typeof toolInput.parameter_name === 'string';
+  };
+
+  const getComplexParameters = (toolInput: ToolConfig['tool_input']): Array<{ key: string; param: ToolInputParameter }> => {
+    if (!toolInput || isSimpleToolInput(toolInput)) return [];
+
+    return Object.entries(toolInput)
+      .filter(([key]) => key !== 'parameter_name' && key !== 'parameter_description')
+      .map(([key, value]) => ({
+        key,
+        param: value as ToolInputParameter,
+      }));
   };
 
   const toggleFileType = (category: "codeFiles" | "textFiles", ext: string) => {
@@ -352,9 +421,13 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
                 if (!tool) return null;
 
+                const hasToolInput = tool.tool_input && Object.keys(tool.tool_input).length > 0;
+                const isSimple = hasToolInput && isSimpleToolInput(tool.tool_input);
+                const complexParams = hasToolInput ? getComplexParameters(tool.tool_input) : [];
+
                 return (
                   <div key={toolName} className="flex items-start justify-between gap-4 rounded-lg border p-4">
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium">{toolInfo.title}</h4>
                         <div className="flex items-center gap-2">
@@ -368,11 +441,11 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`${toolName}-description`} className="text-xs">
-                          Description
+                        <Label htmlFor={`${String(toolName)}-description`} className="text-xs">
+                          Tool Description
                         </Label>
                         <Textarea
-                          id={`${toolName}-description`}
+                          id={`${String(toolName)}-description`}
                           value={tool.description}
                           onChange={(e) => updateTool(toolName, { description: e.target.value })}
                           rows={2}
@@ -380,6 +453,80 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                           placeholder={toolInfo.description}
                         />
                       </div>
+
+                      {/* Tool Input Parameters */}
+                      {hasToolInput && (
+                        <div className="space-y-3 rounded-md border border-dashed p-3 bg-muted/30">
+                          <Label className="text-xs font-semibold">Tool Input Parameters</Label>
+
+                          {isSimple ? (
+                            // Simple format: single parameter
+                            <div className="space-y-3">
+                              <div className="space-y-2">
+                                <Label htmlFor={`${String(toolName)}-param-name`} className="text-xs text-muted-foreground">
+                                  Parameter Name
+                                </Label>
+                                <Input
+                                  id={`${String(toolName)}-param-name`}
+                                  value={tool.tool_input?.parameter_name || ''}
+                                  onChange={(e) => updateToolInputParameter(toolName, 'root', 'parameter_name', e.target.value)}
+                                  className="text-sm font-mono"
+                                  placeholder="e.g., input"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor={`${String(toolName)}-param-desc`} className="text-xs text-muted-foreground">
+                                  Parameter Description
+                                </Label>
+                                <Textarea
+                                  id={`${String(toolName)}-param-desc`}
+                                  value={tool.tool_input?.parameter_description || ''}
+                                  onChange={(e) => updateToolInputParameter(toolName, 'root', 'parameter_description', e.target.value)}
+                                  rows={2}
+                                  className="resize-none text-sm"
+                                  placeholder="Description of what this parameter does"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            // Complex format: multiple parameters
+                            <div className="space-y-4">
+                              {complexParams.map(({ key, param }) => (
+                                <div key={key} className="space-y-3 rounded-md border p-3 bg-background">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono font-semibold text-primary">{key}</span>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`${String(toolName)}-${key}-name`} className="text-xs text-muted-foreground">
+                                      Parameter Name
+                                    </Label>
+                                    <Input
+                                      id={`${String(toolName)}-${key}-name`}
+                                      value={param.parameter_name || ''}
+                                      onChange={(e) => updateToolInputParameter(toolName, key, 'parameter_name', e.target.value)}
+                                      className="text-sm font-mono"
+                                      placeholder="e.g., operation, instruction"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`${String(toolName)}-${key}-desc`} className="text-xs text-muted-foreground">
+                                      Parameter Description
+                                    </Label>
+                                    <Textarea
+                                      id={`${String(toolName)}-${key}-desc`}
+                                      value={param.parameter_description || ''}
+                                      onChange={(e) => updateToolInputParameter(toolName, key, 'parameter_description', e.target.value)}
+                                      rows={2}
+                                      className="resize-none text-sm"
+                                      placeholder="Description of what this parameter does"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
