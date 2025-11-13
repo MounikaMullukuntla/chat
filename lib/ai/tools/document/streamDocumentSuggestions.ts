@@ -93,8 +93,8 @@ export async function streamDocumentSuggestions(params: {
           for (let i = suggestionCount; i < currentSuggestionCount; i++) {
             const suggestion = partialObject.suggestions[i];
 
-            // Only stream if the suggestion is complete
-            if (suggestion.originalText && suggestion.suggestedText && suggestion.description) {
+            // Only stream if the suggestion exists and is complete
+            if (suggestion && suggestion.originalText && suggestion.suggestedText && suggestion.description) {
               console.log(`💡 [SUGGESTIONS] Streaming suggestion ${i + 1}:`, {
                 original: suggestion.originalText.substring(0, 50),
                 suggested: suggestion.suggestedText.substring(0, 50),

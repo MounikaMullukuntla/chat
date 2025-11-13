@@ -20,9 +20,10 @@ import {
 import { ChatModelAgentConfig } from './agents/chat-model/chat-model-agent-config'
 import { ProviderToolsAgentConfig } from './agents/provider-tools/provider-tools-agent-config'
 import { DocumentAgentConfig } from './agents/document/document-agent-config'
-// import { PythonAgentConfig } from './agents/python/python-agent-config'
-// import { MermaidAgentConfig } from './agents/mermaid/mermaid-agent-config'
-// import { GitMCPAgentConfig } from './agents/git-mcp/git-mcp-agent-config'
+import { PythonAgentConfig } from './agents/python/python-agent-config'
+import { MermaidAgentConfig } from './agents/mermaid/mermaid-agent-config'
+import { GitMcpAgentConfig } from './agents/git-mcp/git-mcp-agent-config'
+import { toast } from 'sonner'
 
 interface AdminLayoutProps {
   provider: string
@@ -106,11 +107,62 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('chat-model-agent')
   const [agentTabs, setAgentTabs] = useState<AgentTab[]>([])
+  const [configs, setConfigs] = useState<Record<string, any>>({})
+  const [loading, setLoading] = useState(true)
 
   // Generate tabs based on provider
   useEffect(() => {
     setAgentTabs(generateAgentTabs(provider))
   }, [provider])
+
+  // Load all agent configurations
+  useEffect(() => {
+    const loadConfigs = async () => {
+      setLoading(true)
+      try {
+        const tabs = generateAgentTabs(provider)
+        const configData: Record<string, any> = {}
+
+        for (const tab of tabs) {
+          const response = await fetch(`/api/admin/config/${tab.configKey}`)
+          if (response.ok) {
+            const data = await response.json()
+            configData[tab.configKey] = data.configData
+          }
+        }
+
+        setConfigs(configData)
+      } catch (error) {
+        console.error('Failed to load configs:', error)
+        toast.error('Failed to load agent configurations')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadConfigs()
+  }, [provider])
+
+  // Save handler for agent configurations
+  const handleSaveConfig = async (configKey: string, configData: any) => {
+    try {
+      const response = await fetch(`/api/admin/config/${configKey}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configData }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save configuration')
+      }
+
+      // Update local state
+      setConfigs(prev => ({ ...prev, [configKey]: configData }))
+    } catch (error) {
+      console.error('Save error:', error)
+      throw error
+    }
+  }
 
   const providerInfo = PROVIDER_INFO[provider as keyof typeof PROVIDER_INFO]
   const ProviderIcon = providerInfo?.icon || Brain
@@ -249,28 +301,67 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
           </Card>
 
           {/* Tab Content */}
-          {agentTabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="space-y-6">
-              {tab.id === 'chat-model-agent' && (
-                <ChatModelAgentConfig configKey={tab.configKey} provider={provider} />
-              )}
-              {tab.id === 'provider-tools-agent' && (
-                <ProviderToolsAgentConfig configKey={tab.configKey} provider={provider} />
-              )}
-              {tab.id === 'document-agent' && (
-                <DocumentAgentConfig configKey={tab.configKey} provider={provider} />
-              )}
-              {/* {tab.id === 'python-agent' && (
-                <PythonAgentConfig configKey={tab.configKey} provider={provider} />
-              )}
-              {tab.id === 'mermaid-agent' && (
-                <MermaidAgentConfig configKey={tab.configKey} provider={provider} />
-              )}
-              {tab.id === 'git-mcp-agent' && (
-                <GitMCPAgentConfig configKey={tab.configKey} provider={provider} />
-              )} */}
-            </TabsContent>
-          ))}
+          {loading ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <div className="text-gray-500">Loading configurations...</div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {agentTabs.map((tab) => {
+                const config = configs[tab.configKey]
+                if (!config) return null
+
+                return (
+                  <TabsContent key={tab.id} value={tab.id} className="space-y-6">
+                    {tab.id === 'chat-model-agent' && (
+                      <ChatModelAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                    {tab.id === 'provider-tools-agent' && (
+                      <ProviderToolsAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                    {tab.id === 'document-agent' && (
+                      <DocumentAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                    {tab.id === 'python-agent' && (
+                      <PythonAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                    {tab.id === 'mermaid-agent' && (
+                      <MermaidAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                    {tab.id === 'git-mcp-agent' && (
+                      <GitMcpAgentConfig
+                        provider={provider}
+                        initialConfig={config}
+                        onSave={(cfg: any) => handleSaveConfig(tab.configKey, cfg)}
+                      />
+                    )}
+                  </TabsContent>
+                )
+              })}
+            </>
+          )}
         </Tabs>
 
         {/* Custom children content if provided */}

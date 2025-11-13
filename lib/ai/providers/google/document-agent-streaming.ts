@@ -265,7 +265,7 @@ export class GoogleDocumentAgentStreaming {
         // Write artifact metadata to inform UI
         dataStream.write({
           type: "data-kind",
-          data: targetDocument.kind,
+          data: targetDocument.kind as any,
           transient: true,
         });
 
@@ -307,7 +307,7 @@ export class GoogleDocumentAgentStreaming {
             id: documentId,
             title: targetDocument.title,
             content: revertedContent,
-            kind: targetDocument.kind,
+            kind: targetDocument.kind as any,
             userId: user.id,
             chatId: chatId || currentDocument.chat_id || undefined,
             parentVersionId: `${documentId}`,

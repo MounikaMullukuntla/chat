@@ -1,5 +1,5 @@
 import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
-import type { UIMessagePart } from "ai";
+import type { MessageMetadata, CustomUIDataTypes } from "@/lib/types";
 
 // Import simple chat agent resolver
 import { ChatAgentResolver } from "@/lib/ai/chat-agent-resolver";
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       messages: uiMessages.map(msg => ({
         id: msg.id,
         role: msg.role as "user" | "assistant" | "system",
-        content: msg.parts.map((part: UIMessagePart) => part.type === 'text' ? part.text : '').join('\n') + fileContext
+        content: msg.parts.map((part: any) => part.type === 'text' ? part.text : '').join('\n') + fileContext
       })),
       artifactContext: artifactContext,
       thinkingMode: thinkingEnabled,
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
               console.log('🔍 [FINISH] Message has', msg.parts.length, 'parts');
 
               // Log message parts for debugging
-              msg.parts.forEach((part, index) => {
+              msg.parts.forEach((part: any, index: number) => {
                 console.log(`🔍 [FINISH] Part ${index}: type=${part.type}`);
 
                 if (part.type === 'tool-documentAgent') {

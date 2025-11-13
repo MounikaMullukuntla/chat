@@ -1,194 +1,234 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { AgentConfigForm } from '../../shared/agent-config-form'
-import { SystemPromptEditor } from '../../shared/system-prompt-editor'
-import { EnhancedModelSelector } from '../../shared/enhanced-model-selector'
-import { EnhancedRateLimitConfiguration } from '../../shared/enhanced-rate-limit-configuration'
-import { ToolsConfiguration } from '../../shared/tools-configuration'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Save, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-interface ModelConfig {
-  id: string
-  name: string
-  description: string
-  pricingPerMillionTokens: {
-    input: number
-    output: number
-  }
-  enabled: boolean
-  isDefault: boolean
-  thinkingEnabled?: boolean
-}
-
-interface ToolConfig {
-  description: string
-  enabled: boolean
+interface SimpleToolConfig {
+  description: string;
+  enabled: boolean;
 }
 
 interface ProviderToolsAgentConfig {
-  enabled: boolean
-  systemPrompt: string
-  availableModels: ModelConfig[]
+  enabled: boolean;
+  systemPrompt: string;
   rateLimit: {
-    perMinute: number
-    perHour: number
-    perDay: number
-  }
+    perMinute: number;
+    perHour: number;
+    perDay: number;
+  };
   tools: {
-    googleSearch: ToolConfig
-    urlContext: ToolConfig
-    codeExecution: ToolConfig
-  }
+    googleSearch?: SimpleToolConfig;
+    urlContext?: SimpleToolConfig;
+    codeExecution?: SimpleToolConfig;
+  };
 }
 
 interface ProviderToolsAgentConfigProps {
-  configKey: string
-  provider?: string
+  provider: string;
+  initialConfig: ProviderToolsAgentConfig;
+  onSave: (config: ProviderToolsAgentConfig) => Promise<void>;
 }
 
-export function ProviderToolsAgentConfig({ configKey, provider = 'google' }: ProviderToolsAgentConfigProps) {
-  const [config, setConfig] = useState<ProviderToolsAgentConfig | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const TOOL_INFO = {
+  googleSearch: { title: "Google Search", description: "Search the web for current information and real-time data" },
+  urlContext: { title: "URL Context", description: "Fetch and analyze content from web pages and documents" },
+  codeExecution: { title: "Code Execution", description: "Execute Python code and return results with output" },
+} as const;
 
-  // Load configuration from database
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+export function ProviderToolsAgentConfig({ provider, initialConfig, onSave }: ProviderToolsAgentConfigProps) {
+  const [config, setConfig] = useState<ProviderToolsAgentConfig>(initialConfig);
+  const [saving, setSaving] = useState(false);
 
-        // Fetch the main configuration
-        const configResponse = await fetch(`/api/admin/config/${configKey}`)
-        let configData: ProviderToolsAgentConfig
-
-        if (configResponse.ok) {
-          const data = await configResponse.json()
-          configData = data.configData
-        } else {
-          throw new Error(`Failed to fetch configuration: ${configResponse.statusText}`)
-        }
-
-        // Models will be loaded by the EnhancedModelSelector component
-        // Initialize with empty array - the selector will fetch and manage models
-        configData.availableModels = []
-
-        setConfig(configData)
-      } catch (err) {
-        console.error('Failed to load configuration:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load configuration')
-      } finally {
-        setLoading(false)
-      }
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(config);
+      toast.success("Provider tools agent configuration saved successfully");
+    } catch (error) {
+      toast.error("Failed to save configuration");
+      console.error(error);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    loadConfig()
-  }, [configKey, provider])
-
-  if (loading) {
-    return <div className="flex items-center justify-center p-8">Loading configuration...</div>
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center p-8 text-red-600">Error: {error}</div>
-  }
-
-  if (!config) {
-    return <div className="flex items-center justify-center p-8">No configuration found</div>
-  }
-
-  const handleConfigChange = (newConfig: any) => {
-    // Handle the base config change from AgentConfigForm
-    setConfig(prev => prev ? ({ ...prev, ...newConfig }) : null)
-  }
-
-  const handleSystemPromptChange = (systemPrompt: string) => {
-    setConfig(prev => prev ? ({ ...prev, systemPrompt }) : null)
-  }
-
-  const handleModelsChange = (availableModels: ModelConfig[]) => {
-    setConfig(prev => prev ? ({ ...prev, availableModels }) : null)
-  }
-
-  const handleRateLimitChange = (rateLimitConfig: any) => {
-    // Convert from the enhanced rate limit format to our format
-    const rateLimit = {
-      perMinute: 10, // Default fallback
-      perHour: rateLimitConfig.hourly?.value || 100,
-      perDay: rateLimitConfig.daily?.value || 1000
-    }
-    setConfig(prev => prev ? ({ ...prev, rateLimit }) : null)
-  }
-
-  const handleToolsChange = (tools: Record<string, ToolConfig>) => {
-    setConfig(prev => {
-      if (!prev) return null
-      
-      // Ensure we maintain the specific tool structure
-      const typedTools = {
-        googleSearch: tools.googleSearch || prev.tools.googleSearch,
-        urlContext: tools.urlContext || prev.tools.urlContext,
-        codeExecution: tools.codeExecution || prev.tools.codeExecution
-      }
-      return { ...prev, tools: typedTools }
-    })
-  }
-
-  // Convert our rate limit format to enhanced rate limit format
-  const enhancedRateLimit = {
-    hourly: {
-      type: 'hourly' as const,
-      value: config.rateLimit.perHour
-    },
-    daily: {
-      type: 'daily' as const,
-      value: config.rateLimit.perDay
-    }
-  }
+  const updateTool = (toolName: keyof typeof config.tools, updates: Partial<SimpleToolConfig>) => {
+    setConfig((prev) => ({
+      ...prev,
+      tools: {
+        ...prev.tools,
+        [toolName]: {
+          ...prev.tools[toolName],
+          ...updates,
+        },
+      },
+    }));
+  };
 
   return (
-    <AgentConfigForm
-      configKey={configKey}
-      title="Provider Tools Agent"
-      description="Specialized agent for external API integrations including Google Search, URL Context, and Code Execution"
-      value={config}
-      onChange={handleConfigChange}
-      className="space-y-6"
-      systemPromptSection={
-        <SystemPromptEditor
-          value={config.systemPrompt}
-          onChange={handleSystemPromptChange}
-          label="System Prompt"
-          description="Define how the Provider Tools Agent should behave when accessing external services"
-          placeholder="Enter the system prompt that defines how the agent should use external tools and services..."
-        />
-      }
-      rateLimitSection={
-        <EnhancedRateLimitConfiguration
-          value={enhancedRateLimit}
-          onChange={handleRateLimitChange}
-          label="Rate Limits"
-          description="Configure request limits for the Provider Tools Agent"
-        />
-      }
-    >
-      <EnhancedModelSelector
-        onModelsChange={handleModelsChange}
-        provider={provider}
-        label="Available Models"
-        description="Configure which models are available for the Provider Tools Agent with pricing information"
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Provider Tools Agent ({provider})</CardTitle>
+              <CardDescription>
+                Configure web search, URL analysis, and code execution tools
+              </CardDescription>
+            </div>
+            <Switch
+              checked={config.enabled}
+              onCheckedChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+            />
+          </div>
+        </CardHeader>
+      </Card>
 
+      {/* System Prompt */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System Prompt</CardTitle>
+          <CardDescription>Define the agent's behavior and instructions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={config.systemPrompt}
+            onChange={(e) => setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))}
+            rows={6}
+            className="font-mono text-sm"
+            placeholder="Enter the system prompt that defines the agent's behavior..."
+          />
+        </CardContent>
+      </Card>
 
+      {/* Rate Limits */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Rate Limits</CardTitle>
+          <CardDescription>Control usage limits for the provider tools agent</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="perMinute">Per Minute</Label>
+            <Input
+              id="perMinute"
+              type="number"
+              min={1}
+              max={1000}
+              value={config.rateLimit.perMinute}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perMinute: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perHour">Per Hour</Label>
+            <Input
+              id="perHour"
+              type="number"
+              min={1}
+              max={10000}
+              value={config.rateLimit.perHour}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perHour: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perDay">Per Day</Label>
+            <Input
+              id="perDay"
+              type="number"
+              min={1}
+              max={100000}
+              value={config.rateLimit.perDay}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perDay: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      <ToolsConfiguration
-        value={config.tools}
-        onChange={handleToolsChange}
-        label="Available Tools"
-        description="Configure which external tools the Provider Tools Agent can use"
-        configKey={configKey}
-        enableInstantUpdates={true}
-      />
-    </AgentConfigForm>
-  )
+      {/* Tools */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tools</CardTitle>
+          <CardDescription>Configure which external services are available</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.entries(TOOL_INFO).map(([toolKey, toolInfo]) => {
+            const toolName = toolKey as keyof typeof config.tools;
+            const tool = config.tools[toolName];
+
+            if (!tool) return null;
+
+            return (
+              <div key={toolName} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">{toolInfo.title}</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {tool.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                      <Switch
+                        checked={tool.enabled}
+                        onCheckedChange={(enabled) => updateTool(toolName, { enabled })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`${toolName}-description`} className="text-xs">
+                      Description
+                    </Label>
+                    <Input
+                      id={`${toolName}-description`}
+                      value={tool.description}
+                      onChange={(e) => updateTool(toolName, { description: e.target.value })}
+                      placeholder={toolInfo.description}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Configuration
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 }

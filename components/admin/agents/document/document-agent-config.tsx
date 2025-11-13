@@ -1,185 +1,293 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { AgentConfigForm } from '../../shared/agent-config-form'
-import { SystemPromptEditor } from '../../shared/system-prompt-editor'
-import { EnhancedModelSelector } from '../../shared/enhanced-model-selector'
-
-import { EnhancedRateLimitConfiguration } from '../../shared/enhanced-rate-limit-configuration'
-import { ToolsConfiguration } from '../../shared/tools-configuration'
-
-interface ModelConfig {
-  id: string
-  name: string
-  description: string
-  pricingPerMillionTokens: {
-    input: number
-    output: number
-  }
-  enabled: boolean
-  isDefault: boolean
-  thinkingEnabled?: boolean
-}
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, Save, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ToolConfig {
-  description: string
-  enabled: boolean
+  description: string;
+  enabled: boolean;
+  systemPrompt?: string;
+  userPromptTemplate?: string;
 }
 
 interface DocumentAgentConfig {
-  enabled: boolean
-  systemPrompt: string
-  availableModels: ModelConfig[]
+  enabled: boolean;
   rateLimit: {
-    perMinute: number
-    perHour: number
-    perDay: number
-  }
+    perMinute: number;
+    perHour: number;
+    perDay: number;
+  };
   tools: {
-    createDocumentArtifact: ToolConfig
-    updateDocumentArtifact: ToolConfig
-    createSheetArtifact: ToolConfig
-    updateSheetArtifact: ToolConfig
-  }
+    create?: ToolConfig;
+    update?: ToolConfig;
+    suggestion?: ToolConfig;
+    revert?: ToolConfig;
+  };
 }
 
 interface DocumentAgentConfigProps {
-  configKey: string
-  provider?: string
+  provider: string;
+  initialConfig: DocumentAgentConfig;
+  onSave: (config: DocumentAgentConfig) => Promise<void>;
 }
 
-export function DocumentAgentConfig({ configKey, provider = 'google' }: DocumentAgentConfigProps) {
-  const [config, setConfig] = useState<DocumentAgentConfig | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const TOOL_INFO = {
+  create: {
+    title: "Create Document",
+    description: "Creates new text documents with markdown formatting",
+    hasPrompts: true,
+  },
+  update: {
+    title: "Update Document",
+    description: "Updates existing text documents based on instructions",
+    hasPrompts: true,
+  },
+  suggestion: {
+    title: "Document Suggestions",
+    description: "Generates improvement suggestions for existing documents",
+    hasPrompts: true,
+  },
+  revert: {
+    title: "Revert Document",
+    description: "Reverts documents to previous versions",
+    hasPrompts: false,
+  },
+} as const;
 
-  // Load configuration from database
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+export function DocumentAgentConfig({ provider, initialConfig, onSave }: DocumentAgentConfigProps) {
+  const [config, setConfig] = useState<DocumentAgentConfig>(initialConfig);
+  const [saving, setSaving] = useState(false);
+  const [openTools, setOpenTools] = useState<Record<string, boolean>>({});
 
-        const configResponse = await fetch(`/api/admin/config/${configKey}`)
-        if (configResponse.ok) {
-          const data = await configResponse.json()
-          setConfig(data.configData)
-        } else {
-          throw new Error(`Failed to fetch configuration: ${configResponse.statusText}`)
-        }
-      } catch (err) {
-        console.error('Failed to load configuration:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load configuration')
-      } finally {
-        setLoading(false)
-      }
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(config);
+      toast.success("Document agent configuration saved successfully");
+    } catch (error) {
+      toast.error("Failed to save configuration");
+      console.error(error);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    loadConfig()
-  }, [configKey])
+  const updateTool = (toolName: keyof typeof config.tools, updates: Partial<ToolConfig>) => {
+    setConfig((prev) => ({
+      ...prev,
+      tools: {
+        ...prev.tools,
+        [toolName]: {
+          ...prev.tools[toolName],
+          ...updates,
+        },
+      },
+    }));
+  };
 
-  if (loading) {
-    return <div className="flex items-center justify-center p-8">Loading configuration...</div>
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center p-8 text-red-600">Error: {error}</div>
-  }
-
-  if (!config) {
-    return <div className="flex items-center justify-center p-8">No configuration found</div>
-  }
-
-  const handleConfigChange = (newConfig: any) => {
-    setConfig(prev => prev ? ({ ...prev, ...newConfig }) : null)
-  }
-
-  const handleSystemPromptChange = (systemPrompt: string) => {
-    setConfig(prev => prev ? ({ ...prev, systemPrompt }) : null)
-  }
-
-  const handleModelsChange = (availableModels: ModelConfig[]) => {
-    setConfig(prev => prev ? ({ ...prev, availableModels }) : null)
-  }
-
-  const handleRateLimitChange = (rateLimitConfig: any) => {
-    const rateLimit = {
-      perMinute: 10,
-      perHour: rateLimitConfig.hourly?.value || 100,
-      perDay: rateLimitConfig.daily?.value || 1000
-    }
-    setConfig(prev => prev ? ({ ...prev, rateLimit }) : null)
-  }
-
-  const handleToolsChange = (tools: Record<string, ToolConfig>) => {
-    setConfig(prev => {
-      if (!prev) return null
-
-      const typedTools = {
-        createDocumentArtifact: tools.createDocumentArtifact || prev.tools.createDocumentArtifact,
-        updateDocumentArtifact: tools.updateDocumentArtifact || prev.tools.updateDocumentArtifact,
-        createSheetArtifact: tools.createSheetArtifact || prev.tools.createSheetArtifact,
-        updateSheetArtifact: tools.updateSheetArtifact || prev.tools.updateSheetArtifact
-      }
-      return { ...prev, tools: typedTools }
-    })
-  }
-
-  const enhancedRateLimit = {
-    hourly: {
-      type: 'hourly' as const,
-      value: config.rateLimit.perHour
-    },
-    daily: {
-      type: 'daily' as const,
-      value: config.rateLimit.perDay
-    }
-  }
+  const toggleTool = (toolName: keyof typeof config.tools) => {
+    setOpenTools((prev) => ({ ...prev, [toolName]: !prev[toolName] }));
+  };
 
   return (
-    <AgentConfigForm
-      configKey={configKey}
-      title="Document Agent"
-      description="Specialized agent for creating and managing text documents and spreadsheet artifacts"
-      value={config}
-      onChange={handleConfigChange}
-      className="space-y-6"
-      systemPromptSection={
-        <SystemPromptEditor
-          value={config.systemPrompt}
-          onChange={handleSystemPromptChange}
-          label="System Prompt"
-          description="Define how the Document Agent should behave when creating and updating documents"
-          placeholder="Enter the system prompt that defines how the agent should handle document creation and management..."
-        />
-      }
-      rateLimitSection={
-        <EnhancedRateLimitConfiguration
-          value={enhancedRateLimit}
-          onChange={handleRateLimitChange}
-          label="Rate Limits"
-          description="Configure request limits for the Document Agent"
-        />
-      }
-    >
-      <EnhancedModelSelector
-        onModelsChange={handleModelsChange}
-        provider={provider}
-        label="Available Models"
-        description="Configure which models are available for the Document Agent with pricing information"
-        configKey={configKey}
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Document Agent ({provider})</CardTitle>
+              <CardDescription>
+                Configure document creation, editing, and management tools
+              </CardDescription>
+            </div>
+            <Switch
+              checked={config.enabled}
+              onCheckedChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+            />
+          </div>
+        </CardHeader>
+      </Card>
 
+      {/* Rate Limits */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Rate Limits</CardTitle>
+          <CardDescription>Control usage limits for the document agent</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="perMinute">Per Minute</Label>
+            <Input
+              id="perMinute"
+              type="number"
+              min={1}
+              max={1000}
+              value={config.rateLimit.perMinute}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perMinute: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perHour">Per Hour</Label>
+            <Input
+              id="perHour"
+              type="number"
+              min={1}
+              max={10000}
+              value={config.rateLimit.perHour}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perHour: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="perDay">Per Day</Label>
+            <Input
+              id="perDay"
+              type="number"
+              min={1}
+              max={100000}
+              value={config.rateLimit.perDay}
+              onChange={(e) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  rateLimit: { ...prev.rateLimit, perDay: parseInt(e.target.value) || 1 },
+                }))
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Tools */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Tools</h3>
+        {Object.entries(TOOL_INFO).map(([toolKey, toolInfo]) => {
+          const toolName = toolKey as keyof typeof config.tools;
+          const tool = config.tools[toolName];
 
-      <ToolsConfiguration
-        value={config.tools}
-        onChange={handleToolsChange}
-        label="Available Tools"
-        description="Configure which document tools the Document Agent can use"
-        configKey={configKey}
-        enableInstantUpdates={true}
-      />
-    </AgentConfigForm>
-  )
+          if (!tool) return null;
+
+          return (
+            <Card key={toolName}>
+              <Collapsible open={openTools[toolName]} onOpenChange={() => toggleTool(toolName)}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <ChevronDown
+                              className={`h-4 w-4 transition-transform ${
+                                openTools[toolName] ? "rotate-180" : ""
+                              }`}
+                            />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <div>
+                          <CardTitle className="text-base">{toolInfo.title}</CardTitle>
+                          <CardDescription className="text-sm">{tool.description}</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {tool.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                      <Switch
+                        checked={tool.enabled}
+                        onCheckedChange={(enabled) => updateTool(toolName, { enabled })}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CollapsibleContent>
+                  <CardContent className="space-y-4 border-t pt-4">
+                    {/* Description */}
+                    <div className="space-y-2">
+                      <Label htmlFor={`${toolName}-description`}>Description</Label>
+                      <Textarea
+                        id={`${toolName}-description`}
+                        value={tool.description}
+                        onChange={(e) => updateTool(toolName, { description: e.target.value })}
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+
+                    {/* System Prompt (if applicable) */}
+                    {toolInfo.hasPrompts && tool.systemPrompt !== undefined && (
+                      <div className="space-y-2">
+                        <Label htmlFor={`${toolName}-systemPrompt`}>System Prompt</Label>
+                        <Textarea
+                          id={`${toolName}-systemPrompt`}
+                          value={tool.systemPrompt}
+                          onChange={(e) => updateTool(toolName, { systemPrompt: e.target.value })}
+                          rows={8}
+                          className="font-mono text-sm"
+                          placeholder="Enter the system prompt that defines the tool's behavior..."
+                        />
+                      </div>
+                    )}
+
+                    {/* User Prompt Template (if applicable) */}
+                    {toolInfo.hasPrompts && tool.userPromptTemplate !== undefined && (
+                      <div className="space-y-2">
+                        <Label htmlFor={`${toolName}-userPromptTemplate`}>User Prompt Template</Label>
+                        <Textarea
+                          id={`${toolName}-userPromptTemplate`}
+                          value={tool.userPromptTemplate}
+                          onChange={(e) => updateTool(toolName, { userPromptTemplate: e.target.value })}
+                          rows={4}
+                          className="font-mono text-sm"
+                          placeholder="Enter the user prompt template with placeholders like {currentContent}..."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Available placeholders: {"{currentContent}"}, {"{updateInstruction}"}, {"{instruction}"}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Configuration
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 }

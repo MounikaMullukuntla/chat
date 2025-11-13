@@ -160,9 +160,25 @@ const BaseAgentConfigSchema = z.object({
 // NOTE: ModelConfigSchema removed - models are now stored in model_config table
 // Models are no longer part of admin_config JSONB data
 
-const ToolConfigSchema = z.object({
+// Base tool config for simple tools (no prompts)
+const BaseToolConfigSchema = z.object({
   description: z.string(),
   enabled: z.boolean()
+});
+
+// Tool config with system prompt and user prompt template (for document/python/mermaid agents)
+const ToolWithPromptsConfigSchema = z.object({
+  description: z.string(),
+  enabled: z.boolean(),
+  systemPrompt: z.string().optional(),
+  userPromptTemplate: z.string().optional()
+});
+
+// Chat model agent tool config (has tool_input structure)
+const ChatModelToolConfigSchema = z.object({
+  description: z.string(),
+  enabled: z.boolean(),
+  tool_input: z.any().optional() // Flexible structure for different tool inputs
 });
 
 const FileTypeConfigSchema = z.object({
@@ -191,49 +207,93 @@ const ChatModelAgentConfigSchema = BaseAgentConfigSchema.extend({
   fileInputEnabled: z.boolean().optional(),
   allowedFileTypes: z.array(z.string()).optional(),
   tools: z.object({
-    providerToolsAgent: ToolConfigSchema,
-    documentAgent: ToolConfigSchema,
-    pythonAgent: ToolConfigSchema,
-    mermaidAgent: ToolConfigSchema,
-    gitMcpAgent: ToolConfigSchema
+    providerToolsAgent: ChatModelToolConfigSchema.optional(),
+    documentAgent: ChatModelToolConfigSchema.optional(),
+    pythonAgent: ChatModelToolConfigSchema.optional(),
+    mermaidAgent: ChatModelToolConfigSchema.optional(),
+    gitMcpAgent: ChatModelToolConfigSchema.optional()
   }).optional()
 });
 
-const ProviderToolsAgentConfigSchema = BaseAgentConfigSchema.extend({
-  // NOTE: availableModels removed - models are now stored in model_config table
+const ProviderToolsAgentConfigSchema = z.object({
+  enabled: z.boolean(),
+  systemPrompt: z.string().min(1, "System prompt is required"),
+  rateLimit: z.object({
+    perMinute: z.number().min(1).max(1000),
+    perHour: z.number().min(1).max(10000),
+    perDay: z.number().min(1).max(100000)
+  }),
   tools: z.object({
-    googleSearch: ToolConfigSchema,
-    urlContext: ToolConfigSchema,
-    codeExecution: ToolConfigSchema
+    googleSearch: BaseToolConfigSchema.optional(),
+    urlContext: BaseToolConfigSchema.optional(),
+    codeExecution: BaseToolConfigSchema.optional()
   })
 });
 
-const DocumentAgentConfigSchema = BaseAgentConfigSchema.extend({
-  // NOTE: availableModels removed - models are now stored in model_config table
+const DocumentAgentConfigSchema = z.object({
+  enabled: z.boolean(),
+  rateLimit: z.object({
+    perMinute: z.number().min(1).max(1000),
+    perHour: z.number().min(1).max(10000),
+    perDay: z.number().min(1).max(100000)
+  }),
   tools: z.object({
-    createDocumentArtifact: ToolConfigSchema,
-    updateDocumentArtifact: ToolConfigSchema
+    create: ToolWithPromptsConfigSchema.optional(),
+    update: ToolWithPromptsConfigSchema.optional(),
+    suggestion: ToolWithPromptsConfigSchema.optional(),
+    revert: BaseToolConfigSchema.optional()
   })
 });
 
-const PythonAgentConfigSchema = BaseAgentConfigSchema.extend({
-  // NOTE: availableModels removed - models are now stored in model_config table
+const PythonAgentConfigSchema = z.object({
+  enabled: z.boolean(),
+  rateLimit: z.object({
+    perMinute: z.number().min(1).max(1000),
+    perHour: z.number().min(1).max(10000),
+    perDay: z.number().min(1).max(100000)
+  }),
   tools: z.object({
-    createCodeArtifact: ToolConfigSchema,
-    updateCodeArtifact: ToolConfigSchema
+    create: ToolWithPromptsConfigSchema.optional(),
+    update: ToolWithPromptsConfigSchema.optional(),
+    fix: ToolWithPromptsConfigSchema.optional(),
+    explain: ToolWithPromptsConfigSchema.optional(),
+    generate: ToolWithPromptsConfigSchema.optional(),
+    revert: BaseToolConfigSchema.optional()
   })
 });
 
-const MermaidAgentConfigSchema = BaseAgentConfigSchema.extend({
-  // NOTE: availableModels removed - models are now stored in model_config table
+const MermaidAgentConfigSchema = z.object({
+  enabled: z.boolean(),
+  rateLimit: z.object({
+    perMinute: z.number().min(1).max(1000),
+    perHour: z.number().min(1).max(10000),
+    perDay: z.number().min(1).max(100000)
+  }),
   tools: z.object({
-    createMermaidDiagrams: ToolConfigSchema,
-    updateMermaidDiagrams: ToolConfigSchema
+    create: ToolWithPromptsConfigSchema.optional(),
+    update: ToolWithPromptsConfigSchema.optional(),
+    fix: ToolWithPromptsConfigSchema.optional(),
+    generate: ToolWithPromptsConfigSchema.optional(),
+    revert: BaseToolConfigSchema.optional()
   })
 });
 
-const GitMCPAgentConfigSchema = BaseAgentConfigSchema.extend({
-  tools: z.record(z.string(), ToolConfigSchema) // Placeholder for future tools
+const GitMCPAgentConfigSchema = z.object({
+  enabled: z.boolean(),
+  systemPrompt: z.string().min(1, "System prompt is required"),
+  rateLimit: z.object({
+    perMinute: z.number().min(1).max(1000),
+    perHour: z.number().min(1).max(10000),
+    perDay: z.number().min(1).max(100000)
+  }),
+  tools: z.object({
+    repos: BaseToolConfigSchema.optional(),
+    issues: BaseToolConfigSchema.optional(),
+    pull_requests: BaseToolConfigSchema.optional(),
+    users: BaseToolConfigSchema.optional(),
+    code_search: BaseToolConfigSchema.optional(),
+    branches: BaseToolConfigSchema.optional()
+  })
 });
 
 const AppSettingsSchema = z.object({

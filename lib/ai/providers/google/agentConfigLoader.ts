@@ -182,9 +182,7 @@ export class AgentConfigLoader {
           this.gitMcpAgent.setGoogleApiKey(this.apiKey);
         }
 
-        // Set model if available
-        const modelId = this.chatModelId || 'gemini-2.0-flash-exp';
-        this.gitMcpAgent.setModel(modelId);
+        // Model will be set later via setGitMcpAgentModel() from chat agent
       }
     } catch (error) {
       console.error('❌ [AGENT-INIT] Failed to load GitHub MCP Agent:', error);
