@@ -1,22 +1,16 @@
 import "server-only";
 
-import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
-import { type LanguageModel } from 'ai';
-import { AgentConfigLoader } from './agentConfigLoader';
-import { AgentToolBuilder } from './agentToolBuilder';
-import type { ChatModelAgentConfig } from '../../core/types';
-import type {
-  ChatParams
-} from '../../core/types';
-import {
-  AgentError,
-  ErrorCodes
-} from '../../core/errors';
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
+import type { LanguageModel } from "ai";
+import { AgentError, ErrorCodes } from "../../core/errors";
+import type { ChatModelAgentConfig, ChatParams } from "../../core/types";
+import { AgentConfigLoader } from "./agentConfigLoader";
+import { AgentToolBuilder } from "./agentToolBuilder";
 
 /**
  * Model configuration interface for chat agent
  */
-interface ModelConfig {
+type ModelConfig = {
   id: string;
   name: string;
   description?: string;
@@ -26,7 +20,7 @@ interface ModelConfig {
   supportsThinkingMode?: boolean;
   fileInputEnabled?: boolean;
   allowedFileTypes?: string[];
-}
+};
 
 /**
  * Google Chat Agent implementation using Google AI SDK
@@ -34,11 +28,11 @@ interface ModelConfig {
  * This is the main orchestrator agent that communicates with users
  */
 export class GoogleChatAgent {
-  private config: ChatModelAgentConfig;
+  private readonly config: ChatModelAgentConfig;
   private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
-  private configLoader: AgentConfigLoader;
-  private toolBuilder: AgentToolBuilder;
+  private readonly configLoader: AgentConfigLoader;
+  private readonly toolBuilder: AgentToolBuilder;
 
   constructor(config: ChatModelAgentConfig) {
     this.config = config;
@@ -53,7 +47,7 @@ export class GoogleChatAgent {
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
     this.googleProvider = createGoogleGenerativeAI({
-      apiKey: apiKey,
+      apiKey,
     });
     this.configLoader.setApiKey(apiKey);
   }
@@ -154,13 +148,20 @@ export class GoogleChatAgent {
    * - Configuring thinking mode
    * - Creating UI message stream
    */
-  async chat(params: ChatParams & {
-    chatId: string;
-    onFinish?: (event: { messages: any[] }) => Promise<void>;
-    generateId?: () => string;
-  }) {
+  async chat(
+    params: ChatParams & {
+      chatId: string;
+      onFinish?: (event: { messages: any[] }) => Promise<void>;
+      generateId?: () => string;
+    }
+  ) {
     try {
-      const { streamText, createUIMessageStream, JsonToSseTransformStream, stepCountIs } = await import('ai');
+      const {
+        streamText,
+        createUIMessageStream,
+        JsonToSseTransformStream,
+        stepCountIs,
+      } = await import("ai");
 
       // Load specialized agent configurations
       await this.loadProviderToolsConfig();
@@ -190,19 +191,23 @@ export class GoogleChatAgent {
           const systemPrompt = this.config.systemPrompt;
 
           // Build tools from chat agent (includes provider tools and document agent if enabled)
-          const tools = this.toolBuilder.buildTools(dataStream, params.user, params.chatId);
+          const tools = this.toolBuilder.buildTools(
+            dataStream,
+            params.user,
+            params.chatId
+          );
 
           // Add artifact context to the first user message if available
-          let messages = params.messages.map(msg => ({
+          const messages = params.messages.map((msg) => ({
             role: msg.role,
-            content: msg.content
+            content: msg.content,
           }));
 
           // Inject artifact context into the latest user message
           if (params.artifactContext && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'user') {
-              lastMessage.content = lastMessage.content + params.artifactContext;
+            const lastMessage = messages.at(-1);
+            if (lastMessage && lastMessage.role === "user") {
+              lastMessage.content += params.artifactContext;
             }
           }
 
@@ -210,7 +215,7 @@ export class GoogleChatAgent {
           const streamConfig: any = {
             model,
             system: systemPrompt,
-            messages: messages,
+            messages,
             temperature: 0.7,
           };
 
@@ -222,7 +227,9 @@ export class GoogleChatAgent {
             // 2. Receive tool results
             // 3. Generate a final response using those results
             streamConfig.stopWhen = stepCountIs(5); // Stop after 5 steps (tool calls + responses)
-            console.log('🔧 [CHAT-AGENT] Multi-step execution enabled with stopWhen');
+            console.log(
+              "🔧 [CHAT-AGENT] Multi-step execution enabled with stopWhen"
+            );
           }
 
           // Add Google-specific thinking configuration
@@ -237,8 +244,14 @@ export class GoogleChatAgent {
             };
           }
 
-          console.log('🚀 [CHAT-AGENT] Starting streamText with tools:', tools ? Object.keys(tools) : 'none');
-          console.log('🚀 [CHAT-AGENT] Thinking mode enabled:', shouldEnableThinking);
+          console.log(
+            "🚀 [CHAT-AGENT] Starting streamText with tools:",
+            tools ? Object.keys(tools) : "none"
+          );
+          console.log(
+            "🚀 [CHAT-AGENT] Thinking mode enabled:",
+            shouldEnableThinking
+          );
 
           const result = streamText(streamConfig);
 
@@ -264,22 +277,20 @@ export class GoogleChatAgent {
       // Return direct streaming response
       return new Response(stream.pipeThrough(new JsonToSseTransformStream()), {
         headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-google-api-key',
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Authorization, x-google-api-key",
         },
       });
-
     } catch (error) {
-      console.error('Google Chat Agent error:', error);
+      console.error("Google Chat Agent error:", error);
       throw error;
     }
   }
-
-
 
   /**
    * Get the appropriate Google model instance
@@ -297,7 +308,7 @@ export class GoogleChatAgent {
    * Get model configuration by ID
    */
   private getModelConfig(modelId: string): any | undefined {
-    return this.config.availableModels?.find(model => model.id === modelId);
+    return this.config.availableModels?.find((model) => model.id === modelId);
   }
 
   /**
@@ -305,7 +316,9 @@ export class GoogleChatAgent {
    */
   supportsThinking(modelId: string): boolean {
     const modelConfig = this.getModelConfig(modelId);
-    return modelConfig?.thinkingEnabled || modelConfig?.supportsThinkingMode || false;
+    return (
+      modelConfig?.thinkingEnabled || modelConfig?.supportsThinkingMode || false
+    );
   }
 
   /**
@@ -314,28 +327,30 @@ export class GoogleChatAgent {
   private validateConfig(): void {
     if (!this.config) {
       throw new AgentError(
-        'google-chat',
+        "google-chat",
         ErrorCodes.INVALID_CONFIGURATION,
-        'Chat agent configuration is required'
+        "Chat agent configuration is required"
       );
     }
 
     if (!this.config.enabled) {
       throw new AgentError(
-        'google-chat',
+        "google-chat",
         ErrorCodes.AGENT_DISABLED,
-        'Google chat agent is disabled'
+        "Google chat agent is disabled"
       );
     }
 
     // Validate that at least one model is enabled (if availableModels is provided)
     if (this.config.availableModels) {
-      const enabledModels = this.config.availableModels.filter(model => model.enabled);
+      const enabledModels = this.config.availableModels.filter(
+        (model) => model.enabled
+      );
       if (enabledModels.length === 0) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'No enabled models found for Google chat agent'
+          "No enabled models found for Google chat agent"
         );
       }
     }
@@ -348,7 +363,9 @@ export class GoogleChatAgent {
     if (!this.config.availableModels) {
       return [];
     }
-    return this.config.availableModels.filter(model => model.enabled) as ModelConfig[];
+    return this.config.availableModels.filter(
+      (model) => model.enabled
+    ) as ModelConfig[];
   }
 
   /**
@@ -356,7 +373,11 @@ export class GoogleChatAgent {
    */
   getDefaultModel(): ModelConfig | null {
     const availableModels = this.getAvailableModels();
-    return availableModels.find(model => model.isDefault) || availableModels[0] || null;
+    return (
+      availableModels.find((model) => model.isDefault) ||
+      availableModels[0] ||
+      null
+    );
   }
 
   /**
@@ -371,9 +392,11 @@ export class GoogleChatAgent {
     }
 
     // Fall back to provider-level settings (use optional chaining for AgentConfig)
-    return (this.config as any).fileInputEnabled ||
-           (this.config as any).capabilities?.fileInput ||
-           false;
+    return (
+      (this.config as any).fileInputEnabled ||
+      (this.config as any).capabilities?.fileInput ||
+      false
+    );
   }
 
   /**
@@ -398,20 +421,22 @@ export class GoogleChatAgent {
     if (configWithExtras.fileInputTypes) {
       const allowedTypes: string[] = [];
 
-      Object.entries(configWithExtras.fileInputTypes).forEach(([category, types]: [string, any]) => {
-        if (category === 'images' && types.enabled) {
-          allowedTypes.push('image/*');
-        } else if (category === 'pdf' && types.enabled) {
-          allowedTypes.push('application/pdf');
-        } else if (typeof types === 'object' && types !== null) {
-          Object.entries(types).forEach(([ext, config]: [string, any]) => {
-            if (config.enabled) {
-              allowedTypes.push(ext);
-            }
-          });
+      Object.entries(configWithExtras.fileInputTypes).forEach(
+        ([category, types]: [string, any]) => {
+          if (category === "images" && types.enabled) {
+            allowedTypes.push("image/*");
+          } else if (category === "pdf" && types.enabled) {
+            allowedTypes.push("application/pdf");
+          } else if (typeof types === "object" && types !== null) {
+            Object.entries(types).forEach(([ext, config]: [string, any]) => {
+              if (config.enabled) {
+                allowedTypes.push(ext);
+              }
+            });
+          }
         }
-      });
-      
+      );
+
       return allowedTypes;
     }
 

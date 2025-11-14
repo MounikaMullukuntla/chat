@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { executePython, loadPackage, isPyodideReady, type ExecutionResult } from "@/lib/pyodide/runner";
+import { useCallback, useEffect, useState } from "react";
+import {
+  type ExecutionResult,
+  executePython,
+  loadPackage,
+} from "@/lib/pyodide/runner";
 
-export interface UsePyodideReturn {
+export type UsePyodideReturn = {
   isLoading: boolean;
   isReady: boolean;
   isExecuting: boolean;
@@ -11,7 +15,7 @@ export interface UsePyodideReturn {
   output: ExecutionResult | null;
   loadPyodidePackage: (packageName: string) => Promise<void>;
   clearOutput: () => void;
-}
+};
 
 /**
  * React hook for using Pyodide in components
@@ -32,7 +36,7 @@ export function usePyodide(): UsePyodideReturn {
         // Clear any existing Pyodide instance to prevent version conflicts
         if ((window as any).pyodide) {
           console.log("🧹 Clearing existing Pyodide instance");
-          delete (window as any).pyodide;
+          (window as any).pyodide = undefined;
         }
 
         // Check if Pyodide script is loaded
@@ -41,7 +45,8 @@ export function usePyodide(): UsePyodideReturn {
 
           // Load Pyodide script from CDN (using 0.25.1 for better compatibility)
           const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
+          script.src =
+            "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
           script.async = true;
           script.crossOrigin = "anonymous"; // Prevent CORS caching issues
 
@@ -50,7 +55,8 @@ export function usePyodide(): UsePyodideReturn {
               console.log("✅ Pyodide script loaded");
               resolve();
             };
-            script.onerror = () => reject(new Error("Failed to load Pyodide script from CDN"));
+            script.onerror = () =>
+              reject(new Error("Failed to load Pyodide script from CDN"));
             document.head.appendChild(script);
           });
         }
@@ -80,43 +86,49 @@ export function usePyodide(): UsePyodideReturn {
   }, []);
 
   // Execute Python code
-  const execute = useCallback(async (code: string) => {
-    if (!isReady) {
-      console.warn("Pyodide not ready yet");
-      return;
-    }
+  const execute = useCallback(
+    async (code: string) => {
+      if (!isReady) {
+        console.warn("Pyodide not ready yet");
+        return;
+      }
 
-    setIsExecuting(true);
+      setIsExecuting(true);
 
-    try {
-      const result = await executePython(code);
-      setOutput(result);
-    } catch (error) {
-      console.error("Execution error:", error);
-      setOutput({
-        stdout: "",
-        stderr: "",
-        error: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setIsExecuting(false);
-    }
-  }, [isReady]);
+      try {
+        const result = await executePython(code);
+        setOutput(result);
+      } catch (error) {
+        console.error("Execution error:", error);
+        setOutput({
+          stdout: "",
+          stderr: "",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    [isReady]
+  );
 
   // Load additional packages
-  const loadPyodidePackage = useCallback(async (packageName: string) => {
-    if (!isReady) {
-      console.warn("Pyodide not ready yet");
-      return;
-    }
+  const loadPyodidePackage = useCallback(
+    async (packageName: string) => {
+      if (!isReady) {
+        console.warn("Pyodide not ready yet");
+        return;
+      }
 
-    try {
-      await loadPackage(packageName);
-    } catch (error) {
-      console.error(`Failed to load package ${packageName}:`, error);
-      throw error;
-    }
-  }, [isReady]);
+      try {
+        await loadPackage(packageName);
+      } catch (error) {
+        console.error(`Failed to load package ${packageName}:`, error);
+        throw error;
+      }
+    },
+    [isReady]
+  );
 
   // Clear output
   const clearOutput = useCallback(() => {

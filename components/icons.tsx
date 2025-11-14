@@ -1215,19 +1215,19 @@ export const WarningIcon = ({ size = 16 }: { size?: number }) => {
 export const DiffIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <path
+        d="M3 3h4m-4 4h4m-4 4h4M10 3h4M10 7h4M10 11h4"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M3 3h4m-4 4h4m-4 4h4M10 3h4M10 7h4M10 11h4"
       />
     </svg>
   );
@@ -1236,19 +1236,19 @@ export const DiffIcon = ({ size = 16 }: { size?: number }) => {
 export const WrenchIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <path
+        d="M13.5 3.5L10 7l1 1 3.5-3.5a3 3 0 10-1-1zM7 10L3.5 13.5a1 1 0 01-1.5-1.5L6 8l1 1z"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M13.5 3.5L10 7l1 1 3.5-3.5a3 3 0 10-1-1zM7 10L3.5 13.5a1 1 0 01-1.5-1.5L6 8l1 1z"
       />
     </svg>
   );
@@ -1257,25 +1257,25 @@ export const WrenchIcon = ({ size = 16 }: { size?: number }) => {
 export const SaveIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <path
+        d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h6.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V13.5a1 1 0 01-1 1z"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h6.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V13.5a1 1 0 01-1 1z"
       />
       <path
+        d="M10.5 1.5v3a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5v-3M5.5 14.5v-4a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v4"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M10.5 1.5v3a.5.5 0 01-.5.5H6a.5.5 0 01-.5-.5v-3M5.5 14.5v-4a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v4"
       />
     </svg>
   );
@@ -1284,13 +1284,13 @@ export const SaveIcon = ({ size = 16 }: { size?: number }) => {
 export const ZoomInIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <circle
         cx="7"
@@ -1301,10 +1301,10 @@ export const ZoomInIcon = ({ size = 16 }: { size?: number }) => {
         strokeWidth="1.5"
       />
       <path
+        d="M7 5v4M5 7h4M10 10l3.5 3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M7 5v4M5 7h4M10 10l3.5 3.5"
       />
     </svg>
   );
@@ -1313,13 +1313,13 @@ export const ZoomInIcon = ({ size = 16 }: { size?: number }) => {
 export const ZoomOutIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <circle
         cx="7"
@@ -1330,10 +1330,10 @@ export const ZoomOutIcon = ({ size = 16 }: { size?: number }) => {
         strokeWidth="1.5"
       />
       <path
+        d="M5 7h4M10 10l3.5 3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M5 7h4M10 10l3.5 3.5"
       />
     </svg>
   );
@@ -1342,13 +1342,13 @@ export const ZoomOutIcon = ({ size = 16 }: { size?: number }) => {
 export const ZoomResetIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <circle
         cx="7"
@@ -1359,16 +1359,16 @@ export const ZoomResetIcon = ({ size = 16 }: { size?: number }) => {
         strokeWidth="1.5"
       />
       <path
+        d="M7 5v4M5 7h4M10 10l3.5 3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M7 5v4M5 7h4M10 10l3.5 3.5"
       />
       <path
+        d="M11.5 3.5l1-1M3.5 11.5l-1 1"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M11.5 3.5l1-1M3.5 11.5l-1 1"
       />
     </svg>
   );
@@ -1377,19 +1377,19 @@ export const ZoomResetIcon = ({ size = 16 }: { size?: number }) => {
 export const PanIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
+      fill="none"
       height={size}
+      stroke="currentColor"
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
-      fill="none"
-      stroke="currentColor"
     >
       <path
+        d="M8 2.5v11M8 2.5l-2 2M8 2.5l2 2M8 13.5l-2-2M8 13.5l2-2M2.5 8h11M2.5 8l2-2M2.5 8l2 2M13.5 8l-2-2M13.5 8l-2 2"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.5"
-        d="M8 2.5v11M8 2.5l-2 2M8 2.5l2 2M8 13.5l-2-2M8 13.5l2-2M2.5 8h11M2.5 8l2-2M2.5 8l2 2M13.5 8l-2-2M13.5 8l-2 2"
       />
     </svg>
   );

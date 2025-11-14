@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Editor } from "@monaco-editor/react";
+import { useEffect, useState } from "react";
 
-interface PythonCodeEditorProps {
+type PythonCodeEditorProps = {
   content: string;
   onChange?: (content: string) => void;
   readOnly?: boolean;
   versionNumber?: number;
-}
+};
 
 export function PythonCodeEditor({
   content,
@@ -33,30 +33,24 @@ export function PythonCodeEditor({
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-gray-900 text-gray-100">
       {/* Editor Header */}
-      <div className="flex items-center justify-between border-b border-gray-700 bg-gray-800 px-4 py-2">
+      <div className="flex items-center justify-between border-gray-700 border-b bg-gray-800 px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-300">
-            Python Code
-          </span>
+          <span className="font-medium text-gray-300 text-sm">Python Code</span>
           {versionNumber && (
-            <span className="rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-400">
+            <span className="rounded bg-gray-700 px-2 py-0.5 text-gray-400 text-xs">
               v{versionNumber}
             </span>
           )}
         </div>
-        {readOnly && (
-          <span className="text-xs text-gray-500">Read-only</span>
-        )}
+        {readOnly && <span className="text-gray-500 text-xs">Read-only</span>}
       </div>
 
       {/* Monaco Editor */}
       <div className="flex-1 overflow-hidden">
         <Editor
-          height="100%"
           defaultLanguage="python"
-          value={content}
+          height="100%"
           onChange={handleEditorChange}
-          theme="vs-dark"
           options={{
             readOnly,
             minimap: { enabled: true },
@@ -84,12 +78,14 @@ export function PythonCodeEditor({
               strings: false,
             },
           }}
+          theme="vs-dark"
+          value={content}
         />
       </div>
 
       {/* Editor Footer - Info */}
-      <div className="border-t border-gray-700 bg-gray-800 px-4 py-2">
-        <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="border-gray-700 border-t bg-gray-800 px-4 py-2">
+        <div className="flex items-center justify-between text-gray-500 text-xs">
           <span>
             {lineCount} lines • {content.length} characters
           </span>

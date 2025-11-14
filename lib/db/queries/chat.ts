@@ -50,7 +50,10 @@ export async function saveChat({
     });
   } catch (error) {
     console.error("Database error in saveChat:", error);
-    throw new ChatSDKError("bad_request:database", `Failed to save chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new ChatSDKError(
+      "bad_request:database",
+      `Failed to save chat: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 
@@ -84,7 +87,7 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       return { deletedCount: 0 };
     }
 
-    const chatIds = userChats.map(c => c.id);
+    const chatIds = userChats.map((c) => c.id);
 
     await db.delete(vote).where(inArray(vote.chatId, chatIds));
     await db.delete(message).where(inArray(message.chatId, chatIds));
@@ -146,7 +149,9 @@ export async function getChatsByUserId({
         );
       }
 
-      filteredChats = await query(gt(chat.createdAt, selectedChat.createdAt)) as Chat[];
+      filteredChats = (await query(
+        gt(chat.createdAt, selectedChat.createdAt)
+      )) as Chat[];
     } else if (endingBefore) {
       const [selectedChat] = await db
         .select()
@@ -161,9 +166,11 @@ export async function getChatsByUserId({
         );
       }
 
-      filteredChats = await query(lt(chat.createdAt, selectedChat.createdAt)) as Chat[];
+      filteredChats = (await query(
+        lt(chat.createdAt, selectedChat.createdAt)
+      )) as Chat[];
     } else {
-      filteredChats = await query() as Chat[];
+      filteredChats = (await query()) as Chat[];
     }
 
     const hasMore = filteredChats.length > limit;
@@ -176,12 +183,16 @@ export async function getChatsByUserId({
     console.error("Database error in getChatsByUserId:", error);
     throw new ChatSDKError(
       "bad_request:database",
-      `Failed to get chats by user id: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to get chats by user id: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
 
-export async function getChatById({ id }: { id: string }): Promise<Chat | null> {
+export async function getChatById({
+  id,
+}: {
+  id: string;
+}): Promise<Chat | null> {
   try {
     const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
     if (!selectedChat) {
@@ -202,7 +213,11 @@ export async function saveMessages({ messages }: { messages: DBMessage[] }) {
   }
 }
 
-export async function getMessagesByChatId({ id }: { id: string }): Promise<DBMessage[]> {
+export async function getMessagesByChatId({
+  id,
+}: {
+  id: string;
+}): Promise<DBMessage[]> {
   try {
     const result = await db
       .select()

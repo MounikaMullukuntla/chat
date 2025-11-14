@@ -1,12 +1,18 @@
-import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
+import type { User } from "@supabase/supabase-js";
 import type { ArtifactKind } from "@/components/artifact";
+import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import {
   deleteDocumentsByIdAfterTimestamp,
   getDocumentsById,
   saveDocument,
 } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
-import { logApiError, logPermissionError, ErrorCategory, ErrorSeverity } from "@/lib/errors/logger";
+import {
+  ErrorCategory,
+  ErrorSeverity,
+  logApiError,
+  logPermissionError,
+} from "@/lib/errors/logger";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,43 +24,43 @@ export async function GET(request: Request) {
       "Document GET request missing required id parameter",
       {
         request: {
-          method: 'GET',
+          method: "GET",
           url: request.url,
-          headers: Object.fromEntries(request.headers.entries())
-        }
+          headers: Object.fromEntries(request.headers.entries()),
+        },
       },
       ErrorSeverity.WARNING
     );
-    
+
     return await new ChatSDKError(
       "bad_request:api",
       "Parameter id is missing"
     ).toResponse({
       request_path: request.url,
-      request_method: 'GET',
-      user_agent: request.headers.get('user-agent') || undefined
+      request_method: "GET",
+      user_agent: request.headers.get("user-agent") || undefined,
     });
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;
   } catch (error) {
     await logApiError(
       ErrorCategory.UNAUTHORIZED_ACCESS,
-      `Document GET request authentication failed: ${error instanceof Error ? error.message : 'Unknown auth error'}`,
+      `Document GET request authentication failed: ${error instanceof Error ? error.message : "Unknown auth error"}`,
       {
         request: {
-          method: 'GET',
+          method: "GET",
           url: request.url,
-          headers: Object.fromEntries(request.headers.entries())
-        }
+          headers: Object.fromEntries(request.headers.entries()),
+        },
       },
       ErrorSeverity.WARNING
     );
-    
+
     return createAuthErrorResponse(error as Error);
   }
 
@@ -68,14 +74,14 @@ export async function GET(request: Request) {
         `Document not found: ${id}`,
         {
           request: {
-            method: 'GET',
-            url: request.url
+            method: "GET",
+            url: request.url,
           },
-          user: user
+          user,
         },
         ErrorSeverity.INFO
       );
-      
+
       return new ChatSDKError("not_found:document").toResponse();
     }
 
@@ -86,12 +92,12 @@ export async function GET(request: Request) {
         {
           documentOwnerId: document.user_id,
           requestingUserId: user.id,
-          requestUrl: request.url
+          requestUrl: request.url,
         },
         user.id,
         ErrorSeverity.WARNING
       );
-      
+
       return new ChatSDKError("forbidden:document").toResponse();
     }
 
@@ -99,17 +105,17 @@ export async function GET(request: Request) {
   } catch (error) {
     await logApiError(
       ErrorCategory.DATABASE_ERROR,
-      `Failed to retrieve document ${id} from database: ${error instanceof Error ? error.message : 'Unknown database error'}`,
+      `Failed to retrieve document ${id} from database: ${error instanceof Error ? error.message : "Unknown database error"}`,
       {
         request: {
-          method: 'GET',
-          url: request.url
+          method: "GET",
+          url: request.url,
         },
-        user: user
+        user,
       },
       ErrorSeverity.ERROR
     );
-    
+
     return new ChatSDKError("bad_request:database").toResponse();
   }
 }
@@ -126,7 +132,7 @@ export async function POST(request: Request) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;
@@ -182,7 +188,7 @@ export async function DELETE(request: Request) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;

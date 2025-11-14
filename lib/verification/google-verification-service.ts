@@ -2,19 +2,19 @@
  * Google AI API key verification service
  */
 
-import { BaseVerificationService } from './base-verification-service';
-import { VerificationResult, VerificationErrorCode } from './types';
+import { BaseVerificationService } from "./base-verification-service";
+import { VerificationErrorCode, type VerificationResult } from "./types";
 
 export class GoogleVerificationService extends BaseVerificationService {
-  protected providerName = 'Google AI';
-  private readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  protected providerName = "Google AI";
+  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   async verify(apiKey: string): Promise<VerificationResult> {
     try {
       // Validate key format
       if (!this.validateKeyFormat(apiKey)) {
         throw this.createVerificationError(
-          'Invalid API key format',
+          "Invalid API key format",
           VerificationErrorCode.INVALID_FORMAT
         );
       }
@@ -23,81 +23,84 @@ export class GoogleVerificationService extends BaseVerificationService {
       const response = await this.makeRequest(
         `${this.baseUrl}/models?key=${encodeURIComponent(apiKey)}`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json'
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
 
       // Handle different response status codes
       if (response.status === 200) {
         const data = await response.json();
-        
+
         // Verify we got a valid response with models
         if (data.models && Array.isArray(data.models)) {
           return {
             success: true,
             details: {
-              provider: 'Google AI',
-              model: data.models.length > 0 ? data.models[0].name : 'Available',
+              provider: "Google AI",
+              model: data.models.length > 0 ? data.models[0].name : "Available",
               usage: {
-                modelsCount: data.models.length
-              }
-            }
+                modelsCount: data.models.length,
+              },
+            },
           };
-        } else {
-          throw this.createVerificationError(
-            'Invalid response format from Google AI API',
-            VerificationErrorCode.SERVICE_UNAVAILABLE
-          );
         }
-      } else if (response.status === 400) {
+        throw this.createVerificationError(
+          "Invalid response format from Google AI API",
+          VerificationErrorCode.SERVICE_UNAVAILABLE
+        );
+      }
+      if (response.status === 400) {
         const errorData = await response.json().catch(() => ({}));
-        
-        if (errorData.error?.message?.includes('API key')) {
+
+        if (errorData.error?.message?.includes("API key")) {
           throw this.createVerificationError(
-            'Invalid API key',
+            "Invalid API key",
             VerificationErrorCode.INVALID_KEY
           );
         }
-        
+
         throw this.createVerificationError(
-          'Bad request to Google AI API',
+          "Bad request to Google AI API",
           VerificationErrorCode.AUTHENTICATION_FAILED
         );
-      } else if (response.status === 401 || response.status === 403) {
+      }
+      if (response.status === 401 || response.status === 403) {
         throw this.createVerificationError(
-          'Authentication failed',
+          "Authentication failed",
           VerificationErrorCode.AUTHENTICATION_FAILED
         );
-      } else if (response.status === 429) {
+      }
+      if (response.status === 429) {
         const rateLimitInfo = this.parseRateLimitInfo(response.headers);
         throw this.createVerificationError(
-          'Rate limit exceeded',
+          "Rate limit exceeded",
           VerificationErrorCode.RATE_LIMITED,
           response.status,
           rateLimitInfo
         );
-      } else if (response.status === 402) {
+      }
+      if (response.status === 402) {
         throw this.createVerificationError(
-          'Insufficient quota or billing not enabled',
+          "Insufficient quota or billing not enabled",
           VerificationErrorCode.INSUFFICIENT_QUOTA
         );
-      } else if (response.status >= 500) {
+      }
+      if (response.status >= 500) {
         throw this.createVerificationError(
-          'Google AI service unavailable',
+          "Google AI service unavailable",
           VerificationErrorCode.SERVICE_UNAVAILABLE,
           response.status
         );
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw this.createVerificationError(
-          errorData.error?.message || `HTTP ${response.status}`,
-          VerificationErrorCode.AUTHENTICATION_FAILED,
-          response.status
-        );
       }
+      const errorData = await response.json().catch(() => ({}));
+      throw this.createVerificationError(
+        errorData.error?.message || `HTTP ${response.status}`,
+        VerificationErrorCode.AUTHENTICATION_FAILED,
+        response.status
+      );
     } catch (error) {
       return this.handleError(error);
     }
@@ -112,9 +115,9 @@ export class GoogleVerificationService extends BaseVerificationService {
     }
 
     const trimmedKey = apiKey.trim();
-    
+
     // Google AI API keys typically start with "AIza" and are about 39 characters long
-    if (!trimmedKey.startsWith('AIza')) {
+    if (!trimmedKey.startsWith("AIza")) {
       return false;
     }
 

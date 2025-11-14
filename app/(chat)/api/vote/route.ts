@@ -1,4 +1,5 @@
-import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
+import type { User } from "@supabase/supabase-js";
+import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;
@@ -53,7 +54,7 @@ export async function PATCH(request: Request) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;

@@ -3,12 +3,11 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { memo } from "react";
+import { useLocalStorage } from "usehooks-ts";
+import { useModelCapabilities } from "@/hooks/use-model-capabilities";
 import type { ChatMessage } from "@/lib/types";
 import { Suggestion } from "./elements/suggestion";
 import type { VisibilityType } from "./visibility-selector";
-import type { AdminConfigSummary } from "@/lib/types";
-import { useLocalStorage } from "usehooks-ts";
-import { useModelCapabilities } from "@/hooks/use-model-capabilities";
 
 type SuggestedActionsProps = {
   chatId: string;
@@ -56,10 +55,20 @@ function PureSuggestedActions({
               window.history.replaceState({}, "", `/chat/${chatId}`);
 
               // Check if thinking mode is supported and enabled (same logic as multimodal-input)
-              const providerConfig = selectedProvider && adminConfig?.providers?.[selectedProvider];
-              const modelConfig = selectedModelId && providerConfig && typeof providerConfig === 'object' && providerConfig.models?.[selectedModelId];
-              const supportsThinkingMode = (modelConfig && typeof modelConfig === 'object' && modelConfig.supportsThinkingMode) || false;
-              const shouldIncludeThinkingMode = supportsThinkingMode && thinkingMode;
+              const providerConfig =
+                selectedProvider && adminConfig?.providers?.[selectedProvider];
+              const modelConfig =
+                selectedModelId &&
+                providerConfig &&
+                typeof providerConfig === "object" &&
+                providerConfig.models?.[selectedModelId];
+              const supportsThinkingMode =
+                (modelConfig &&
+                  typeof modelConfig === "object" &&
+                  modelConfig.supportsThinkingMode) ||
+                false;
+              const shouldIncludeThinkingMode =
+                supportsThinkingMode && thinkingMode;
 
               const messageData: any = {
                 role: "user",

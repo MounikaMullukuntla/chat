@@ -1,19 +1,8 @@
 import "server-only";
 
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  gte,
-  lt,
-} from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import { ChatSDKError } from "../../errors";
-import {
-  rateLimitTracking,
-  usageLogs,
-} from "../drizzle-schema";
+import { rateLimitTracking, usageLogs } from "../drizzle-schema";
 import { db } from "./base";
 
 // =====================================================
@@ -107,11 +96,7 @@ export async function getUsageLogsByUserId({
   }
 }
 
-export async function getUsageLogsByChatId({
-  chatId,
-}: {
-  chatId: string;
-}) {
+export async function getUsageLogsByChatId({ chatId }: { chatId: string }) {
   try {
     return await db
       .select()

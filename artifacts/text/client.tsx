@@ -44,9 +44,10 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
           ...draftArtifact,
           content: newContent,
           // Show panel when streaming starts and we have content
-          isVisible: draftArtifact.status === "streaming" && newContent.length > 0
-            ? true
-            : draftArtifact.isVisible,
+          isVisible:
+            draftArtifact.status === "streaming" && newContent.length > 0
+              ? true
+              : draftArtifact.isVisible,
           status: "streaming",
         };
       });
@@ -153,7 +154,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
           parts: [
             {
               type: "text",
-              text: `Please add final polish to the document${documentId ? ` (Document ID: ${documentId})` : ''}. Check for grammar, add section titles for better structure, and ensure everything reads smoothly.`,
+              text: `Please add final polish to the document${documentId ? ` (Document ID: ${documentId})` : ""}. Check for grammar, add section titles for better structure, and ensure everything reads smoothly.`,
             },
           ],
         });
@@ -168,7 +169,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
           parts: [
             {
               type: "text",
-              text: `Please analyze the document${documentId ? ` (Document ID: ${documentId})` : ''} and provide inline suggestions for improvement.`,
+              text: `Please analyze the document${documentId ? ` (Document ID: ${documentId})` : ""} and provide inline suggestions for improvement.`,
             },
           ],
         });

@@ -1,22 +1,20 @@
 "use client";
 
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { memo, type ChangeEvent } from "react";
-import type { ChatMessage } from "@/lib/types";
+import { type ChangeEvent, memo } from "react";
 import { toast } from "sonner";
-import { Button } from "./ui/button";
+import type { AdminConfigSummary, ChatMessage } from "@/lib/types";
 import { PaperclipIcon } from "./icons";
+import { Button } from "./ui/button";
 
-import type { AdminConfigSummary } from "@/lib/types";
-
-interface ConditionalFileInputProps {
+type ConditionalFileInputProps = {
   selectedProvider: string;
   selectedModel: string;
   adminConfig?: AdminConfigSummary;
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   status: UseChatHelpers<ChatMessage>["status"];
-}
+};
 
 function PureConditionalFileInput({
   selectedProvider,
@@ -43,8 +41,6 @@ function PureConditionalFileInput({
     return providerConfig.enabled && providerConfig.fileInputEnabled;
   };
 
-
-
   // Don't render anything if file input should not be shown
   if (!shouldShowFileInput()) {
     return null;
@@ -52,7 +48,6 @@ function PureConditionalFileInput({
 
   return (
     <Button
-      type="button"
       className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
       data-testid="attachments-button"
       disabled={status !== "ready"}
@@ -60,6 +55,7 @@ function PureConditionalFileInput({
         event.preventDefault();
         fileInputRef.current?.click();
       }}
+      type="button"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
@@ -72,7 +68,7 @@ export const ConditionalFileInput = memo(PureConditionalFileInput);
 // Utility function to create validated file change handler
 export function createValidatedFileChangeHandler(
   selectedProvider: string,
-  selectedModel: string,
+  _selectedModel: string,
   adminConfig: AdminConfigSummary | undefined,
   originalHandler: (event: ChangeEvent<HTMLInputElement>) => void,
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>
@@ -99,7 +95,7 @@ export function createValidatedFileChangeHandler(
     };
 
     const allowedTypes = getAllowedFileTypes();
-    
+
     // If no restrictions are configured, allow all files
     if (allowedTypes.length === 0) {
       return originalHandler(event);
@@ -109,27 +105,27 @@ export function createValidatedFileChangeHandler(
     const invalid: File[] = [];
 
     Array.from(files).forEach((file) => {
-      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      const fileExtension = file.name.split(".").pop()?.toLowerCase();
       const mimeType = file.type.toLowerCase();
-      
+
       // Check if file is allowed by extension or MIME type
       const isAllowed = allowedTypes.some((allowedType) => {
         const normalizedType = allowedType.toLowerCase();
-        
+
         // Check by extension (e.g., "pdf", "jpg")
         if (fileExtension === normalizedType) {
           return true;
         }
-        
+
         // Check by MIME type (e.g., "image/*", "application/pdf")
-        if (normalizedType.includes('/')) {
-          if (normalizedType.endsWith('/*')) {
-            const baseType = normalizedType.split('/')[0];
-            return mimeType.startsWith(baseType + '/');
+        if (normalizedType.includes("/")) {
+          if (normalizedType.endsWith("/*")) {
+            const baseType = normalizedType.split("/")[0];
+            return mimeType.startsWith(`${baseType}/`);
           }
           return mimeType === normalizedType;
         }
-        
+
         return false;
       });
 
@@ -142,9 +138,9 @@ export function createValidatedFileChangeHandler(
 
     // Show error for invalid files
     if (invalid.length > 0) {
-      const invalidFileNames = invalid.map(f => f.name).join(', ');
+      const invalidFileNames = invalid.map((f) => f.name).join(", ");
       toast.error(
-        `Invalid file type(s): ${invalidFileNames}. Allowed types: ${allowedTypes.join(', ')}`
+        `Invalid file type(s): ${invalidFileNames}. Allowed types: ${allowedTypes.join(", ")}`
       );
     }
 
@@ -152,22 +148,22 @@ export function createValidatedFileChangeHandler(
     if (valid.length > 0) {
       // Create a new FileList with only valid files
       const dataTransfer = new DataTransfer();
-      valid.forEach(file => dataTransfer.items.add(file));
-      
+      valid.forEach((file) => dataTransfer.items.add(file));
+
       // Create a new event with the filtered files
       const newEvent = {
         ...event,
         target: {
           ...event.target,
-          files: dataTransfer.files
-        }
+          files: dataTransfer.files,
+        },
       } as ChangeEvent<HTMLInputElement>;
-      
+
       originalHandler(newEvent);
     } else if (invalid.length > 0) {
       // Clear the input if all files were invalid
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };

@@ -1,13 +1,13 @@
 import "server-only";
 
-import { streamObject } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
+import type { UIMessageStreamWriter } from "ai";
+import { streamObject } from "ai";
+import { z } from "zod";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
-import { z } from "zod";
 
 /**
  * Validate Python code (basic validation)
@@ -17,7 +17,7 @@ function validatePythonCode(code: string): boolean {
 
   // Basic checks
   const hasContent = trimmed.length > 0;
-  const notEmpty = trimmed !== '';
+  const notEmpty = trimmed !== "";
 
   // Check for common Python patterns (imports, functions, classes, or basic code)
   const hasPythonPatterns =
@@ -27,8 +27,8 @@ function validatePythonCode(code: string): boolean {
     /class\s+\w+/.test(trimmed) ||
     /print\s*\(/.test(trimmed) ||
     /if\s+__name__\s*==/.test(trimmed) ||
-    trimmed.includes('=') ||
-    trimmed.includes('#');
+    trimmed.includes("=") ||
+    trimmed.includes("#");
 
   return hasContent && notEmpty && hasPythonPatterns;
 }
@@ -49,14 +49,25 @@ export async function streamPythonCode(params: {
   metadata?: Record<string, any>;
   streamToUI?: boolean; // If false, accumulate without streaming (for generate mode)
 }): Promise<{ documentId: string; content: string }> {
-  const { title, instruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {}, streamToUI = true } = params;
+  const {
+    title,
+    instruction,
+    systemPrompt,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+    metadata = {},
+    streamToUI = true,
+  } = params;
   const documentId = generateUUID();
 
-  console.log('🐍 [STREAM-CREATE] Starting real-time code creation');
-  console.log('🐍 [STREAM-CREATE] Document ID:', documentId);
-  console.log('🐍 [STREAM-CREATE] Title:', title);
-  console.log('🐍 [STREAM-CREATE] Model:', modelId);
-  console.log('🐍 [STREAM-CREATE] Stream to UI:', streamToUI);
+  console.log("🐍 [STREAM-CREATE] Starting real-time code creation");
+  console.log("🐍 [STREAM-CREATE] Document ID:", documentId);
+  console.log("🐍 [STREAM-CREATE] Title:", title);
+  console.log("🐍 [STREAM-CREATE] Model:", modelId);
+  console.log("🐍 [STREAM-CREATE] Stream to UI:", streamToUI);
 
   // Write artifact metadata only if streaming to UI
   if (streamToUI) {
@@ -84,7 +95,7 @@ export async function streamPythonCode(params: {
       transient: true,
     });
 
-    console.log('🐍 [STREAM-CREATE] Metadata written, starting LLM generation');
+    console.log("🐍 [STREAM-CREATE] Metadata written, starting LLM generation");
   }
 
   // Get the Google model instance with proper API key handling
@@ -103,11 +114,15 @@ export async function streamPythonCode(params: {
       system: systemPrompt,
       prompt: instruction,
       schema: z.object({
-        code: z.string().describe('Complete Python code with proper syntax, error handling, and documentation'),
+        code: z
+          .string()
+          .describe(
+            "Complete Python code with proper syntax, error handling, and documentation"
+          ),
       }),
     });
 
-    console.log('🐍 [STREAM-CREATE] LLM streaming started');
+    console.log("🐍 [STREAM-CREATE] LLM streaming started");
 
     // Accumulate content as it streams
     let generatedCode = "";
@@ -130,18 +145,23 @@ export async function streamPythonCode(params: {
       }
     }
 
-    console.log('🐍 [STREAM-CREATE] LLM generation complete');
-    console.log('🐍 [STREAM-CREATE] Total content length:', generatedCode.length);
-    console.log('🐍 [STREAM-CREATE] Total chunks streamed:', chunkCount);
+    console.log("🐍 [STREAM-CREATE] LLM generation complete");
+    console.log(
+      "🐍 [STREAM-CREATE] Total content length:",
+      generatedCode.length
+    );
+    console.log("🐍 [STREAM-CREATE] Total chunks streamed:", chunkCount);
 
     // Validate Python code before saving
     if (!validatePythonCode(generatedCode)) {
-      console.warn('⚠️ [STREAM-CREATE] Generated code may not be valid Python, but continuing anyway');
+      console.warn(
+        "⚠️ [STREAM-CREATE] Generated code may not be valid Python, but continuing anyway"
+      );
     }
 
     // Save document to database if user is provided and streaming to UI
     if (user?.id && streamToUI) {
-      console.log('🐍 [STREAM-CREATE] Saving to database for user:', user.id);
+      console.log("🐍 [STREAM-CREATE] Saving to database for user:", user.id);
       await saveDocument({
         id: documentId,
         title,
@@ -151,17 +171,17 @@ export async function streamPythonCode(params: {
         chatId,
         metadata: {
           ...metadata,
-          updateType: 'create',
-          agent: 'GooglePythonAgentStreaming',
+          updateType: "create",
+          agent: "GooglePythonAgentStreaming",
           createdAt: new Date().toISOString(),
           modelUsed: modelId,
         },
       });
-      console.log('✅ [STREAM-CREATE] Saved to database');
-    } else if (!streamToUI) {
-      console.log('ℹ️ [STREAM-CREATE] Generate mode - skipping database save');
+      console.log("✅ [STREAM-CREATE] Saved to database");
+    } else if (streamToUI) {
+      console.log("⚠️ [STREAM-CREATE] No user provided, skipping database save");
     } else {
-      console.log('⚠️ [STREAM-CREATE] No user provided, skipping database save');
+      console.log("ℹ️ [STREAM-CREATE] Generate mode - skipping database save");
     }
 
     // Signal streaming complete (only if streaming to UI)
@@ -173,12 +193,12 @@ export async function streamPythonCode(params: {
       });
     }
 
-    console.log('✅ [STREAM-CREATE] Code creation completed successfully');
+    console.log("✅ [STREAM-CREATE] Code creation completed successfully");
     return { documentId, content: generatedCode };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [STREAM-CREATE] Generation failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
 
     // Write error to stream
     if (streamToUI) {

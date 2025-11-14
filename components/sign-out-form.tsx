@@ -11,10 +11,10 @@ export const SignOutForm = () => {
         try {
           // Create Supabase client for server-side sign out
           const supabase = await createServerComponentClient();
-          
+
           // Sign out the user
           const { error } = await supabase.auth.signOut();
-          
+
           if (error) {
             console.error("Sign out error:", error);
             // Even if there's an error, we should still redirect

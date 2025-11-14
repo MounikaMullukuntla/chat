@@ -456,8 +456,8 @@ function PureArtifact({
                 isCurrentVersion={isCurrentVersion}
                 metadata={metadata}
                 mode={mode}
-                setMetadata={setMetadata}
                 onSaveContent={saveContent}
+                setMetadata={setMetadata}
               />
             </div>
 
@@ -481,23 +481,23 @@ function PureArtifact({
                 suggestions={[]}
                 title={artifact.title}
               />
-
               <AnimatePresence>
                 {isCurrentVersion && (
                   <Toolbar
                     artifactKind={artifact.kind}
                     documentId={artifact.documentId}
                     isToolbarVisible={isToolbarVisible}
+                    metadata={metadata}
                     sendMessage={sendMessage}
                     setIsToolbarVisible={setIsToolbarVisible}
                     setMessages={setMessages}
+                    setMetadata={setMetadata}
                     status={status}
                     stop={stop}
-                    metadata={metadata}
-                    setMetadata={setMetadata}
                   />
                 )}
-              </AnimatePresence>            </div>
+              </AnimatePresence>{" "}
+            </div>
 
             <AnimatePresence>
               {!isCurrentVersion && (

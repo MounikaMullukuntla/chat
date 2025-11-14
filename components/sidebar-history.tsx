@@ -22,11 +22,11 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/auth/hooks";
 import type { Chat } from "@/lib/db/drizzle-schema";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
-import { useAuth } from "@/lib/auth/hooks";
 
 type GroupedChats = {
   today: Chat[];

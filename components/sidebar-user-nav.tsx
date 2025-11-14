@@ -1,12 +1,11 @@
 "use client";
 
-import { ChevronUp, Settings, Shield, Sun, Moon, LogOut } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { ChevronUp, LogOut, Moon, Settings, Shield, Sun } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import type { User } from "@supabase/supabase-js";
-import { useAuth, useRole } from "@/lib/auth/hooks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth, useRole } from "@/lib/auth/hooks";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
 
@@ -31,8 +31,6 @@ export function SidebarUserNav({ user: propUser }: { user?: User }) {
   // Use the user from auth hook if available, otherwise use prop user
   const currentUser = user || propUser;
   const status = loading ? "loading" : "authenticated";
-
-
 
   return (
     <SidebarMenu>
@@ -76,21 +74,27 @@ export function SidebarUserNav({ user: propUser }: { user?: User }) {
             side="top"
           >
             <DropdownMenuItem asChild data-testid="user-nav-item-settings">
-              <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+              <Link
+                className="flex cursor-pointer items-center gap-2"
+                href="/settings"
+              >
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem asChild data-testid="user-nav-item-admin">
-                <Link href="/admin" className="flex items-center gap-2 cursor-pointer">
+                <Link
+                  className="flex cursor-pointer items-center gap-2"
+                  href="/admin"
+                >
                   <Shield className="h-4 w-4" />
                   Admin
                 </Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="cursor-pointer flex items-center gap-2"
+              className="flex cursor-pointer items-center gap-2"
               data-testid="user-nav-item-theme"
               onSelect={() =>
                 setTheme(resolvedTheme === "dark" ? "light" : "dark")
@@ -106,7 +110,7 @@ export function SidebarUserNav({ user: propUser }: { user?: User }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
-                className="w-full cursor-pointer flex items-center gap-2"
+                className="flex w-full cursor-pointer items-center gap-2"
                 onClick={async () => {
                   if (status === "loading") {
                     toast({
@@ -117,24 +121,24 @@ export function SidebarUserNav({ user: propUser }: { user?: User }) {
                     return;
                   }
 
-                  if (!currentUser) {
-                    router.push("/login");
-                  } else {
+                  if (currentUser) {
                     try {
                       await signOut();
                       router.push("/");
-                    } catch (err) {
+                    } catch (_err) {
                       toast({
                         type: "error",
                         description: "Failed to sign out. Please try again.",
                       });
                     }
+                  } else {
+                    router.push("/login");
                   }
                 }}
                 type="button"
               >
                 <LogOut className="h-4 w-4" />
-                {!currentUser ? "Login to your account" : "Sign out"}
+                {currentUser ? "Sign out" : "Login to your account"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

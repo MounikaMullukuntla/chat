@@ -1,36 +1,40 @@
+import { WrenchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
 import {
   ClockRewind,
-  CopyIcon,
-  MessageIcon,
-  RedoIcon,
-  UndoIcon,
   CodeIcon,
+  CopyIcon,
   EyeIcon,
+  MessageIcon,
+  PanIcon,
+  RedoIcon,
   SaveIcon,
+  UndoIcon,
   ZoomInIcon,
   ZoomOutIcon,
   ZoomResetIcon,
-  PanIcon,
 } from "@/components/icons";
-import { MermaidViewer } from "@/components/mermaid-viewer";
 import { MermaidCodeEditor } from "@/components/mermaid-code-editor";
 import { MermaidDiffViewer } from "@/components/mermaid-diff-viewer";
-import { WrenchIcon } from "lucide-react";
+import { MermaidViewer } from "@/components/mermaid-viewer";
 
-export const mermaidArtifact = new Artifact<"mermaid code", {
-  isCodeView?: boolean;
-  hasRenderError?: boolean;
-  draftContent?: string;
-  hasUnsavedChanges?: boolean;
-  savedContent?: string;
-  isRerendering?: boolean;
-  zoom?: number;
-  isPanning?: boolean;
-}>({
+export const mermaidArtifact = new Artifact<
+  "mermaid code",
+  {
+    isCodeView?: boolean;
+    hasRenderError?: boolean;
+    draftContent?: string;
+    hasUnsavedChanges?: boolean;
+    savedContent?: string;
+    isRerendering?: boolean;
+    zoom?: number;
+    isPanning?: boolean;
+  }
+>({
   kind: "mermaid code",
-  description: "Useful for creating diagrams, flowcharts, and visualizations using Mermaid syntax.",
+  description:
+    "Useful for creating diagrams, flowcharts, and visualizations using Mermaid syntax.",
   initialize: ({ setMetadata }) => {
     setMetadata({
       isCodeView: false,
@@ -51,9 +55,10 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
           ...draftArtifact,
           content: newContent,
           // Show panel when streaming starts and we have content
-          isVisible: draftArtifact.status === "streaming" && newContent.length > 0
-            ? true
-            : draftArtifact.isVisible,
+          isVisible:
+            draftArtifact.status === "streaming" && newContent.length > 0
+              ? true
+              : draftArtifact.isVisible,
           status: "streaming",
         };
       });
@@ -77,10 +82,10 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
     getDocumentContentById,
   }) => {
     const isCodeView = metadata?.isCodeView || false;
-    const hasRenderError = metadata?.hasRenderError || false;
+    const _hasRenderError = metadata?.hasRenderError || false;
     const draftContent = metadata?.draftContent || "";
 
-    const handleError = (errorMessage: string) => {
+    const handleError = (_errorMessage: string) => {
       setMetadata({ ...metadata, hasRenderError: true });
     };
 
@@ -102,10 +107,10 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       return (
         <div className="flex flex-row px-4 py-8 md:p-20">
           <MermaidDiffViewer
-            oldContent={oldContent}
             newContent={newContent}
-            oldVersion={currentVersionIndex}
             newVersion={currentVersionIndex + 1}
+            oldContent={oldContent}
+            oldVersion={currentVersionIndex}
           />
         </div>
       );
@@ -134,10 +139,13 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
               const savedContentToCompare = metadata?.savedContent || content;
               const hasChanges = newContent !== savedContentToCompare;
 
-              console.log('🔧 [MERMAID] onChange fired');
-              console.log('🔧 [MERMAID] newContent length:', newContent.length);
-              console.log('🔧 [MERMAID] savedContent length:', savedContentToCompare.length);
-              console.log('🔧 [MERMAID] hasChanges:', hasChanges);
+              console.log("🔧 [MERMAID] onChange fired");
+              console.log("🔧 [MERMAID] newContent length:", newContent.length);
+              console.log(
+                "🔧 [MERMAID] savedContent length:",
+                savedContentToCompare.length
+              );
+              console.log("🔧 [MERMAID] hasChanges:", hasChanges);
 
               setMetadata({
                 ...metadata,
@@ -158,8 +166,10 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
     if (isRerendering) {
       return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <div className="text-sm text-muted-foreground">Rendering diagram...</div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="text-muted-foreground text-sm">
+            Rendering diagram...
+          </div>
         </div>
       );
     }
@@ -171,10 +181,10 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
       <div className="flex h-full w-full items-center justify-center">
         <MermaidViewer
           content={content}
-          status={status}
-          onError={handleError}
-          zoom={zoom}
           isPanning={isPanning}
+          onError={handleError}
+          status={status}
+          zoom={zoom}
         />
       </div>
     );
@@ -189,7 +199,9 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
 
         // If there are unsaved changes, save them first
         if (hasUnsavedChanges && draftContent) {
-          console.log('💾 [MERMAID] Auto-saving before switching to diagram view');
+          console.log(
+            "💾 [MERMAID] Auto-saving before switching to diagram view"
+          );
 
           // Show re-rendering state
           setMetadata({
@@ -201,7 +213,7 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
           onSaveContent(draftContent, false);
 
           // Small delay to allow save to complete
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
 
           // Clear draft and switch to diagram view
           setMetadata({
@@ -365,7 +377,7 @@ export const mermaidArtifact = new Artifact<"mermaid code", {
           parts: [
             {
               type: "text",
-              text: `Please improve the Mermaid diagram${documentId ? ` (Document ID: ${documentId})` : ''} by adding more details, better formatting, or clearer relationships.`,
+              text: `Please improve the Mermaid diagram${documentId ? ` (Document ID: ${documentId})` : ""} by adding more details, better formatting, or clearer relationships.`,
             },
           ],
         });

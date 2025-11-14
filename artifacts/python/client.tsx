@@ -1,37 +1,38 @@
+import { FileTextIcon, WrenchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
 import {
   ClockRewind,
   CopyIcon,
-  MessageIcon,
   RedoIcon,
-  UndoIcon,
-  CodeIcon,
-  EyeIcon,
   SaveIcon,
+  UndoIcon,
 } from "@/components/icons";
-import { PythonViewer } from "@/components/python-viewer";
 import { PythonCodeEditor } from "@/components/python-code-editor";
 import { PythonDiffViewer } from "@/components/python-diff-viewer";
-import { PlayIcon, WrenchIcon, FileTextIcon } from "lucide-react";
+import { PythonViewer } from "@/components/python-viewer";
 
-export const pythonArtifact = new Artifact<"python code", {
-  isCodeView?: boolean;
-  hasExecutionError?: boolean;
-  draftContent?: string;
-  hasUnsavedChanges?: boolean;
-  savedContent?: string;
-  isExecuting?: boolean;
-  executionOutput?: {
-    stdout?: string;
-    stderr?: string;
-    error?: string;
-    result?: any;
-    plots?: string[];
-  };
-}>({
+export const pythonArtifact = new Artifact<
+  "python code",
+  {
+    isCodeView?: boolean;
+    hasExecutionError?: boolean;
+    draftContent?: string;
+    hasUnsavedChanges?: boolean;
+    savedContent?: string;
+    isExecuting?: boolean;
+    executionOutput?: {
+      stdout?: string;
+      stderr?: string;
+      error?: string;
+      result?: any;
+      plots?: string[];
+    };
+  }
+>({
   kind: "python code",
-  description: "Useful for creating Python scripts for data analysis, calculations, visualizations, and programming tasks. Supports in-browser execution via Pyodide.",
+  description:
+    "Useful for creating Python scripts for data analysis, calculations, visualizations, and programming tasks. Supports in-browser execution via Pyodide.",
   initialize: ({ setMetadata }) => {
     setMetadata({
       isCodeView: false,
@@ -51,9 +52,10 @@ export const pythonArtifact = new Artifact<"python code", {
           ...draftArtifact,
           content: newContent,
           // Show panel when streaming starts and we have content
-          isVisible: draftArtifact.status === "streaming" && newContent.length > 0
-            ? true
-            : draftArtifact.isVisible,
+          isVisible:
+            draftArtifact.status === "streaming" && newContent.length > 0
+              ? true
+              : draftArtifact.isVisible,
           status: "streaming",
         };
       });
@@ -82,7 +84,7 @@ export const pythonArtifact = new Artifact<"python code", {
     const isExecuting = metadata?.isExecuting || false;
     const executionOutput = metadata?.executionOutput;
 
-    const handleError = (errorMessage: string) => {
+    const handleError = (_errorMessage: string) => {
       setMetadata({ ...metadata, hasExecutionError: true });
     };
 
@@ -142,10 +144,10 @@ export const pythonArtifact = new Artifact<"python code", {
       return (
         <div className="flex flex-row px-4 py-8 md:p-20">
           <PythonDiffViewer
-            oldContent={oldContent}
             newContent={newContent}
-            oldVersion={currentVersionIndex}
             newVersion={currentVersionIndex + 1}
+            oldContent={oldContent}
+            oldVersion={currentVersionIndex}
           />
         </div>
       );
@@ -209,13 +211,13 @@ export const pythonArtifact = new Artifact<"python code", {
       <div className="flex h-full w-full items-center justify-center">
         <PythonViewer
           content={draftContent || content}
-          status={status}
-          onError={handleError}
-          onExecute={handleExecute}
-          onChange={handleChange}
           executionOutput={executionOutput}
           isExecuting={isExecuting}
+          onChange={handleChange}
           onClearConsole={handleClearConsole}
+          onError={handleError}
+          onExecute={handleExecute}
+          status={status}
         />
       </div>
     );
@@ -309,7 +311,7 @@ export const pythonArtifact = new Artifact<"python code", {
           parts: [
             {
               type: "text",
-              text: `Please add detailed comments to explain the Python code${documentId ? ` (Document ID: ${documentId})` : ''}`,
+              text: `Please add detailed comments to explain the Python code${documentId ? ` (Document ID: ${documentId})` : ""}`,
             },
           ],
         });

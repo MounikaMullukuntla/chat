@@ -1,18 +1,16 @@
 import "server-only";
 
-import {
-  asc,
-  eq,
-} from "drizzle-orm";
-import { ChatSDKError } from "../../errors";
-import {
-  type AdminConfig,
-  adminConfig,
-} from "../drizzle-schema";
-import { db } from "./base";
+import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { ChatSDKError } from "../../errors";
+import { type AdminConfig, adminConfig } from "../drizzle-schema";
+import { db } from "./base";
 
-export async function getAdminConfig({ configKey }: { configKey: string }): Promise<AdminConfig | null> {
+export async function getAdminConfig({
+  configKey,
+}: {
+  configKey: string;
+}): Promise<AdminConfig | null> {
   try {
     const [config] = await db
       .select()
@@ -29,7 +27,10 @@ export async function getAdminConfig({ configKey }: { configKey: string }): Prom
 
 export async function getAllAdminConfigs(): Promise<AdminConfig[]> {
   try {
-    const result = await db.select().from(adminConfig).orderBy(asc(adminConfig.configKey));
+    const result = await db
+      .select()
+      .from(adminConfig)
+      .orderBy(asc(adminConfig.configKey));
     return result as AdminConfig[];
   } catch (_error) {
     throw new ChatSDKError(
@@ -61,7 +62,7 @@ export async function updateAdminConfig({
   if (!validationResult.isValid) {
     throw new ChatSDKError(
       "bad_request:api",
-      `Configuration validation failed: ${validationResult.errors.join(', ')}`
+      `Configuration validation failed: ${validationResult.errors.join(", ")}`
     );
   }
 
@@ -106,7 +107,7 @@ export async function createAdminConfig({
   if (!validationResult.isValid) {
     throw new ChatSDKError(
       "bad_request:api",
-      `Configuration validation failed: ${validationResult.errors.join(', ')}`
+      `Configuration validation failed: ${validationResult.errors.join(", ")}`
     );
   }
 
@@ -135,16 +136,16 @@ export async function createAdminConfig({
 
 // Valid agent types
 const VALID_AGENT_TYPES = [
-  'chat_model_agent',
-  'provider_tools_agent', 
-  'document_agent',
-  'python_agent',
-  'mermaid_agent',
-  'git_mcp_agent'
+  "chat_model_agent",
+  "provider_tools_agent",
+  "document_agent",
+  "python_agent",
+  "mermaid_agent",
+  "git_mcp_agent",
 ];
 
-const VALID_PROVIDERS = ['google', 'openai', 'anthropic'];
-const SPECIAL_CONFIG_KEYS = ['app_settings'];
+const VALID_PROVIDERS = ["google", "openai", "anthropic"];
+const SPECIAL_CONFIG_KEYS = ["app_settings"];
 
 // Validation schemas for different agent types
 const BaseAgentConfigSchema = z.object({
@@ -152,9 +153,9 @@ const BaseAgentConfigSchema = z.object({
   systemPrompt: z.string().min(1, "System prompt is required"),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
-  })
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
+  }),
 });
 
 // NOTE: ModelConfigSchema removed - models are now stored in model_config table
@@ -163,7 +164,7 @@ const BaseAgentConfigSchema = z.object({
 // Base tool config for simple tools (no prompts)
 const BaseToolConfigSchema = z.object({
   description: z.string(),
-  enabled: z.boolean()
+  enabled: z.boolean(),
 });
 
 // Tool config with system prompt and user prompt template (for document/python/mermaid agents)
@@ -171,18 +172,18 @@ const ToolWithPromptsConfigSchema = z.object({
   description: z.string(),
   enabled: z.boolean(),
   systemPrompt: z.string().optional(),
-  userPromptTemplate: z.string().optional()
+  userPromptTemplate: z.string().optional(),
 });
 
 // Chat model agent tool config (has tool_input structure)
 const ChatModelToolConfigSchema = z.object({
   description: z.string(),
   enabled: z.boolean(),
-  tool_input: z.any().optional() // Flexible structure for different tool inputs
+  tool_input: z.any().optional(), // Flexible structure for different tool inputs
 });
 
 const FileTypeConfigSchema = z.object({
-  enabled: z.boolean()
+  enabled: z.boolean(),
 });
 
 const FileTypeCategorySchema = z.record(z.string(), FileTypeConfigSchema);
@@ -193,26 +194,30 @@ const FileInputTypesSchema = z.object({
   pdf: FileTypeConfigSchema,
   ppt: FileTypeConfigSchema,
   excel: FileTypeConfigSchema,
-  images: FileTypeConfigSchema
+  images: FileTypeConfigSchema,
 });
 
 const ChatModelAgentConfigSchema = BaseAgentConfigSchema.extend({
   // NOTE: availableModels removed - models are now stored in model_config table
-  capabilities: z.object({
-    thinkingReasoning: z.boolean().optional(),
-    fileInput: z.boolean().optional()
-  }).optional(),
+  capabilities: z
+    .object({
+      thinkingReasoning: z.boolean().optional(),
+      fileInput: z.boolean().optional(),
+    })
+    .optional(),
   fileInputTypes: FileInputTypesSchema.optional(),
   // Provider-level file input capabilities (optional for backward compatibility)
   fileInputEnabled: z.boolean().optional(),
   allowedFileTypes: z.array(z.string()).optional(),
-  tools: z.object({
-    providerToolsAgent: ChatModelToolConfigSchema.optional(),
-    documentAgent: ChatModelToolConfigSchema.optional(),
-    pythonAgent: ChatModelToolConfigSchema.optional(),
-    mermaidAgent: ChatModelToolConfigSchema.optional(),
-    gitMcpAgent: ChatModelToolConfigSchema.optional()
-  }).optional()
+  tools: z
+    .object({
+      providerToolsAgent: ChatModelToolConfigSchema.optional(),
+      documentAgent: ChatModelToolConfigSchema.optional(),
+      pythonAgent: ChatModelToolConfigSchema.optional(),
+      mermaidAgent: ChatModelToolConfigSchema.optional(),
+      gitMcpAgent: ChatModelToolConfigSchema.optional(),
+    })
+    .optional(),
 });
 
 const ProviderToolsAgentConfigSchema = z.object({
@@ -220,37 +225,37 @@ const ProviderToolsAgentConfigSchema = z.object({
   systemPrompt: z.string().min(1, "System prompt is required"),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
   }),
   tools: z.object({
     googleSearch: BaseToolConfigSchema.optional(),
     urlContext: BaseToolConfigSchema.optional(),
-    codeExecution: BaseToolConfigSchema.optional()
-  })
+    codeExecution: BaseToolConfigSchema.optional(),
+  }),
 });
 
 const DocumentAgentConfigSchema = z.object({
   enabled: z.boolean(),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
   }),
   tools: z.object({
     create: ToolWithPromptsConfigSchema.optional(),
     update: ToolWithPromptsConfigSchema.optional(),
     suggestion: ToolWithPromptsConfigSchema.optional(),
-    revert: BaseToolConfigSchema.optional()
-  })
+    revert: BaseToolConfigSchema.optional(),
+  }),
 });
 
 const PythonAgentConfigSchema = z.object({
   enabled: z.boolean(),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
   }),
   tools: z.object({
     create: ToolWithPromptsConfigSchema.optional(),
@@ -258,24 +263,24 @@ const PythonAgentConfigSchema = z.object({
     fix: ToolWithPromptsConfigSchema.optional(),
     explain: ToolWithPromptsConfigSchema.optional(),
     generate: ToolWithPromptsConfigSchema.optional(),
-    revert: BaseToolConfigSchema.optional()
-  })
+    revert: BaseToolConfigSchema.optional(),
+  }),
 });
 
 const MermaidAgentConfigSchema = z.object({
   enabled: z.boolean(),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
   }),
   tools: z.object({
     create: ToolWithPromptsConfigSchema.optional(),
     update: ToolWithPromptsConfigSchema.optional(),
     fix: ToolWithPromptsConfigSchema.optional(),
     generate: ToolWithPromptsConfigSchema.optional(),
-    revert: BaseToolConfigSchema.optional()
-  })
+    revert: BaseToolConfigSchema.optional(),
+  }),
 });
 
 const GitMCPAgentConfigSchema = z.object({
@@ -283,8 +288,8 @@ const GitMCPAgentConfigSchema = z.object({
   systemPrompt: z.string().min(1, "System prompt is required"),
   rateLimit: z.object({
     perMinute: z.number().min(1).max(1000),
-    perHour: z.number().min(1).max(10000),
-    perDay: z.number().min(1).max(100000)
+    perHour: z.number().min(1).max(10_000),
+    perDay: z.number().min(1).max(100_000),
   }),
   tools: z.object({
     repos: BaseToolConfigSchema.optional(),
@@ -292,16 +297,18 @@ const GitMCPAgentConfigSchema = z.object({
     pull_requests: BaseToolConfigSchema.optional(),
     users: BaseToolConfigSchema.optional(),
     code_search: BaseToolConfigSchema.optional(),
-    branches: BaseToolConfigSchema.optional()
-  })
+    branches: BaseToolConfigSchema.optional(),
+  }),
 });
 
-const AppSettingsSchema = z.object({
-  appName: z.string().optional(),
-  maintenanceMode: z.boolean().optional(),
-  allowRegistration: z.boolean().optional(),
-  maxUsersPerDay: z.number().optional()
-}).passthrough(); // Allow additional fields
+const AppSettingsSchema = z
+  .object({
+    appName: z.string().optional(),
+    maintenanceMode: z.boolean().optional(),
+    allowRegistration: z.boolean().optional(),
+    maxUsersPerDay: z.number().optional(),
+  })
+  .passthrough(); // Allow additional fields
 
 // Function to validate config key format
 export function isValidAgentConfigKey(configKey: string): boolean {
@@ -309,37 +316,43 @@ export function isValidAgentConfigKey(configKey: string): boolean {
   if (SPECIAL_CONFIG_KEYS.includes(configKey)) {
     return true;
   }
-  
-  const parts = configKey.split('_');
-  if (parts.length < 3) return false;
-  
-  const provider = parts[parts.length - 1];
-  const agentType = parts.slice(0, -1).join('_');
-  
-  return VALID_AGENT_TYPES.includes(agentType) && VALID_PROVIDERS.includes(provider);
+
+  const parts = configKey.split("_");
+  if (parts.length < 3) {
+    return false;
+  }
+
+  const provider = parts.at(-1);
+  const agentType = parts.slice(0, -1).join("_");
+
+  return (
+    VALID_AGENT_TYPES.includes(agentType) &&
+    provider !== undefined &&
+    VALID_PROVIDERS.includes(provider)
+  );
 }
 
 // Function to get the appropriate schema for an agent type
 function getSchemaForAgentType(configKey: string): z.ZodSchema {
-  if (configKey === 'app_settings') {
+  if (configKey === "app_settings") {
     return AppSettingsSchema;
   }
-  
-  const parts = configKey.split('_');
-  const agentType = parts.slice(0, -1).join('_');
-  
+
+  const parts = configKey.split("_");
+  const agentType = parts.slice(0, -1).join("_");
+
   switch (agentType) {
-    case 'chat_model_agent':
+    case "chat_model_agent":
       return ChatModelAgentConfigSchema;
-    case 'provider_tools_agent':
+    case "provider_tools_agent":
       return ProviderToolsAgentConfigSchema;
-    case 'document_agent':
+    case "document_agent":
       return DocumentAgentConfigSchema;
-    case 'python_agent':
+    case "python_agent":
       return PythonAgentConfigSchema;
-    case 'mermaid_agent':
+    case "mermaid_agent":
       return MermaidAgentConfigSchema;
-    case 'git_mcp_agent':
+    case "git_mcp_agent":
       return GitMCPAgentConfigSchema;
     default:
       throw new Error(`Unknown agent type: ${agentType}`);
@@ -347,50 +360,54 @@ function getSchemaForAgentType(configKey: string): z.ZodSchema {
 }
 
 // Validation result interface
-interface ValidationResult {
+type ValidationResult = {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-}
+};
 
 // Function to validate agent configuration data
-export function validateAgentConfigData(configKey: string, configData: any): ValidationResult {
+export function validateAgentConfigData(
+  configKey: string,
+  configData: any
+): ValidationResult {
   const result: ValidationResult = {
     isValid: true,
     errors: [],
-    warnings: []
+    warnings: [],
   };
 
   try {
     const schema = getSchemaForAgentType(configKey);
     const validationResult = schema.safeParse(configData);
-    
+
     if (!validationResult.success) {
       result.isValid = false;
       result.errors = validationResult.error.errors.map(
-        err => `${err.path.join('.')}: ${err.message}`
+        (err) => `${err.path.join(".")}: ${err.message}`
       );
     }
 
     // Additional business logic validations
-    if (result.isValid && configKey !== 'app_settings') {
+    if (result.isValid && configKey !== "app_settings") {
       // NOTE: Model validation removed - models are now stored in model_config table
 
       // Validate rate limits are reasonable
       if (configData.rateLimit) {
         const { perMinute, perHour, perDay } = configData.rateLimit;
         if (perMinute * 60 > perHour) {
-          result.warnings.push('Per-minute rate limit may exceed hourly limit');
+          result.warnings.push("Per-minute rate limit may exceed hourly limit");
         }
         if (perHour * 24 > perDay) {
-          result.warnings.push('Per-hour rate limit may exceed daily limit');
+          result.warnings.push("Per-hour rate limit may exceed daily limit");
         }
       }
     }
-
   } catch (error) {
     result.isValid = false;
-    result.errors.push(`Schema validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    result.errors.push(
+      `Schema validation error: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 
   return result;
@@ -403,9 +420,9 @@ export async function getAllAgentConfigs(): Promise<AdminConfig[]> {
       .select()
       .from(adminConfig)
       .orderBy(asc(adminConfig.configKey));
-    
+
     // Filter to only valid agent configurations
-    return result.filter(config => 
+    return result.filter((config) =>
       isValidAgentConfigKey(config.configKey)
     ) as AdminConfig[];
   } catch (_error) {
@@ -417,7 +434,9 @@ export async function getAllAgentConfigs(): Promise<AdminConfig[]> {
 }
 
 // Function to get configurations by agent type
-export async function getConfigsByAgentType(agentType: string): Promise<AdminConfig[]> {
+export async function getConfigsByAgentType(
+  agentType: string
+): Promise<AdminConfig[]> {
   if (!VALID_AGENT_TYPES.includes(agentType)) {
     throw new ChatSDKError(
       "bad_request:api",
@@ -427,7 +446,7 @@ export async function getConfigsByAgentType(agentType: string): Promise<AdminCon
 
   try {
     const allConfigs = await getAllAgentConfigs();
-    return allConfigs.filter(config => 
+    return allConfigs.filter((config) =>
       config.configKey.startsWith(`${agentType}_`)
     );
   } catch (_error) {
@@ -439,17 +458,16 @@ export async function getConfigsByAgentType(agentType: string): Promise<AdminCon
 }
 
 // Function to get configurations by provider
-export async function getConfigsByProvider(provider: string): Promise<AdminConfig[]> {
+export async function getConfigsByProvider(
+  provider: string
+): Promise<AdminConfig[]> {
   if (!VALID_PROVIDERS.includes(provider)) {
-    throw new ChatSDKError(
-      "bad_request:api",
-      `Invalid provider: ${provider}`
-    );
+    throw new ChatSDKError("bad_request:api", `Invalid provider: ${provider}`);
   }
 
   try {
     const allConfigs = await getAllAgentConfigs();
-    return allConfigs.filter(config => 
+    return allConfigs.filter((config) =>
       config.configKey.endsWith(`_${provider}`)
     );
   } catch (_error) {
@@ -460,14 +478,8 @@ export async function getConfigsByProvider(provider: string): Promise<AdminConfi
   }
 }
 
-
-
 // Function to delete a specific admin configuration
-export async function deleteAdminConfig({
-  configKey,
-}: {
-  configKey: string;
-}) {
+export async function deleteAdminConfig({ configKey }: { configKey: string }) {
   // Validate config key format before deleting
   if (!isValidAgentConfigKey(configKey)) {
     throw new ChatSDKError(
@@ -481,14 +493,14 @@ export async function deleteAdminConfig({
       .delete(adminConfig)
       .where(eq(adminConfig.configKey, configKey))
       .returning();
-    
+
     if (!deleted) {
       throw new ChatSDKError(
         "not_found:api",
         `Configuration for ${configKey} not found`
       );
     }
-    
+
     return deleted;
   } catch (error) {
     if (error instanceof ChatSDKError) {
@@ -530,15 +542,21 @@ export async function patchAdminConfig({
     }
 
     // Merge partial data with existing configuration using deep merge
-    const mergedConfigData = deepMerge(existingConfig.configData, partialConfigData);
+    const mergedConfigData = deepMerge(
+      existingConfig.configData,
+      partialConfigData
+    );
 
     // For PATCH operations, skip full validation and only validate the partial data
     // This allows for more flexible updates without requiring all fields to be present
-    const partialValidationResult = validatePartialAgentConfigData(configKey, partialConfigData);
+    const partialValidationResult = validatePartialAgentConfigData(
+      configKey,
+      partialConfigData
+    );
     if (!partialValidationResult.isValid) {
       throw new ChatSDKError(
         "bad_request:api",
-        `Partial configuration validation failed: ${partialValidationResult.errors.join(', ')}`
+        `Partial configuration validation failed: ${partialValidationResult.errors.join(", ")}`
       );
     }
 
@@ -552,7 +570,7 @@ export async function patchAdminConfig({
       })
       .where(eq(adminConfig.configKey, configKey))
       .returning();
-    
+
     return updated;
   } catch (error) {
     if (error instanceof ChatSDKError) {
@@ -568,10 +586,18 @@ export async function patchAdminConfig({
 // Helper function for deep merging objects
 function deepMerge(target: any, source: any): any {
   const result = { ...target };
-  
+
   for (const key in source) {
-    if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+    if (
+      source[key] !== null &&
+      typeof source[key] === "object" &&
+      !Array.isArray(source[key])
+    ) {
+      if (
+        target[key] &&
+        typeof target[key] === "object" &&
+        !Array.isArray(target[key])
+      ) {
         result[key] = deepMerge(target[key], source[key]);
       } else {
         result[key] = source[key];
@@ -580,7 +606,7 @@ function deepMerge(target: any, source: any): any {
       result[key] = source[key];
     }
   }
-  
+
   return result;
 }
 
@@ -589,7 +615,7 @@ export async function getAdminConfigSummary(): Promise<any> {
   try {
     const allConfigs = await getAllAgentConfigs();
     const summary: any = {
-      providers: {}
+      providers: {},
     };
 
     // Import model_config table to get models
@@ -598,14 +624,16 @@ export async function getAdminConfigSummary(): Promise<any> {
 
     // Process each configuration to build the summary
     for (const config of allConfigs) {
-      const parts = config.configKey.split('_');
-      if (parts.length < 3) continue;
+      const parts = config.configKey.split("_");
+      if (parts.length < 3) {
+        continue;
+      }
 
-      const provider = parts[parts.length - 1];
-      const agentType = parts.slice(0, -1).join('_');
+      const provider = parts.at(-1);
+      const agentType = parts.slice(0, -1).join("_");
 
       // Only process chat_model_agent configurations for the summary
-      if (agentType === 'chat_model_agent') {
+      if (agentType === "chat_model_agent" && provider !== undefined) {
         if (!summary.providers[provider]) {
           const configData = config.configData as any;
           summary.providers[provider] = {
@@ -613,7 +641,7 @@ export async function getAdminConfigSummary(): Promise<any> {
             models: {},
             // Map from the actual database structure
             fileInputEnabled: configData.capabilities?.fileInput || false,
-            allowedFileTypes: []
+            allowedFileTypes: [],
           };
 
           // Extract allowed file types from fileInputTypes structure
@@ -621,19 +649,23 @@ export async function getAdminConfigSummary(): Promise<any> {
             const allowedTypes: string[] = [];
 
             // Process different file type categories
-            Object.entries(configData.fileInputTypes).forEach(([category, types]: [string, any]) => {
-              if (category === 'images' && types.enabled) {
-                allowedTypes.push('image/*');
-              } else if (category === 'pdf' && types.enabled) {
-                allowedTypes.push('application/pdf');
-              } else if (typeof types === 'object' && types !== null) {
-                Object.entries(types).forEach(([ext, config]: [string, any]) => {
-                  if (config.enabled) {
-                    allowedTypes.push(ext);
-                  }
-                });
+            Object.entries(configData.fileInputTypes).forEach(
+              ([category, types]: [string, any]) => {
+                if (category === "images" && types.enabled) {
+                  allowedTypes.push("image/*");
+                } else if (category === "pdf" && types.enabled) {
+                  allowedTypes.push("application/pdf");
+                } else if (typeof types === "object" && types !== null) {
+                  Object.entries(types).forEach(
+                    ([ext, config]: [string, any]) => {
+                      if (config.enabled) {
+                        allowedTypes.push(ext);
+                      }
+                    }
+                  );
+                }
               }
-            });
+            );
 
             summary.providers[provider].allowedFileTypes = allowedTypes;
           }
@@ -650,7 +682,7 @@ export async function getAdminConfigSummary(): Promise<any> {
           summary.providers[provider].models[model.modelId] = {
             id: model.modelId,
             name: model.name,
-            description: model.description || '',
+            description: model.description || "",
             enabled: model.isActive || false,
             isDefault: model.isDefault || false,
             // Map thinkingEnabled to supportsThinkingMode
@@ -660,9 +692,13 @@ export async function getAdminConfigSummary(): Promise<any> {
             allowedFileTypes: summary.providers[provider].allowedFileTypes,
             // Add pricing information
             pricingPerMillionTokens: {
-              input: parseFloat(model.inputPricingPerMillionTokens || '0'),
-              output: parseFloat(model.outputPricingPerMillionTokens || '0')
-            }
+              input: Number.parseFloat(
+                model.inputPricingPerMillionTokens || "0"
+              ),
+              output: Number.parseFloat(
+                model.outputPricingPerMillionTokens || "0"
+              ),
+            },
           };
         }
       }
@@ -678,76 +714,85 @@ export async function getAdminConfigSummary(): Promise<any> {
 }
 
 // Function to validate partial agent configuration data
-export function validatePartialAgentConfigData(configKey: string, partialConfigData: any): ValidationResult {
+export function validatePartialAgentConfigData(
+  configKey: string,
+  partialConfigData: any
+): ValidationResult {
   const result: ValidationResult = {
     isValid: true,
     errors: [],
-    warnings: []
+    warnings: [],
   };
 
   try {
     // For partial validation, we're very lenient - only validate basic types and structure
     // Skip complex schema validation for PATCH operations to allow flexible updates
-    
+
     // Basic type checks for common fields
-    if (partialConfigData.enabled !== undefined && typeof partialConfigData.enabled !== 'boolean') {
-      result.errors.push('enabled must be a boolean');
+    if (
+      partialConfigData.enabled !== undefined &&
+      typeof partialConfigData.enabled !== "boolean"
+    ) {
+      result.errors.push("enabled must be a boolean");
       result.isValid = false;
     }
-    
-    if (partialConfigData.systemPrompt !== undefined && typeof partialConfigData.systemPrompt !== 'string') {
-      result.errors.push('systemPrompt must be a string');
+
+    if (
+      partialConfigData.systemPrompt !== undefined &&
+      typeof partialConfigData.systemPrompt !== "string"
+    ) {
+      result.errors.push("systemPrompt must be a string");
       result.isValid = false;
     }
 
     // Additional business logic validations for partial data
-    if (result.isValid && configKey !== 'app_settings') {
+    if (result.isValid && configKey !== "app_settings") {
       // NOTE: Model validation removed - models are now stored in model_config table
 
       // Validate rate limits if provided
       if (partialConfigData.rateLimit) {
         const { perMinute, perHour, perDay } = partialConfigData.rateLimit;
         if (perMinute && perHour && perMinute * 60 > perHour) {
-          result.warnings.push('Per-minute rate limit may exceed hourly limit');
+          result.warnings.push("Per-minute rate limit may exceed hourly limit");
         }
         if (perHour && perDay && perHour * 24 > perDay) {
-          result.warnings.push('Per-hour rate limit may exceed daily limit');
+          result.warnings.push("Per-hour rate limit may exceed daily limit");
         }
       }
     }
-
   } catch (error) {
     result.isValid = false;
-    result.errors.push(`Partial validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    result.errors.push(
+      `Partial validation error: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 
   return result;
 }
 
 // Function to get partial schema for agent type (allows partial objects)
-function getPartialSchemaForAgentType(configKey: string): z.ZodSchema {
-  if (configKey === 'app_settings') {
+function _getPartialSchemaForAgentType(configKey: string): z.ZodSchema {
+  if (configKey === "app_settings") {
     return AppSettingsSchema.partial();
   }
-  
-  const parts = configKey.split('_');
-  const agentType = parts.slice(0, -1).join('_');
-  
+
+  const parts = configKey.split("_");
+  const agentType = parts.slice(0, -1).join("_");
+
   switch (agentType) {
-    case 'chat_model_agent':
+    case "chat_model_agent":
       return ChatModelAgentConfigSchema.partial().deepPartial();
-    case 'provider_tools_agent':
+    case "provider_tools_agent":
       return ProviderToolsAgentConfigSchema.partial().deepPartial();
-    case 'document_agent':
+    case "document_agent":
       return DocumentAgentConfigSchema.partial().deepPartial();
-    case 'python_agent':
+    case "python_agent":
       return PythonAgentConfigSchema.partial().deepPartial();
-    case 'mermaid_agent':
+    case "mermaid_agent":
       return MermaidAgentConfigSchema.partial().deepPartial();
-    case 'git_mcp_agent':
+    case "git_mcp_agent":
       return GitMCPAgentConfigSchema.partial().deepPartial();
     default:
       throw new Error(`Unknown agent type: ${agentType}`);
   }
 }
-

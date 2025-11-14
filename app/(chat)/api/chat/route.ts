@@ -1,9 +1,11 @@
-import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
-import type { MessageMetadata, CustomUIDataTypes } from "@/lib/types";
-
+import type { User } from "@supabase/supabase-js";
 // Import simple chat agent resolver
 import { ChatAgentResolver } from "@/lib/ai/chat-agent-resolver";
-import { extractFileContent, validateFileAttachment } from "@/lib/ai/file-processing";
+import {
+  extractFileContent,
+  validateFileAttachment,
+} from "@/lib/ai/file-processing";
+import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import {
   deleteChatById,
   getChatById,
@@ -11,9 +13,16 @@ import {
   saveChat,
   saveMessages,
 } from "@/lib/db/queries";
-import { getLatestDocumentVersionsByChat, getLastDocumentInChat } from "@/lib/db/queries/document";
+import {
+  getLastDocumentInChat,
+  getLatestDocumentVersionsByChat,
+} from "@/lib/db/queries/document";
 import { ChatSDKError } from "@/lib/errors";
-import { convertToUIMessages, generateUUID, buildArtifactContext } from "@/lib/utils";
+import {
+  buildArtifactContext,
+  convertToUIMessages,
+  generateUUID,
+} from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -25,12 +34,18 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (error) {
+  } catch (_error) {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType, thinkingEnabled = false } = requestBody;
+    const {
+      id,
+      message,
+      selectedChatModel,
+      selectedVisibilityType,
+      thinkingEnabled = false,
+    } = requestBody;
 
     // Authenticate user
     const authResult = await requireAuth();
@@ -62,7 +77,7 @@ export async function POST(request: Request) {
     const artifactContext = buildArtifactContext(allArtifacts, lastDocument);
 
     const fileContexts: string[] = [];
-    const fileParts = message.parts.filter(part => part.type === 'file');
+    const fileParts = message.parts.filter((part) => part.type === "file");
 
     for (const filePart of fileParts) {
       try {
@@ -75,40 +90,48 @@ export async function POST(request: Request) {
         const validation = validateFileAttachment(attachment);
         if (validation.valid) {
           const fileContent = await extractFileContent(attachment);
-          fileContexts.push(`File: ${attachment.name}\nContent:\n${fileContent}`);
+          fileContexts.push(
+            `File: ${attachment.name}\nContent:\n${fileContent}`
+          );
         }
       } catch (error) {
-        console.error(`Failed to process file ${filePart.name ?? "file"}:`, error);
+        console.error(
+          `Failed to process file ${filePart.name ?? "file"}:`,
+          error
+        );
       }
     }
 
-    const fileContext = fileContexts.length > 0
-      ? `\n\nAttached files:\n${fileContexts.join('\n\n')}`
-      : '';
+    const fileContext =
+      fileContexts.length > 0
+        ? `\n\nAttached files:\n${fileContexts.join("\n\n")}`
+        : "";
 
     // Get API key and validate
-    const apiKey = request.headers.get('x-google-api-key');
+    const apiKey = request.headers.get("x-google-api-key");
     if (!apiKey?.trim()) {
       return new ChatSDKError("bad_request:api").toResponse();
     }
 
     // Get GitHub PAT (optional - for GitHub MCP agent)
-    const githubPAT = request.headers.get('x-github-pat');
+    const githubPAT = request.headers.get("x-github-pat");
 
     // Save user message
     await saveMessages({
-      messages: [{
-        chatId: id,
-        id: message.id,
-        role: "user",
-        parts: message.parts,
-        attachments: [],
-        createdAt: new Date(),
-        modelUsed: null,
-        inputTokens: null,
-        outputTokens: null,
-        cost: null,
-      }],
+      messages: [
+        {
+          chatId: id,
+          id: message.id,
+          role: "user",
+          parts: message.parts,
+          attachments: [],
+          createdAt: new Date(),
+          modelUsed: null,
+          inputTokens: null,
+          outputTokens: null,
+          cost: null,
+        },
+      ],
     });
 
     // Create chat agent using simple resolver
@@ -118,40 +141,52 @@ export async function POST(request: Request) {
     // Set GitHub PAT if provided (for GitHub MCP agent)
     if (githubPAT?.trim()) {
       chatAgent.setGitHubPAT(githubPAT);
-      console.log('🐙 [GITHUB-PAT] GitHub PAT provided for MCP agent');
+      console.log("🐙 [GITHUB-PAT] GitHub PAT provided for MCP agent");
     }
 
     // Use chat agent to generate streaming response with all provider-specific logic
     return await chatAgent.chat({
       chatId: id,
       modelId: selectedChatModel,
-      messages: uiMessages.map(msg => ({
+      messages: uiMessages.map((msg) => ({
         id: msg.id,
         role: msg.role as "user" | "assistant" | "system",
-        content: msg.parts.map((part: any) => part.type === 'text' ? part.text : '').join('\n') + fileContext
+        content:
+          msg.parts
+            .map((part: any) => (part.type === "text" ? part.text : ""))
+            .join("\n") + fileContext,
       })),
-      artifactContext: artifactContext,
+      artifactContext,
       thinkingMode: thinkingEnabled,
-      user: user,
+      user,
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
         // Save all assistant messages to database
-        const assistantMessages = messages.filter(msg => msg.role === 'assistant');
+        const assistantMessages = messages.filter(
+          (msg) => msg.role === "assistant"
+        );
 
         if (assistantMessages.length > 0) {
-          console.log('🔍 [FINISH] Processing', assistantMessages.length, 'assistant messages');
+          console.log(
+            "🔍 [FINISH] Processing",
+            assistantMessages.length,
+            "assistant messages"
+          );
 
           await saveMessages({
             messages: assistantMessages.map((msg) => {
-              console.log('🔍 [FINISH] Message has', msg.parts.length, 'parts');
+              console.log("🔍 [FINISH] Message has", msg.parts.length, "parts");
 
               // Log message parts for debugging
               msg.parts.forEach((part: any, index: number) => {
                 console.log(`🔍 [FINISH] Part ${index}: type=${part.type}`);
 
-                if (part.type === 'tool-documentAgent') {
+                if (part.type === "tool-documentAgent") {
                   const output = (part as any).output;
-                  console.log(`🔍 [FINISH] documentAgent output:`, JSON.stringify(output));
+                  console.log(
+                    "🔍 [FINISH] documentAgent output:",
+                    JSON.stringify(output)
+                  );
                 }
               });
 
@@ -191,7 +226,7 @@ export async function DELETE(request: Request) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;

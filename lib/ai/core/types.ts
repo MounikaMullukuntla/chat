@@ -3,25 +3,25 @@
  */
 
 // Legacy types for backward compatibility
-export interface TokenUsage {
+export type TokenUsage = {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
-}
+};
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp?: Date;
-}
+};
 
 // Database-aligned core interfaces
 
 /**
  * Configuration for individual models within a provider
  */
-export interface ModelConfig {
+export type ModelConfig = {
   id: string;
   name: string;
   description: string;
@@ -36,21 +36,21 @@ export interface ModelConfig {
   supportsThinkingMode?: boolean;
   fileInputEnabled?: boolean;
   allowedFileTypes?: string[];
-}
+};
 
 /**
  * Rate limiting configuration
  */
-export interface RateLimitConfig {
+export type RateLimitConfig = {
   perMinute: number;
   perHour: number;
   perDay: number;
-}
+};
 
 /**
  * Tool configuration for agents
  */
-export interface ToolConfig {
+export type ToolConfig = {
   description: string;
   enabled: boolean;
   tool_input?: {
@@ -59,43 +59,43 @@ export interface ToolConfig {
     // Support nested structure for multi-parameter tools
     [key: string]: any;
   };
-}
+};
 
 /**
  * File type configuration for file input
  */
-export interface FileTypeConfig {
+export type FileTypeConfig = {
   enabled: boolean;
-}
+};
 
 /**
  * File input types configuration structure
  */
-export interface FileInputTypesConfig {
+export type FileInputTypesConfig = {
   codeFiles: Record<string, FileTypeConfig>;
   textFiles: Record<string, FileTypeConfig>;
   pdf: FileTypeConfig;
   ppt: FileTypeConfig;
   excel: FileTypeConfig;
   images: FileTypeConfig;
-}
+};
 
 /**
  * Provider capabilities configuration
  */
-export interface ProviderCapabilities {
+export type ProviderCapabilities = {
   thinkingReasoning?: boolean;
   fileInput?: boolean;
-}
+};
 
 /**
  * Base provider configuration interface
  */
-export interface BaseProviderConfig {
+export type BaseProviderConfig = {
   enabled: boolean;
   systemPrompt: string;
   rateLimit: RateLimitConfig;
-}
+};
 
 /**
  * Chat model agent specific configuration
@@ -173,7 +173,7 @@ export interface GitMCPAgentConfig extends BaseProviderConfig {
 /**
  * Union type for all provider configurations
  */
-export type ProviderConfig = 
+export type ProviderConfig =
   | ChatModelAgentConfig
   | ProviderToolsAgentConfig
   | DocumentAgentConfig
@@ -184,7 +184,7 @@ export type ProviderConfig =
 /**
  * Parameters for chat agent interactions
  */
-export interface ChatParams {
+export type ChatParams = {
   messages: ChatMessage[];
   modelId: string;
   systemPrompt?: string;
@@ -194,70 +194,70 @@ export interface ChatParams {
   dataStream?: any; // UIMessageStreamWriter for tool execution
   artifactContext?: string; // Context about artifacts in the conversation
   user?: any; // User object for tool execution context
-}
+};
 
 /**
  * Streaming response interface
  */
-export interface StreamingResponse {
+export type StreamingResponse = {
   content: string;
   reasoning?: string;
   finished: boolean;
   usage?: TokenUsage;
   error?: string;
-}
+};
 
 /**
  * Agent type enumeration
  */
-export type AgentType = 
-  | 'chat_model_agent'
-  | 'provider_tools_agent'
-  | 'document_agent'
-  | 'python_agent'
-  | 'mermaid_agent'
-  | 'git_mcp_agent';
+export type AgentType =
+  | "chat_model_agent"
+  | "provider_tools_agent"
+  | "document_agent"
+  | "python_agent"
+  | "mermaid_agent"
+  | "git_mcp_agent";
 
 /**
  * Provider enumeration
  */
-export type Provider = 'google' | 'openai' | 'anthropic';
+export type Provider = "google" | "openai" | "anthropic";
 
 /**
  * Configuration key format: {agentType}_{provider}
  */
-export type ConfigKey = `${AgentType}_${Provider}` | 'app_settings';
+export type ConfigKey = `${AgentType}_${Provider}` | "app_settings";
 
 /**
  * App settings configuration
  */
-export interface AppSettingsConfig {
+export type AppSettingsConfig = {
   appName?: string;
   maintenanceMode?: boolean;
   allowRegistration?: boolean;
   maxUsersPerDay?: number;
   activeProvider?: Provider;
-}
+};
 
 // Legacy interfaces for backward compatibility
-export interface ModelCapabilities {
+export type ModelCapabilities = {
   reasoning: boolean;
   streaming: boolean;
   multimodal: boolean;
   tools: boolean;
   maxTokens?: number;
-}
+};
 
-export interface ChatModel {
+export type ChatModel = {
   id: string;
   name: string;
   description: string;
   provider: string;
   capabilities: ModelCapabilities;
   config?: Record<string, any>;
-}
+};
 
-export interface ChatAgentConfig {
+export type ChatAgentConfig = {
   modelId: string;
   systemPrompt?: string;
   tools?: string[];
@@ -265,4 +265,4 @@ export interface ChatAgentConfig {
   streaming?: boolean;
   maxTokens?: number;
   temperature?: number;
-}
+};

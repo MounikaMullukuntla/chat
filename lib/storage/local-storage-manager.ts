@@ -2,26 +2,26 @@
  * LocalStorageManager - Secure storage utility for API keys and integrations
  */
 
-import type { 
-  StorageManager, 
-  APIProvider, 
+import type {
+  APIProvider,
   LocalStorageSchema,
-  StorageEvent,
   StorageConfig,
+  StorageError,
+  StorageEvent,
+  StorageManager,
   StorageQuotaInfo,
-  StorageError
-} from './types';
-import { StorageErrorType } from './types';
+} from "./types";
+import { StorageErrorType } from "./types";
 
 class LocalStorageManager implements StorageManager {
   private static instance: LocalStorageManager;
-  private readonly storagePrefix = 'settings_';
-  private eventListeners: ((event: StorageEvent) => void)[] = [];
+  private readonly storagePrefix = "settings_";
+  private readonly eventListeners: ((event: StorageEvent) => void)[] = [];
   private config: StorageConfig = {
     useSessionStorage: false,
     autoCleanupOnLogout: true,
     maxStorageSize: 5 * 1024 * 1024, // 5MB default
-    enableEncryption: false
+    enableEncryption: false,
   };
   private cleanupListeners: (() => void)[] = [];
 
@@ -41,8 +41,10 @@ class LocalStorageManager implements StorageManager {
    */
   private getStorage(): Storage | null {
     try {
-      const storage = this.config.useSessionStorage ? sessionStorage : localStorage;
-      const test = '__storage_test__';
+      const storage = this.config.useSessionStorage
+        ? sessionStorage
+        : localStorage;
+      const test = "__storage_test__";
       storage.setItem(test, test);
       storage.removeItem(test);
       return storage;
@@ -71,14 +73,17 @@ class LocalStorageManager implements StorageManager {
   private getStorageData<T>(key: keyof LocalStorageSchema): T | null {
     const storage = this.getStorage();
     if (!storage) {
-      this.emitStorageError(StorageErrorType.STORAGE_UNAVAILABLE, 'Storage is not available');
+      this.emitStorageError(
+        StorageErrorType.STORAGE_UNAVAILABLE,
+        "Storage is not available"
+      );
       return null;
     }
 
     try {
       const storageKey = this.getStorageKey(key);
       const data = storage.getItem(storageKey);
-      
+
       if (!data) {
         return null;
       }
@@ -87,7 +92,10 @@ class LocalStorageManager implements StorageManager {
       return parsed;
     } catch (error) {
       console.error(`Failed to get storage data for key ${key}:`, error);
-      this.emitStorageError(StorageErrorType.DATA_CORRUPTION, `Failed to parse data for key ${key}`);
+      this.emitStorageError(
+        StorageErrorType.DATA_CORRUPTION,
+        `Failed to parse data for key ${key}`
+      );
       return null;
     }
   }
@@ -98,29 +106,41 @@ class LocalStorageManager implements StorageManager {
   private setStorageData<T>(key: keyof LocalStorageSchema, data: T): void {
     const storage = this.getStorage();
     if (!storage) {
-      this.emitStorageError(StorageErrorType.STORAGE_UNAVAILABLE, 'Storage is not available');
+      this.emitStorageError(
+        StorageErrorType.STORAGE_UNAVAILABLE,
+        "Storage is not available"
+      );
       return;
     }
 
     try {
       const storageKey = this.getStorageKey(key);
       const jsonData = JSON.stringify(data);
-      
+
       // Check storage quota before setting
       const quotaInfo = this.getStorageQuota();
       if (quotaInfo && jsonData.length > quotaInfo.available) {
-        this.emitStorageError(StorageErrorType.QUOTA_EXCEEDED, 'Storage quota exceeded');
+        this.emitStorageError(
+          StorageErrorType.QUOTA_EXCEEDED,
+          "Storage quota exceeded"
+        );
         return;
       }
-      
+
       storage.setItem(storageKey, jsonData);
     } catch (error) {
       console.error(`Failed to set storage data for key ${key}:`, error);
-      
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        this.emitStorageError(StorageErrorType.QUOTA_EXCEEDED, 'Storage quota exceeded');
+
+      if (error instanceof Error && error.name === "QuotaExceededError") {
+        this.emitStorageError(
+          StorageErrorType.QUOTA_EXCEEDED,
+          "Storage quota exceeded"
+        );
       } else {
-        this.emitStorageError(StorageErrorType.UNKNOWN_ERROR, `Failed to set data for key ${key}`);
+        this.emitStorageError(
+          StorageErrorType.UNKNOWN_ERROR,
+          `Failed to set data for key ${key}`
+        );
       }
     }
   }
@@ -129,11 +149,11 @@ class LocalStorageManager implements StorageManager {
    * Emit storage event to listeners
    */
   private emitEvent(event: StorageEvent): void {
-    this.eventListeners.forEach(listener => {
+    this.eventListeners.forEach((listener) => {
       try {
         listener(event);
       } catch (error) {
-        console.error('Storage event listener error:', error);
+        console.error("Storage event listener error:", error);
       }
     });
   }
@@ -141,11 +161,15 @@ class LocalStorageManager implements StorageManager {
   /**
    * Emit storage error event
    */
-  private emitStorageError(type: StorageErrorType, message: string, details?: any): void {
+  private emitStorageError(
+    type: StorageErrorType,
+    message: string,
+    _details?: any
+  ): void {
     this.emitEvent({
-      type: 'storage-error',
+      type: "storage-error",
       timestamp: Date.now(),
-      error: `${type}: ${message}`
+      error: `${type}: ${message}`,
     });
   }
 
@@ -153,12 +177,13 @@ class LocalStorageManager implements StorageManager {
    * Get API key for a specific provider
    */
   getAPIKey(provider: APIProvider): string | null {
-    const apiKeys = this.getStorageData<LocalStorageSchema['api-keys']>('api-keys');
-    console.log(`🗄️ [DEBUG] LocalStorage API keys data:`, {
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
+    console.log("🗄️ [DEBUG] LocalStorage API keys data:", {
       hasApiKeysData: !!apiKeys,
       availableProviders: apiKeys ? Object.keys(apiKeys) : [],
       requestedProvider: provider,
-      hasRequestedKey: !!(apiKeys?.[provider])
+      hasRequestedKey: !!apiKeys?.[provider],
     });
     return apiKeys?.[provider] || null;
   }
@@ -167,14 +192,15 @@ class LocalStorageManager implements StorageManager {
    * Set API key for a specific provider
    */
   setAPIKey(provider: APIProvider, key: string): void {
-    const apiKeys = this.getStorageData<LocalStorageSchema['api-keys']>('api-keys') || {};
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
     apiKeys[provider] = key;
-    this.setStorageData('api-keys', apiKeys);
-    
+    this.setStorageData("api-keys", apiKeys);
+
     this.emitEvent({
-      type: 'api-key-updated',
+      type: "api-key-updated",
       provider,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -182,15 +208,16 @@ class LocalStorageManager implements StorageManager {
    * Remove API key for a specific provider
    */
   removeAPIKey(provider: APIProvider): void {
-    const apiKeys = this.getStorageData<LocalStorageSchema['api-keys']>('api-keys');
-    if (apiKeys && apiKeys[provider]) {
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
+    if (apiKeys?.[provider]) {
       delete apiKeys[provider];
-      this.setStorageData('api-keys', apiKeys);
-      
+      this.setStorageData("api-keys", apiKeys);
+
       this.emitEvent({
-        type: 'api-key-removed',
+        type: "api-key-removed",
         provider,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
   }
@@ -199,7 +226,8 @@ class LocalStorageManager implements StorageManager {
    * Get GitHub Personal Access Token
    */
   getGitHubPAT(): string | null {
-    const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations');
+    const integrations =
+      this.getStorageData<LocalStorageSchema["integrations"]>("integrations");
     return integrations?.github?.token || null;
   }
 
@@ -207,19 +235,21 @@ class LocalStorageManager implements StorageManager {
    * Set GitHub Personal Access Token
    */
   setGitHubPAT(token: string): void {
-    const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations') || {};
-    
-    if (!integrations.github) {
-      integrations.github = { token };
-    } else {
+    const integrations =
+      this.getStorageData<LocalStorageSchema["integrations"]>("integrations") ||
+      {};
+
+    if (integrations.github) {
       integrations.github.token = token;
+    } else {
+      integrations.github = { token };
     }
-    
-    this.setStorageData('integrations', integrations);
-    
+
+    this.setStorageData("integrations", integrations);
+
     this.emitEvent({
-      type: 'github-pat-updated',
-      timestamp: Date.now()
+      type: "github-pat-updated",
+      timestamp: Date.now(),
     });
   }
 
@@ -227,14 +257,15 @@ class LocalStorageManager implements StorageManager {
    * Remove GitHub Personal Access Token
    */
   removeGitHubPAT(): void {
-    const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations');
+    const integrations =
+      this.getStorageData<LocalStorageSchema["integrations"]>("integrations");
     if (integrations?.github) {
-      delete integrations.github;
-      this.setStorageData('integrations', integrations);
-      
+      integrations.github = undefined;
+      this.setStorageData("integrations", integrations);
+
       this.emitEvent({
-        type: 'github-pat-removed',
-        timestamp: Date.now()
+        type: "github-pat-removed",
+        timestamp: Date.now(),
       });
     }
   }
@@ -242,28 +273,35 @@ class LocalStorageManager implements StorageManager {
   /**
    * Get GitHub integration data
    */
-  getGitHubIntegration(): LocalStorageSchema['integrations']['github'] | null {
-    const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations');
+  getGitHubIntegration(): LocalStorageSchema["integrations"]["github"] | null {
+    const integrations =
+      this.getStorageData<LocalStorageSchema["integrations"]>("integrations");
     return integrations?.github || null;
   }
 
   /**
    * Update GitHub integration data (user info, last verified, etc.)
    */
-  updateGitHubIntegration(data: Partial<LocalStorageSchema['integrations']['github']>): void {
-    const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations') || {};
-    
+  updateGitHubIntegration(
+    data: Partial<LocalStorageSchema["integrations"]["github"]>
+  ): void {
+    const integrations =
+      this.getStorageData<LocalStorageSchema["integrations"]>("integrations") ||
+      {};
+
     if (integrations.github) {
       integrations.github = { ...integrations.github, ...data };
-      this.setStorageData('integrations', integrations);
+      this.setStorageData("integrations", integrations);
     }
   }
 
   /**
    * Get all API keys
    */
-  getAllAPIKeys(): LocalStorageSchema['api-keys'] {
-    return this.getStorageData<LocalStorageSchema['api-keys']>('api-keys') || {};
+  getAllAPIKeys(): LocalStorageSchema["api-keys"] {
+    return (
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {}
+    );
   }
 
   /**
@@ -276,19 +314,22 @@ class LocalStorageManager implements StorageManager {
     }
 
     try {
-      const keysToRemove = Object.keys(storage).filter(key => 
+      const keysToRemove = Object.keys(storage).filter((key) =>
         key.startsWith(this.storagePrefix)
       );
-      
-      keysToRemove.forEach(key => storage.removeItem(key));
-      
+
+      keysToRemove.forEach((key) => storage.removeItem(key));
+
       this.emitEvent({
-        type: 'storage-cleared',
-        timestamp: Date.now()
+        type: "storage-cleared",
+        timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('Failed to clear storage:', error);
-      this.emitStorageError(StorageErrorType.UNKNOWN_ERROR, 'Failed to clear storage');
+      console.error("Failed to clear storage:", error);
+      this.emitStorageError(
+        StorageErrorType.UNKNOWN_ERROR,
+        "Failed to clear storage"
+      );
     }
   }
 
@@ -315,7 +356,7 @@ class LocalStorageManager implements StorageManager {
   hasData(): boolean {
     const apiKeys = this.getAllAPIKeys();
     const githubPAT = this.getGitHubPAT();
-    
+
     return Object.keys(apiKeys).length > 0 || !!githubPAT;
   }
 
@@ -344,13 +385,13 @@ class LocalStorageManager implements StorageManager {
       }
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      window.addEventListener('storage', handleStorageEvent);
-      
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      window.addEventListener("storage", handleStorageEvent);
+
       this.cleanupListeners.push(() => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        window.removeEventListener('storage', handleStorageEvent);
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener("storage", handleStorageEvent);
       });
     }
   }
@@ -368,7 +409,11 @@ class LocalStorageManager implements StorageManager {
    * Get storage quota information
    */
   getStorageQuota(): StorageQuotaInfo | null {
-    if (typeof navigator === 'undefined' || !navigator.storage || !navigator.storage.estimate) {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.storage ||
+      !navigator.storage.estimate
+    ) {
       return null;
     }
 
@@ -382,7 +427,7 @@ class LocalStorageManager implements StorageManager {
 
       // Estimate current usage by calculating size of our data
       let used = 0;
-      Object.keys(storage).forEach(key => {
+      Object.keys(storage).forEach((key) => {
         if (key.startsWith(this.storagePrefix)) {
           const value = storage.getItem(key);
           if (value) {
@@ -400,10 +445,10 @@ class LocalStorageManager implements StorageManager {
         used,
         available,
         total,
-        percentage
+        percentage,
       };
     } catch (error) {
-      console.error('Failed to get storage quota:', error);
+      console.error("Failed to get storage quota:", error);
       return null;
     }
   }
@@ -418,7 +463,7 @@ class LocalStorageManager implements StorageManager {
     if (!this.isStorageAvailable()) {
       errors.push({
         type: StorageErrorType.STORAGE_UNAVAILABLE,
-        message: 'Storage is not available'
+        message: "Storage is not available",
       });
     }
 
@@ -428,40 +473,42 @@ class LocalStorageManager implements StorageManager {
       errors.push({
         type: StorageErrorType.QUOTA_EXCEEDED,
         message: `Storage is ${quota.percentage.toFixed(1)}% full`,
-        details: quota
+        details: quota,
       });
     }
 
     // Check for data corruption by trying to parse stored data
     try {
-      const apiKeys = this.getStorageData<LocalStorageSchema['api-keys']>('api-keys');
-      const integrations = this.getStorageData<LocalStorageSchema['integrations']>('integrations');
-      
+      const apiKeys =
+        this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
+      const integrations =
+        this.getStorageData<LocalStorageSchema["integrations"]>("integrations");
+
       // Basic validation
-      if (apiKeys && typeof apiKeys !== 'object') {
+      if (apiKeys && typeof apiKeys !== "object") {
         errors.push({
           type: StorageErrorType.DATA_CORRUPTION,
-          message: 'API keys data is corrupted'
+          message: "API keys data is corrupted",
         });
       }
-      
-      if (integrations && typeof integrations !== 'object') {
+
+      if (integrations && typeof integrations !== "object") {
         errors.push({
           type: StorageErrorType.DATA_CORRUPTION,
-          message: 'Integrations data is corrupted'
+          message: "Integrations data is corrupted",
         });
       }
     } catch (error) {
       errors.push({
         type: StorageErrorType.DATA_CORRUPTION,
-        message: 'Failed to validate stored data',
-        details: error
+        message: "Failed to validate stored data",
+        details: error,
       });
     }
 
     return {
       healthy: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -470,13 +517,13 @@ class LocalStorageManager implements StorageManager {
    */
   configure(config: Partial<StorageConfig>): void {
     this.config = { ...this.config, ...config };
-    
+
     // Re-setup cleanup if configuration changed
     if (config.autoCleanupOnLogout !== undefined) {
       // Clean up existing listeners
-      this.cleanupListeners.forEach(cleanup => cleanup());
+      this.cleanupListeners.forEach((cleanup) => cleanup());
       this.cleanupListeners = [];
-      
+
       // Setup new listeners
       this.setupAutoCleanup();
     }

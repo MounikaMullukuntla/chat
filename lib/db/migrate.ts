@@ -1,7 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { config } from "dotenv";
 import postgres from "postgres";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 config({
   path: ".env.local",
@@ -9,7 +9,9 @@ config({
 
 const runMigrate = async () => {
   if (!process.env.POSTGRES_URL) {
-    throw new Error("POSTGRES_URL is not defined");
+    console.log("⚠️  POSTGRES_URL is not defined - skipping migrations");
+    console.log("ℹ️  Migrations will be skipped for this build");
+    return;
   }
 
   const connection = postgres(process.env.POSTGRES_URL, { max: 1 });
@@ -31,7 +33,7 @@ const runMigrate = async () => {
       "0006_seed_data_google.sql",
       "0006_seed_data_openai.sql",
       "0006_seed_data_anthropic.sql",
-      "0007_seed_data_model_config.sql"
+      "0007_seed_data_model_config.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -45,11 +47,19 @@ const runMigrate = async () => {
         console.log(`✅ ${file} completed`);
       } catch (error: any) {
         console.error(`❌ Error in ${file}:`);
-        console.error('Message:', error.message);
-        if (error.code) console.error('Code:', error.code);
-        if (error.position) console.error('Position:', error.position);
-        if (error.detail) console.error('Detail:', error.detail);
-        if (error.hint) console.error('Hint:', error.hint);
+        console.error("Message:", error.message);
+        if (error.code) {
+          console.error("Code:", error.code);
+        }
+        if (error.position) {
+          console.error("Position:", error.position);
+        }
+        if (error.detail) {
+          console.error("Detail:", error.detail);
+        }
+        if (error.hint) {
+          console.error("Hint:", error.hint);
+        }
         throw error;
       }
     }

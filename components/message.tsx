@@ -112,9 +112,10 @@ const PurePreviewMessage = ({
 
             if (type === "reasoning" && part.text?.trim().length > 0) {
               // Find the last reasoning part index
-              const reasoningParts = message.parts?.filter((p) => p.type === "reasoning") || [];
-              const isLastReasoningPart = reasoningParts.length > 0 &&
-                reasoningParts[reasoningParts.length - 1] === part;
+              const reasoningParts =
+                message.parts?.filter((p) => p.type === "reasoning") || [];
+              const isLastReasoningPart =
+                reasoningParts.length > 0 && reasoningParts.at(-1) === part;
 
               // Only the last reasoning part should be in loading state while streaming
               // All previous reasoning parts are already complete
@@ -210,14 +211,22 @@ const PurePreviewMessage = ({
 
             // Handle documentAgent tool result - extract document info from output
             if (type === "tool-documentAgent") {
-              console.log('🎨 [MESSAGE] Found tool-documentAgent part');
+              console.log("🎨 [MESSAGE] Found tool-documentAgent part");
               const output = (part as any).output;
-              console.log('🎨 [MESSAGE] Output:', JSON.stringify(output));
+              console.log("🎨 [MESSAGE] Output:", JSON.stringify(output));
 
               // Check if output has document structure { id, title, kind }
-              if (output && typeof output === 'object' && output.id && output.title) {
+              if (
+                output &&
+                typeof output === "object" &&
+                output.id &&
+                output.title
+              ) {
                 const toolCallId = output.id;
-                console.log('✅ [MESSAGE] Rendering DocumentPreview with:', output);
+                console.log(
+                  "✅ [MESSAGE] Rendering DocumentPreview with:",
+                  output
+                );
 
                 // Handle error case
                 if ("error" in output) {
@@ -242,20 +251,30 @@ const PurePreviewMessage = ({
               }
 
               // If output is not structured, skip rendering (will be null)
-              console.log('⚠️ [MESSAGE] tool-documentAgent part has no valid output, returning null');
+              console.log(
+                "⚠️ [MESSAGE] tool-documentAgent part has no valid output, returning null"
+              );
               return null;
             }
 
             // Handle mermaidAgent tool result - extract diagram info from output
             if (type === "tool-mermaidAgent") {
-              console.log('🎨 [MESSAGE] Found tool-mermaidAgent part');
+              console.log("🎨 [MESSAGE] Found tool-mermaidAgent part");
               const output = (part as any).output;
-              console.log('🎨 [MESSAGE] Output:', JSON.stringify(output));
+              console.log("🎨 [MESSAGE] Output:", JSON.stringify(output));
 
               // Check if output has diagram structure { id, title, kind }
-              if (output && typeof output === 'object' && output.id && output.title) {
+              if (
+                output &&
+                typeof output === "object" &&
+                output.id &&
+                output.title
+              ) {
                 const toolCallId = output.id;
-                console.log('✅ [MESSAGE] Rendering DocumentPreview (Mermaid) with:', output);
+                console.log(
+                  "✅ [MESSAGE] Rendering DocumentPreview (Mermaid) with:",
+                  output
+                );
 
                 // Handle error case
                 if ("error" in output) {
@@ -280,20 +299,30 @@ const PurePreviewMessage = ({
               }
 
               // If output is not structured, skip rendering (will be null)
-              console.log('⚠️ [MESSAGE] tool-mermaidAgent part has no valid output, returning null');
+              console.log(
+                "⚠️ [MESSAGE] tool-mermaidAgent part has no valid output, returning null"
+              );
               return null;
             }
 
             // Handle pythonAgent tool result - extract code info from output
             if (type === "tool-pythonAgent") {
-              console.log('🐍 [MESSAGE] Found tool-pythonAgent part');
+              console.log("🐍 [MESSAGE] Found tool-pythonAgent part");
               const output = (part as any).output;
-              console.log('🐍 [MESSAGE] Output:', JSON.stringify(output));
+              console.log("🐍 [MESSAGE] Output:", JSON.stringify(output));
 
               // Check if output has code structure { id, title, kind }
-              if (output && typeof output === 'object' && output.id && output.title) {
+              if (
+                output &&
+                typeof output === "object" &&
+                output.id &&
+                output.title
+              ) {
                 const toolCallId = output.id;
-                console.log('✅ [MESSAGE] Rendering DocumentPreview (Python) with:', output);
+                console.log(
+                  "✅ [MESSAGE] Rendering DocumentPreview (Python) with:",
+                  output
+                );
 
                 // Handle error case
                 if ("error" in output) {
@@ -318,7 +347,9 @@ const PurePreviewMessage = ({
               }
 
               // If output is not structured, skip rendering (will be null)
-              console.log('⚠️ [MESSAGE] tool-pythonAgent part has no valid output, returning null');
+              console.log(
+                "⚠️ [MESSAGE] tool-pythonAgent part has no valid output, returning null"
+              );
               return null;
             }
 
@@ -335,7 +366,9 @@ const PurePreviewMessage = ({
                     {state === "output-available" && (
                       <ToolOutput
                         errorText={undefined}
-                        output={<Weather weatherAtLocation={part.output as any} />}
+                        output={
+                          <Weather weatherAtLocation={part.output as any} />
+                        }
                       />
                     )}
                   </ToolContent>
@@ -346,7 +379,12 @@ const PurePreviewMessage = ({
             if (type === "tool-createDocument") {
               const { toolCallId } = part;
 
-              if (part.output && typeof part.output === 'object' && part.output !== null && "error" in part.output) {
+              if (
+                part.output &&
+                typeof part.output === "object" &&
+                part.output !== null &&
+                "error" in part.output
+              ) {
                 return (
                   <div
                     className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
@@ -369,7 +407,12 @@ const PurePreviewMessage = ({
             if (type === "tool-updateDocument") {
               const { toolCallId } = part;
 
-              if (part.output && typeof part.output === 'object' && part.output !== null && "error" in part.output) {
+              if (
+                part.output &&
+                typeof part.output === "object" &&
+                part.output !== null &&
+                "error" in part.output
+              ) {
                 return (
                   <div
                     className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
@@ -405,7 +448,9 @@ const PurePreviewMessage = ({
                       <ToolOutput
                         errorText={undefined}
                         output={
-                          (typeof part.output === 'object' && part.output !== null && "error" in part.output) ? (
+                          typeof part.output === "object" &&
+                          part.output !== null &&
+                          "error" in part.output ? (
                             <div className="rounded border p-2 text-red-500">
                               Error: {String(part.output.error)}
                             </div>
@@ -485,12 +530,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
         </div>
       </div>
     </motion.div>
   );
 };
-

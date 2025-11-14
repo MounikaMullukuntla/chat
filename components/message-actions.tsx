@@ -1,9 +1,9 @@
 import equal from "fast-deep-equal";
+import { BarChart3Icon } from "lucide-react";
 import { memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
-import { BarChart3Icon } from "lucide-react";
 import type { Vote } from "@/lib/db/drizzle-schema";
 import type { ChatMessage } from "@/lib/types";
 import { Action, Actions } from "./elements/actions";

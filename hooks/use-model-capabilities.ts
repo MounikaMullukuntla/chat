@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import type { AdminConfigSummary } from "@/lib/types";
 
-interface UseModelCapabilitiesResult {
+type UseModelCapabilitiesResult = {
   modelCapabilities: AdminConfigSummary | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
-}
+};
 
 export function useModelCapabilities(): UseModelCapabilitiesResult {
-  const [modelCapabilities, setModelCapabilities] = useState<AdminConfigSummary | null>(null);
+  const [modelCapabilities, setModelCapabilities] =
+    useState<AdminConfigSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +29,9 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch model capabilities: ${response.status}`);
+        throw new Error(
+          `Failed to fetch model capabilities: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -36,7 +39,11 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
       setModelCapabilities(data.capabilities);
     } catch (err) {
       console.error("Failed to fetch model capabilities:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch model capabilities");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch model capabilities"
+      );
       setModelCapabilities(null);
     } finally {
       setIsLoading(false);
@@ -45,7 +52,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
 
   useEffect(() => {
     fetchModelCapabilities();
-  }, []);
+  }, [fetchModelCapabilities]);
 
   const refetch = () => {
     fetchModelCapabilities();

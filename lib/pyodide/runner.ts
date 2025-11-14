@@ -3,20 +3,20 @@
  * Handles initialization, code execution, output capture, and matplotlib rendering
  */
 
-export interface ExecutionResult {
+export type ExecutionResult = {
   stdout: string;
   stderr: string;
   error?: string;
   result?: any;
   plots?: string[]; // Base64 encoded images
-}
+};
 
-export interface PyodideRunner {
+export type PyodideRunner = {
   isLoading: boolean;
   isReady: boolean;
   execute: (code: string) => Promise<ExecutionResult>;
   loadPackage: (packageName: string) => Promise<void>;
-}
+};
 
 let pyodideInstance: any = null;
 let isInitializing = false;
@@ -32,7 +32,7 @@ async function initializePyodide(): Promise<any> {
   if (isInitializing) {
     // Wait for initialization to complete
     while (isInitializing) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     return pyodideInstance;
   }
@@ -43,11 +43,13 @@ async function initializePyodide(): Promise<any> {
     // Clear any existing pyodide global to prevent version conflicts
     if ((window as any).pyodide) {
       console.log("🧹 [PYODIDE] Clearing existing global instance");
-      delete (window as any).pyodide;
+      (window as any).pyodide = undefined;
     }
 
     // Load Pyodide script if not already loaded
-    if (!(window as any).loadPyodide) {
+    if ((window as any).loadPyodide) {
+      console.log("✅ [PYODIDE] loadPyodide already available");
+    } else {
       console.log("📦 [PYODIDE] Loading Pyodide script from CDN...");
 
       const script = document.createElement("script");
@@ -65,8 +67,6 @@ async function initializePyodide(): Promise<any> {
         };
         document.head.appendChild(script);
       });
-    } else {
-      console.log("✅ [PYODIDE] loadPyodide already available");
     }
 
     // Load Pyodide from CDN (using 0.25.1 for better stability and filesystem compatibility)
@@ -81,7 +81,10 @@ async function initializePyodide(): Promise<any> {
       await pyodide.loadPackage(["matplotlib", "numpy"]);
       console.log("📦 [PYODIDE] Matplotlib and numpy loaded");
     } catch (pkgError) {
-      console.warn("⚠️ [PYODIDE] Failed to load matplotlib/numpy, continuing without them:", pkgError);
+      console.warn(
+        "⚠️ [PYODIDE] Failed to load matplotlib/numpy, continuing without them:",
+        pkgError
+      );
       // Continue without matplotlib - users can still run basic Python code
     }
 
@@ -117,13 +120,16 @@ plt.show = _custom_show
 `);
       console.log("📦 [PYODIDE] Matplotlib configuration complete");
     } catch (configError) {
-      console.warn("⚠️ [PYODIDE] Failed to configure matplotlib, continuing without plot support:", configError);
+      console.warn(
+        "⚠️ [PYODIDE] Failed to configure matplotlib, continuing without plot support:",
+        configError
+      );
     }
 
     // Initialize _plots list even if matplotlib isn't loaded
     try {
       await pyodide.runPythonAsync("_plots = []");
-    } catch (e) {
+    } catch (_e) {
       // Ignore if already exists
     }
 
@@ -141,7 +147,10 @@ plt.show = _custom_show
 /**
  * Execute Python code and capture output
  */
-export async function executePython(code: string, timeout: number = 30000): Promise<ExecutionResult> {
+export async function executePython(
+  code: string,
+  timeout = 30_000
+): Promise<ExecutionResult> {
   const pyodide = await initializePyodide();
 
   let stdout = "";
@@ -158,13 +167,13 @@ export async function executePython(code: string, timeout: number = 30000): Prom
     pyodide.setStdout({
       batched: (text: string) => {
         stdout += text;
-      }
+      },
     });
 
     pyodide.setStderr({
       batched: (text: string) => {
         stderr += text;
-      }
+      },
     });
 
     // Execute code with timeout
@@ -181,7 +190,6 @@ export async function executePython(code: string, timeout: number = 30000): Prom
     // Get plots
     const plotsProxy = await pyodide.runPythonAsync("_plots");
     plots = plotsProxy.toJs();
-
   } catch (err) {
     console.error("Python execution error:", err);
     error = err instanceof Error ? err.message : String(err);

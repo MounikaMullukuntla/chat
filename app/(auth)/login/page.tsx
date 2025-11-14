@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
 import { useAuth } from "@/lib/auth/hooks";
-import { logAuthError, ErrorCategory, ErrorSeverity } from "@/lib/errors/logger";
+import {
+  ErrorCategory,
+  ErrorSeverity,
+  logAuthError,
+} from "@/lib/errors/logger";
 
 function LoginForm() {
   const router = useRouter();
@@ -26,6 +30,23 @@ function LoginForm() {
       router.push(returnTo);
     }
   }, [user, loading, router, searchParams]);
+
+  const getErrorMessage = useCallback((authError: string): string => {
+    // Map Supabase auth errors to user-friendly messages
+    if (authError.includes("Invalid login credentials")) {
+      return "Invalid email or password. Please try again.";
+    }
+    if (authError.includes("Email not confirmed")) {
+      return "Please check your email and click the confirmation link.";
+    }
+    if (authError.includes("Too many requests")) {
+      return "Too many login attempts. Please wait a moment and try again.";
+    }
+    if (authError.includes("Network")) {
+      return "Network error. Please check your connection and try again.";
+    }
+    return "Login failed. Please try again.";
+  }, []);
 
   // Handle auth errors
   useEffect(() => {
@@ -54,10 +75,10 @@ function LoginForm() {
         errorCategory,
         `Login failed: ${error}`,
         {
-          email: email,
-          userMessage: userMessage,
+          email,
+          userMessage,
           originalError: error,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         undefined, // No user_id since login failed
         severity
@@ -69,7 +90,7 @@ function LoginForm() {
       });
       setIsSubmitting(false);
     }
-  }, [error, email]);
+  }, [error, email, getErrorMessage]);
 
   // Clear error when component unmounts or user starts typing
   useEffect(() => {
@@ -79,23 +100,6 @@ function LoginForm() {
       }
     };
   }, [error, clearError]);
-
-  const getErrorMessage = (error: string): string => {
-    // Map Supabase auth errors to user-friendly messages
-    if (error.includes("Invalid login credentials")) {
-      return "Invalid email or password. Please try again.";
-    }
-    if (error.includes("Email not confirmed")) {
-      return "Please check your email and click the confirmation link.";
-    }
-    if (error.includes("Too many requests")) {
-      return "Too many login attempts. Please wait a moment and try again.";
-    }
-    if (error.includes("Network")) {
-      return "Network error. Please check your connection and try again.";
-    }
-    return "Login failed. Please try again.";
-  };
 
   const handleSubmit = async (formData: FormData) => {
     const emailValue = formData.get("email") as string;
@@ -116,7 +120,7 @@ function LoginForm() {
     try {
       await signIn(emailValue, password);
       setIsSuccessful(true);
-      
+
       // Redirect will be handled by the useEffect above
       toast({
         type: "success",
@@ -124,8 +128,9 @@ function LoginForm() {
       });
     } catch (err) {
       // Log unexpected errors
-      const errorMessage = err instanceof Error ? err.message : 'Unknown login error';
-      
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown login error";
+
       logAuthError(
         ErrorCategory.LOGIN_FAILED,
         `Unexpected login error: ${errorMessage}`,
@@ -133,12 +138,12 @@ function LoginForm() {
           email: emailValue,
           error: errorMessage,
           stack: err instanceof Error ? err.stack : undefined,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         undefined,
         ErrorSeverity.ERROR
       );
-      
+
       console.error("Login error:", err);
     }
   };
@@ -148,8 +153,10 @@ function LoginForm() {
     return (
       <div className="flex h-dvh w-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2 dark:border-gray-100" />
+          <p className="mt-2 text-gray-600 text-sm dark:text-gray-400">
+            Loading...
+          </p>
         </div>
       </div>
     );
@@ -170,9 +177,9 @@ function LoginForm() {
           </p>
         </div>
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton 
-            isSuccessful={isSuccessful}
+          <SubmitButton
             disabled={isSubmitting || loading}
+            isSuccessful={isSuccessful}
           >
             {isSubmitting ? "Signing in..." : "Sign in"}
           </SubmitButton>
@@ -194,14 +201,18 @@ function LoginForm() {
 
 export default function Page() {
   return (
-    <Suspense fallback={
-      <div className="flex h-dvh w-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="flex h-dvh w-screen items-center justify-center bg-background">
+          <div className="text-center">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2 dark:border-gray-100" />
+            <p className="mt-2 text-gray-600 text-sm dark:text-gray-400">
+              Loading...
+            </p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

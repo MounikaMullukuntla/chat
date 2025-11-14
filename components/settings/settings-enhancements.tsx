@@ -3,40 +3,42 @@
  * Additional UX improvements and polish for the settings page
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Save, 
-  Download, 
-  Upload, 
-  Shield, 
-  Clock, 
-  Zap,
+import {
+  AlertCircle,
   CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
-import { storage } from '@/lib/storage/helpers';
-import { useToastNotifications } from '@/hooks/use-toast-notifications';
-import { cn } from '@/lib/utils';
+  Clock,
+  Download,
+  Save,
+  Shield,
+  Upload,
+  Zap,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { useToastNotifications } from "@/hooks/use-toast-notifications";
+import { storage } from "@/lib/storage/helpers";
+import { cn } from "@/lib/utils";
 
-interface SettingsEnhancementsProps {
+type SettingsEnhancementsProps = {
   className?: string;
-}
+};
 
 export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [autoSaveEnabled, _setAutoSaveEnabled] = useState(true);
   const [savingProgress, setSavingProgress] = useState(0);
   const toast = useToastNotifications();
 
   // Auto-save functionality
   useEffect(() => {
-    if (!autoSaveEnabled) return;
+    if (!autoSaveEnabled) {
+      return;
+    }
 
     const handleStorageChange = () => {
       setLastSaved(new Date());
@@ -57,50 +59,55 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
 
       const exportData = {
         timestamp: new Date().toISOString(),
-        version: '1.0',
+        version: "1.0",
         summary: {
           apiKeysCount: apiKeys.length,
           providers: apiKeys,
           hasGitHubIntegration: hasGitHub,
-          totalItems: summary.totalItems
+          totalItems: summary.totalItems,
         },
         // Note: We don't export actual keys for security
-        note: 'This export contains configuration summary only. API keys are not included for security reasons.'
+        note: "This export contains configuration summary only. API keys are not included for security reasons.",
       };
 
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `settings-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `settings-export-${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Settings exported', 'Configuration summary downloaded successfully');
-    } catch (error) {
-      toast.error('Export failed', 'Failed to export settings configuration');
+      toast.success(
+        "Settings exported",
+        "Configuration summary downloaded successfully"
+      );
+    } catch (_error) {
+      toast.error("Export failed", "Failed to export settings configuration");
     }
   }, [toast]);
 
   // Clear all data with confirmation
   const handleClearAllData = useCallback(() => {
     const confirmed = window.confirm(
-      'Are you sure you want to clear all stored data? This action cannot be undone.\n\n' +
-      'This will remove:\n' +
-      '• All API keys\n' +
-      '• GitHub integration\n' +
-      '• All stored preferences'
+      "Are you sure you want to clear all stored data? This action cannot be undone.\n\n" +
+        "This will remove:\n" +
+        "• All API keys\n" +
+        "• GitHub integration\n" +
+        "• All stored preferences"
     );
 
     if (confirmed) {
       try {
         storage.general.clearAll();
-        toast.success('Data cleared', 'All stored data has been removed');
+        toast.success("Data cleared", "All stored data has been removed");
         setLastSaved(null);
-      } catch (error) {
-        toast.error('Clear failed', 'Failed to clear stored data');
+      } catch (_error) {
+        toast.error("Clear failed", "Failed to clear stored data");
       }
     }
   }, [toast]);
@@ -116,7 +123,7 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
       quota,
       health,
       isHealthy: health.healthy,
-      usagePercentage: quota?.percentage || 0
+      usagePercentage: quota?.percentage || 0,
     };
   }, []);
 
@@ -125,18 +132,18 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
   return (
     <div className={cn("space-y-4", className)}>
       {/* Auto-save Status */}
-      <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Save className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                <span className="font-medium text-green-900 text-sm dark:text-green-100">
                   Auto-save Active
                 </span>
               </div>
               {lastSaved && (
-                <div className="text-xs text-green-700 dark:text-green-300">
+                <div className="text-green-700 text-xs dark:text-green-300">
                   Last saved: {lastSaved.toLocaleTimeString()}
                 </div>
               )}
@@ -144,12 +151,15 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
             <div className="flex items-center gap-2">
               {savingProgress > 0 && (
                 <div className="flex items-center gap-2">
-                  <Progress value={savingProgress} className="w-16 h-2" />
+                  <Progress className="h-2 w-16" value={savingProgress} />
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                 </div>
               )}
-              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-800 dark:text-green-100">
-                <Zap className="h-3 w-3 mr-1" />
+              <Badge
+                className="border-green-300 bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+                variant="outline"
+              >
+                <Zap className="mr-1 h-3 w-3" />
                 Live
               </Badge>
             </div>
@@ -160,23 +170,27 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
       {/* Storage Health Status */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Storage Health</span>
+              <span className="font-medium text-sm">Storage Health</span>
             </div>
-            <Badge 
+            <Badge
+              className={
+                stats.isHealthy
+                  ? "border-green-200 bg-green-100 text-green-800"
+                  : ""
+              }
               variant={stats.isHealthy ? "default" : "destructive"}
-              className={stats.isHealthy ? "bg-green-100 text-green-800 border-green-200" : ""}
             >
               {stats.isHealthy ? (
                 <>
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
                   Healthy
                 </>
               ) : (
                 <>
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                  <AlertCircle className="mr-1 h-3 w-3" />
                   Issues
                 </>
               )}
@@ -191,7 +205,7 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
                   <span>Storage Usage</span>
                   <span>{stats.usagePercentage.toFixed(1)}%</span>
                 </div>
-                <Progress value={stats.usagePercentage} className="h-2" />
+                <Progress className="h-2" value={stats.usagePercentage} />
               </div>
             )}
 
@@ -199,12 +213,14 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="text-muted-foreground">API Keys:</span>
-                <span className="ml-2 font-medium">{stats.summary.apiKeys.count}</span>
+                <span className="ml-2 font-medium">
+                  {stats.summary.apiKeys.count}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Integrations:</span>
                 <span className="ml-2 font-medium">
-                  {stats.summary.integrations.github ? '1' : '0'}
+                  {stats.summary.integrations.github ? "1" : "0"}
                 </span>
               </div>
             </div>
@@ -215,34 +231,34 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
       {/* Quick Actions */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="mb-3 flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-600" />
-            <span className="text-sm font-medium">Quick Actions</span>
+            <span className="font-medium text-sm">Quick Actions</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportSettings}
               className="justify-start"
+              onClick={handleExportSettings}
+              size="sm"
+              variant="outline"
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Export Config
             </Button>
 
             <Button
-              variant="outline"
-              size="sm"
+              className="justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
               onClick={handleClearAllData}
-              className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              size="sm"
+              variant="outline"
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="mr-2 h-4 w-4" />
               Clear All Data
             </Button>
           </div>
 
-          <div className="mt-3 text-xs text-muted-foreground">
+          <div className="mt-3 text-muted-foreground text-xs">
             Export creates a configuration summary (no sensitive data included).
             Clear all removes everything stored locally.
           </div>
@@ -250,13 +266,13 @@ export function SettingsEnhancements({ className }: SettingsEnhancementsProps) {
       </Card>
 
       {/* Security Notice */}
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+      <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <Shield className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-900 dark:text-blue-100">
-              <div className="font-medium mb-1">Security & Privacy</div>
-              <div className="text-blue-700 dark:text-blue-300 space-y-1">
+            <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+            <div className="text-blue-900 text-xs dark:text-blue-100">
+              <div className="mb-1 font-medium">Security & Privacy</div>
+              <div className="space-y-1 text-blue-700 dark:text-blue-300">
                 <div>• All data is stored locally in your browser</div>
                 <div>• API keys are never transmitted to our servers</div>
                 <div>• Data is automatically cleared when you log out</div>

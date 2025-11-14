@@ -5,11 +5,11 @@ config({
   path: ".env.local",
 });
 
-interface VerificationResult {
+type VerificationResult = {
   category: string;
   passed: boolean;
   details: string[];
-}
+};
 
 const verifyMigration = async (): Promise<void> => {
   if (!process.env.POSTGRES_URL) {
@@ -37,13 +37,13 @@ const verifyMigration = async (): Promise<void> => {
       "usage_logs",
       "rate_limit_tracking",
       "github_repositories",
-      "error_logs"
+      "error_logs",
     ];
 
     const tableResult: VerificationResult = {
       category: "Tables",
       passed: true,
-      details: []
+      details: [],
     };
 
     for (const table of expectedTables) {
@@ -55,14 +55,16 @@ const verifyMigration = async (): Promise<void> => {
             AND table_name = ${table}
           )
         `;
-        
+
         if (!result[0]?.exists) {
           tableResult.passed = false;
           tableResult.details.push(`❌ Table "${table}" is missing`);
         }
       } catch (error) {
         tableResult.passed = false;
-        tableResult.details.push(`❌ Error checking table "${table}": ${error}`);
+        tableResult.details.push(
+          `❌ Error checking table "${table}": ${error}`
+        );
       }
     }
 
@@ -82,13 +84,13 @@ const verifyMigration = async (): Promise<void> => {
       "update_admin_config_timestamp",
       "update_model_config_timestamp",
       "ensure_single_default_model_per_provider",
-      "validate_admin_config_data"
+      "validate_admin_config_data",
     ];
 
     const functionResult: VerificationResult = {
       category: "Functions",
       passed: true,
-      details: []
+      details: [],
     };
 
     for (const func of expectedFunctions) {
@@ -100,14 +102,16 @@ const verifyMigration = async (): Promise<void> => {
             AND routine_name = ${func}
           )
         `;
-        
+
         if (!result[0]?.exists) {
           functionResult.passed = false;
           functionResult.details.push(`❌ Function "${func}" is missing`);
         }
       } catch (error) {
         functionResult.passed = false;
-        functionResult.details.push(`❌ Error checking function "${func}": ${error}`);
+        functionResult.details.push(
+          `❌ Error checking function "${func}": ${error}`
+        );
       }
     }
 
@@ -130,13 +134,13 @@ const verifyMigration = async (): Promise<void> => {
       "idx_error_logs_user_id",
       "idx_admin_config_key",
       "idx_model_config_model_id",
-      "idx_model_config_provider"
+      "idx_model_config_provider",
     ];
 
     const indexResult: VerificationResult = {
       category: "Indexes",
       passed: true,
-      details: []
+      details: [],
     };
 
     for (const index of expectedIndexes) {
@@ -148,14 +152,16 @@ const verifyMigration = async (): Promise<void> => {
             AND indexname = ${index}
           )
         `;
-        
+
         if (!result[0]?.exists) {
           indexResult.passed = false;
           indexResult.details.push(`❌ Index "${index}" is missing`);
         }
       } catch (error) {
         indexResult.passed = false;
-        indexResult.details.push(`❌ Error checking index "${index}": ${error}`);
+        indexResult.details.push(
+          `❌ Error checking index "${index}": ${error}`
+        );
       }
     }
 
@@ -171,13 +177,13 @@ const verifyMigration = async (): Promise<void> => {
       { table: "Document", trigger: "validate_document_user_id" },
       { table: "admin_config", trigger: "trigger_admin_config_updated_at" },
       { table: "model_config", trigger: "trigger_model_config_updated_at" },
-      { table: "model_config", trigger: "trigger_ensure_single_default_model" }
+      { table: "model_config", trigger: "trigger_ensure_single_default_model" },
     ];
 
     const triggerResult: VerificationResult = {
       category: "Triggers",
       passed: true,
-      details: []
+      details: [],
     };
 
     for (const { table, trigger } of expectedTriggers) {
@@ -190,14 +196,18 @@ const verifyMigration = async (): Promise<void> => {
             AND trigger_name = ${trigger}
           )
         `;
-        
+
         if (!result[0]?.exists) {
           triggerResult.passed = false;
-          triggerResult.details.push(`❌ Trigger "${table}.${trigger}" is missing`);
+          triggerResult.details.push(
+            `❌ Trigger "${table}.${trigger}" is missing`
+          );
         }
       } catch (error) {
         triggerResult.passed = false;
-        triggerResult.details.push(`❌ Error checking trigger "${table}.${trigger}": ${error}`);
+        triggerResult.details.push(
+          `❌ Error checking trigger "${table}.${trigger}": ${error}`
+        );
       }
     }
 
@@ -211,15 +221,18 @@ const verifyMigration = async (): Promise<void> => {
     const expectedPolicies = [
       { table: "Chat", policy: "Users can read own chats" },
       { table: "admin_config", policy: "Admins can read admin_config" },
-      { table: "model_config", policy: "Authenticated users can read model_config" },
+      {
+        table: "model_config",
+        policy: "Authenticated users can read model_config",
+      },
       { table: "usage_logs", policy: "Users can read own usage_logs" },
-      { table: "error_logs", policy: "System can insert error_logs" }
+      { table: "error_logs", policy: "System can insert error_logs" },
     ];
 
     const policyResult: VerificationResult = {
       category: "RLS Policies",
       passed: true,
-      details: []
+      details: [],
     };
 
     for (const { table, policy } of expectedPolicies) {
@@ -232,14 +245,18 @@ const verifyMigration = async (): Promise<void> => {
             AND policyname = ${policy}
           )
         `;
-        
+
         if (!result[0]?.exists) {
           policyResult.passed = false;
-          policyResult.details.push(`❌ Policy "${policy}" missing on "${table}"`);
+          policyResult.details.push(
+            `❌ Policy "${policy}" missing on "${table}"`
+          );
         }
       } catch (error) {
         policyResult.passed = false;
-        policyResult.details.push(`❌ Error checking policy "${policy}" on "${table}": ${error}`);
+        policyResult.details.push(
+          `❌ Error checking policy "${policy}" on "${table}": ${error}`
+        );
       }
     }
 
@@ -253,21 +270,21 @@ const verifyMigration = async (): Promise<void> => {
     const seedResult: VerificationResult = {
       category: "Seed Data",
       passed: true,
-      details: []
+      details: [],
     };
 
     try {
       const configCount = await connection`
         SELECT COUNT(*) as count FROM admin_config
       `;
-      
-      const count = parseInt(configCount[0]?.count || "0");
+
+      const count = Number.parseInt(configCount[0]?.count || "0", 10);
       if (count === 0) {
         seedResult.passed = false;
         seedResult.details.push("❌ No admin configurations found");
       } else {
         seedResult.details.push(`✅ Found ${count} admin configurations`);
-        
+
         // Check for app_settings
         const appSettings = await connection`
           SELECT EXISTS (
@@ -275,7 +292,7 @@ const verifyMigration = async (): Promise<void> => {
             WHERE config_key = 'app_settings'
           )
         `;
-        
+
         if (appSettings[0]?.exists) {
           seedResult.details.push("✅ App settings configuration exists");
         } else {
@@ -289,24 +306,28 @@ const verifyMigration = async (): Promise<void> => {
           WHERE config_key LIKE '%_agent_google'
         `;
 
-        const googleCount = parseInt(googleConfigs[0]?.count || "0");
+        const googleCount = Number.parseInt(googleConfigs[0]?.count || "0", 10);
         const expectedGoogleConfigs = 6; // chat_model, provider_tools, document, python, mermaid, git_mcp
 
         if (googleCount === expectedGoogleConfigs) {
-          seedResult.details.push(`✅ Found ${googleCount} Google provider configurations`);
+          seedResult.details.push(
+            `✅ Found ${googleCount} Google provider configurations`
+          );
         } else {
           seedResult.passed = false;
-          seedResult.details.push(`❌ Expected ${expectedGoogleConfigs} Google configs, found ${googleCount}`);
+          seedResult.details.push(
+            `❌ Expected ${expectedGoogleConfigs} Google configs, found ${googleCount}`
+          );
         }
 
         // Check for specific Google agent configs
         const expectedGoogleAgents = [
-          'chat_model_agent_google',
-          'provider_tools_agent_google',
-          'document_agent_google',
-          'python_agent_google',
-          'mermaid_agent_google',
-          'git_mcp_agent_google'
+          "chat_model_agent_google",
+          "provider_tools_agent_google",
+          "document_agent_google",
+          "python_agent_google",
+          "mermaid_agent_google",
+          "git_mcp_agent_google",
         ];
 
         for (const agentKey of expectedGoogleAgents) {
@@ -319,7 +340,9 @@ const verifyMigration = async (): Promise<void> => {
 
           if (!exists[0]?.exists) {
             seedResult.passed = false;
-            seedResult.details.push(`❌ Missing Google agent config: ${agentKey}`);
+            seedResult.details.push(
+              `❌ Missing Google agent config: ${agentKey}`
+            );
           }
         }
 
@@ -333,35 +356,51 @@ const verifyMigration = async (): Promise<void> => {
           const configData = documentAgentConfig[0].config_data as any;
 
           // Check for new tools-based structure
-          if (configData.tools &&
-              configData.tools.create &&
-              configData.tools.update &&
-              configData.tools.suggestion &&
-              configData.tools.revert) {
-            seedResult.details.push("✅ Document agent has new tools structure (create, update, suggestion, revert)");
+          if (
+            configData.tools?.create &&
+            configData.tools.update &&
+            configData.tools.suggestion &&
+            configData.tools.revert
+          ) {
+            seedResult.details.push(
+              "✅ Document agent has new tools structure (create, update, suggestion, revert)"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Document agent missing new tools structure");
+            seedResult.details.push(
+              "❌ Document agent missing new tools structure"
+            );
           }
 
           // Check for tool-specific prompts
-          if (configData.tools?.create?.systemPrompt &&
-              configData.tools?.update?.systemPrompt) {
-            seedResult.details.push("✅ Document agent tools have systemPrompts");
+          if (
+            configData.tools?.create?.systemPrompt &&
+            configData.tools?.update?.systemPrompt
+          ) {
+            seedResult.details.push(
+              "✅ Document agent tools have systemPrompts"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Document agent tools missing systemPrompts");
+            seedResult.details.push(
+              "❌ Document agent tools missing systemPrompts"
+            );
           }
 
           // Check for rateLimit
-          if (configData.rateLimit &&
-              configData.rateLimit.perMinute &&
-              configData.rateLimit.perHour &&
-              configData.rateLimit.perDay) {
-            seedResult.details.push("✅ Document agent has rateLimit configuration");
+          if (
+            configData.rateLimit?.perMinute &&
+            configData.rateLimit.perHour &&
+            configData.rateLimit.perDay
+          ) {
+            seedResult.details.push(
+              "✅ Document agent has rateLimit configuration"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Document agent missing rateLimit configuration");
+            seedResult.details.push(
+              "❌ Document agent missing rateLimit configuration"
+            );
           }
         }
 
@@ -375,22 +414,29 @@ const verifyMigration = async (): Promise<void> => {
           const configData = pythonAgentConfig[0].config_data as any;
 
           // Check for new tools-based structure
-          if (configData.tools &&
-              configData.tools.create &&
-              configData.tools.update &&
-              configData.tools.fix &&
-              configData.tools.explain &&
-              configData.tools.generate &&
-              configData.tools.revert) {
-            seedResult.details.push("✅ Python agent has new tools structure (create, update, fix, explain, generate, revert)");
+          if (
+            configData.tools?.create &&
+            configData.tools.update &&
+            configData.tools.fix &&
+            configData.tools.explain &&
+            configData.tools.generate &&
+            configData.tools.revert
+          ) {
+            seedResult.details.push(
+              "✅ Python agent has new tools structure (create, update, fix, explain, generate, revert)"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Python agent missing new tools structure");
+            seedResult.details.push(
+              "❌ Python agent missing new tools structure"
+            );
           }
 
           // Check for rateLimit
           if (configData.rateLimit) {
-            seedResult.details.push("✅ Python agent has rateLimit configuration");
+            seedResult.details.push(
+              "✅ Python agent has rateLimit configuration"
+            );
           }
         }
 
@@ -404,21 +450,28 @@ const verifyMigration = async (): Promise<void> => {
           const configData = mermaidAgentConfig[0].config_data as any;
 
           // Check for new tools-based structure
-          if (configData.tools &&
-              configData.tools.create &&
-              configData.tools.update &&
-              configData.tools.fix &&
-              configData.tools.generate &&
-              configData.tools.revert) {
-            seedResult.details.push("✅ Mermaid agent has new tools structure (create, update, fix, generate, revert)");
+          if (
+            configData.tools?.create &&
+            configData.tools.update &&
+            configData.tools.fix &&
+            configData.tools.generate &&
+            configData.tools.revert
+          ) {
+            seedResult.details.push(
+              "✅ Mermaid agent has new tools structure (create, update, fix, generate, revert)"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Mermaid agent missing new tools structure");
+            seedResult.details.push(
+              "❌ Mermaid agent missing new tools structure"
+            );
           }
 
           // Check for rateLimit
           if (configData.rateLimit) {
-            seedResult.details.push("✅ Mermaid agent has rateLimit configuration");
+            seedResult.details.push(
+              "✅ Mermaid agent has rateLimit configuration"
+            );
           }
         }
 
@@ -432,19 +485,24 @@ const verifyMigration = async (): Promise<void> => {
           const configData = gitMcpAgentConfig[0].config_data as any;
 
           // Check for tools structure
-          if (configData.tools &&
-              configData.tools.repos &&
-              configData.tools.issues &&
-              configData.tools.pull_requests) {
+          if (
+            configData.tools?.repos &&
+            configData.tools.issues &&
+            configData.tools.pull_requests
+          ) {
             seedResult.details.push("✅ GitHub MCP agent has tools structure");
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ GitHub MCP agent missing tools structure");
+            seedResult.details.push(
+              "❌ GitHub MCP agent missing tools structure"
+            );
           }
 
           // Check for systemPrompt and rateLimit
           if (configData.systemPrompt && configData.rateLimit) {
-            seedResult.details.push("✅ GitHub MCP agent has systemPrompt and rateLimit");
+            seedResult.details.push(
+              "✅ GitHub MCP agent has systemPrompt and rateLimit"
+            );
           }
         }
 
@@ -458,35 +516,53 @@ const verifyMigration = async (): Promise<void> => {
           const configData = chatAgentConfig[0].config_data as any;
 
           // Check for all agent tools
-          if (configData.tools?.providerToolsAgent &&
-              configData.tools?.documentAgent &&
-              configData.tools?.pythonAgent &&
-              configData.tools?.mermaidAgent &&
-              configData.tools?.gitMcpAgent) {
-            seedResult.details.push("✅ Chat agent has all specialized agent tools");
+          if (
+            configData.tools?.providerToolsAgent &&
+            configData.tools?.documentAgent &&
+            configData.tools?.pythonAgent &&
+            configData.tools?.mermaidAgent &&
+            configData.tools?.gitMcpAgent
+          ) {
+            seedResult.details.push(
+              "✅ Chat agent has all specialized agent tools"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Chat agent missing some specialized agent tools");
+            seedResult.details.push(
+              "❌ Chat agent missing some specialized agent tools"
+            );
           }
 
           // Check for documentAgent operation/instruction structure
-          if (configData.tools?.documentAgent?.tool_input?.operation &&
-              configData.tools?.documentAgent?.tool_input?.instruction) {
-            seedResult.details.push("✅ Chat agent documentAgent tool has operation + instruction structure");
+          if (
+            configData.tools?.documentAgent?.tool_input?.operation &&
+            configData.tools?.documentAgent?.tool_input?.instruction
+          ) {
+            seedResult.details.push(
+              "✅ Chat agent documentAgent tool has operation + instruction structure"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Chat agent documentAgent tool missing operation/instruction structure");
+            seedResult.details.push(
+              "❌ Chat agent documentAgent tool missing operation/instruction structure"
+            );
           }
 
           // Check for pythonAgent operation/instruction structure
-          if (configData.tools?.pythonAgent?.tool_input?.operation &&
-              configData.tools?.pythonAgent?.tool_input?.instruction) {
-            seedResult.details.push("✅ Chat agent pythonAgent tool has operation + instruction structure");
+          if (
+            configData.tools?.pythonAgent?.tool_input?.operation &&
+            configData.tools?.pythonAgent?.tool_input?.instruction
+          ) {
+            seedResult.details.push(
+              "✅ Chat agent pythonAgent tool has operation + instruction structure"
+            );
           }
 
           // Check for systemPrompt
           if (configData.systemPrompt && configData.systemPrompt.length > 100) {
-            seedResult.details.push("✅ Chat agent has comprehensive systemPrompt");
+            seedResult.details.push(
+              "✅ Chat agent has comprehensive systemPrompt"
+            );
           }
         }
 
@@ -499,13 +575,19 @@ const verifyMigration = async (): Promise<void> => {
         if (providerToolsConfig.length > 0) {
           const configData = providerToolsConfig[0].config_data as any;
 
-          if (configData.tools?.googleSearch &&
-              configData.tools?.urlContext &&
-              configData.tools?.codeExecution) {
-            seedResult.details.push("✅ Provider tools agent has all tools (googleSearch, urlContext, codeExecution)");
+          if (
+            configData.tools?.googleSearch &&
+            configData.tools?.urlContext &&
+            configData.tools?.codeExecution
+          ) {
+            seedResult.details.push(
+              "✅ Provider tools agent has all tools (googleSearch, urlContext, codeExecution)"
+            );
           } else {
             seedResult.passed = false;
-            seedResult.details.push("❌ Provider tools agent missing some tools");
+            seedResult.details.push(
+              "❌ Provider tools agent missing some tools"
+            );
           }
         }
       }
@@ -520,7 +602,7 @@ const verifyMigration = async (): Promise<void> => {
         SELECT COUNT(*) as count FROM model_config
       `;
 
-      const count = parseInt(modelCount[0]?.count || "0");
+      const count = Number.parseInt(modelCount[0]?.count || "0", 10);
       if (count === 0) {
         seedResult.passed = false;
         seedResult.details.push("❌ No model configurations found");
@@ -538,9 +620,15 @@ const verifyMigration = async (): Promise<void> => {
           SELECT COUNT(*) as count FROM model_config WHERE provider = 'anthropic'
         `;
 
-        seedResult.details.push(`✅ Google models: ${googleModels[0]?.count || 0}`);
-        seedResult.details.push(`✅ OpenAI models: ${openaiModels[0]?.count || 0}`);
-        seedResult.details.push(`✅ Anthropic models: ${anthropicModels[0]?.count || 0}`);
+        seedResult.details.push(
+          `✅ Google models: ${googleModels[0]?.count || 0}`
+        );
+        seedResult.details.push(
+          `✅ OpenAI models: ${openaiModels[0]?.count || 0}`
+        );
+        seedResult.details.push(
+          `✅ Anthropic models: ${anthropicModels[0]?.count || 0}`
+        );
       }
     } catch (error) {
       seedResult.passed = false;
@@ -548,7 +636,6 @@ const verifyMigration = async (): Promise<void> => {
     }
 
     results.push(seedResult);
-
   } catch (error) {
     console.error("❌ Verification failed:", error);
     throw error;
@@ -569,12 +656,12 @@ const verifyMigration = async (): Promise<void> => {
     const status = result.passed ? "✅ PASSED" : "❌ FAILED";
     console.log(`${status} - ${result.category}`);
     console.log("------------------------------------------------------------");
-    
+
     for (const detail of result.details) {
       console.log(`  ${detail}`);
     }
     console.log("");
-    
+
     if (!result.passed) {
       allPassed = false;
     }

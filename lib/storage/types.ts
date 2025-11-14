@@ -3,13 +3,13 @@
  */
 
 // Storage schema for localStorage
-export interface LocalStorageSchema {
-  'api-keys': {
+export type LocalStorageSchema = {
+  "api-keys": {
     google?: string;
     anthropic?: string;
     openai?: string;
   };
-  'integrations': {
+  integrations: {
     github?: {
       token: string;
       lastVerified?: string;
@@ -32,34 +32,34 @@ export interface LocalStorageSchema {
       expiresAt?: string;
     };
   };
-}
+};
 
 // Component state interfaces
-export interface APIKeyState {
+export type APIKeyState = {
   value: string;
   isVerifying: boolean;
   verificationResult?: VerificationResult;
   showKey: boolean;
-}
+};
 
-export interface GitHubState {
+export type GitHubState = {
   token: string;
   isVerifying: boolean;
   verificationResult?: GitHubVerificationResult;
   showToken: boolean;
-}
+};
 
 // Verification result types
-export interface VerificationResult {
+export type VerificationResult = {
   success: boolean;
   error?: string;
   details?: {
     model?: string;
     usage?: object;
   };
-}
+};
 
-export interface GitHubVerificationResult {
+export type GitHubVerificationResult = {
   success: boolean;
   error?: string;
   user?: {
@@ -73,13 +73,13 @@ export interface GitHubVerificationResult {
   }>;
   scopes?: string[];
   expiresAt?: string;
-}
+};
 
 // API provider types
-export type APIProvider = 'google' | 'anthropic' | 'openai';
+export type APIProvider = "google" | "anthropic" | "openai";
 
 // Storage manager interface
-export interface StorageManager {
+export type StorageManager = {
   getAPIKey(provider: APIProvider): string | null;
   setAPIKey(provider: APIProvider, key: string): void;
   removeAPIKey(provider: APIProvider): void;
@@ -87,55 +87,61 @@ export interface StorageManager {
   setGitHubPAT(token: string): void;
   removeGitHubPAT(): void;
   clearAll(): void;
-  
+
   // Session management
   setupAutoCleanup(): void;
   cleanupOnLogout(): void;
-  
+
   // Storage management
   getStorageQuota(): StorageQuotaInfo | null;
   checkStorageHealth(): { healthy: boolean; errors: StorageError[] };
-  
+
   // Configuration
   configure(config: Partial<StorageConfig>): void;
   getConfig(): StorageConfig;
-}
+};
 
 // Storage events
-export interface StorageEvent {
-  type: 'api-key-updated' | 'api-key-removed' | 'github-pat-updated' | 'github-pat-removed' | 'storage-cleared' | 'storage-error';
+export type StorageEvent = {
+  type:
+    | "api-key-updated"
+    | "api-key-removed"
+    | "github-pat-updated"
+    | "github-pat-removed"
+    | "storage-cleared"
+    | "storage-error";
   provider?: APIProvider;
   timestamp: number;
   error?: string;
-}
+};
 
 // Storage configuration
-export interface StorageConfig {
+export type StorageConfig = {
   useSessionStorage?: boolean;
   autoCleanupOnLogout?: boolean;
   maxStorageSize?: number; // in bytes
   enableEncryption?: boolean;
-}
+};
 
 // Storage quota information
-export interface StorageQuotaInfo {
+export type StorageQuotaInfo = {
   used: number;
   available: number;
   total: number;
   percentage: number;
-}
+};
 
 // Storage error types
 export enum StorageErrorType {
-  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
-  STORAGE_UNAVAILABLE = 'STORAGE_UNAVAILABLE',
-  DATA_CORRUPTION = 'DATA_CORRUPTION',
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+  QUOTA_EXCEEDED = "QUOTA_EXCEEDED",
+  STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE",
+  DATA_CORRUPTION = "DATA_CORRUPTION",
+  PERMISSION_DENIED = "PERMISSION_DENIED",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
-export interface StorageError {
+export type StorageError = {
   type: StorageErrorType;
   message: string;
   details?: any;
-}
+};

@@ -1,10 +1,10 @@
 import "server-only";
 
-import { tool } from 'ai';
-import { z } from 'zod';
-import type { ChatModelAgentConfig } from '../../core/types';
-import { AgentError, ErrorCodes } from '../../core/errors';
-import type { AgentConfigLoader } from './agentConfigLoader';
+import { tool } from "ai";
+import { z } from "zod";
+import { AgentError, ErrorCodes } from "../../core/errors";
+import type { ChatModelAgentConfig } from "../../core/types";
+import type { AgentConfigLoader } from "./agentConfigLoader";
 
 /**
  * Agent tool builder
@@ -12,14 +12,18 @@ import type { AgentConfigLoader } from './agentConfigLoader';
  */
 export class AgentToolBuilder {
   constructor(
-    private config: ChatModelAgentConfig,
-    private configLoader: AgentConfigLoader
+    private readonly config: ChatModelAgentConfig,
+    private readonly configLoader: AgentConfigLoader
   ) {}
 
   /**
    * Build AI SDK tools - Specialized agents are treated as individual tools
    */
-  buildTools(dataStream: any, user?: any, chatId?: string): Record<string, any> | undefined {
+  buildTools(
+    dataStream: any,
+    user?: any,
+    chatId?: string
+  ): Record<string, any> | undefined {
     const tools: Record<string, any> = {};
     const enabledTools: string[] = [];
 
@@ -27,89 +31,145 @@ export class AgentToolBuilder {
     const providerToolsAgent = this.configLoader.getProviderToolsAgent();
     const providerToolsConfig = this.configLoader.getProviderToolsConfig();
 
-    if (providerToolsAgent && providerToolsConfig?.enabled && this.config.tools?.providerToolsAgent?.enabled) {
+    if (
+      providerToolsAgent &&
+      providerToolsConfig?.enabled &&
+      this.config.tools?.providerToolsAgent?.enabled
+    ) {
       // Check if tool description is missing and throw error
       if (!this.config.tools.providerToolsAgent.description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'providerToolsAgent tool description is required when tool is enabled'
+          "providerToolsAgent tool description is required when tool is enabled"
         );
       }
 
       // Check if tool parameter description is missing and throw error
-      if (!this.config.tools.providerToolsAgent.tool_input?.parameter_description) {
+      if (
+        !this.config.tools.providerToolsAgent.tool_input?.parameter_description
+      ) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'providerToolsAgent tool parameter description is required when tool is enabled'
+          "providerToolsAgent tool parameter description is required when tool is enabled"
         );
       }
 
       tools.providerToolsAgent = tool({
         description: this.config.tools.providerToolsAgent.description,
         inputSchema: z.object({
-          input: z.string().describe(this.config.tools.providerToolsAgent.tool_input.parameter_description)
+          input: z
+            .string()
+            .describe(
+              this.config.tools.providerToolsAgent.tool_input
+                .parameter_description
+            ),
         }),
         execute: async (params: { input: string }) => {
-          console.log('🔧 [TOOL-CALL] Provider Tools Agent executing:', params.input.substring(0, 100));
+          console.log(
+            "🔧 [TOOL-CALL] Provider Tools Agent executing:",
+            params.input.substring(0, 100)
+          );
 
           // Execute provider tools agent
-          const result = await providerToolsAgent.execute({ input: params.input });
+          const result = await providerToolsAgent.execute({
+            input: params.input,
+          });
 
           // Return ONLY the output string - AI SDK will use this to continue generation
           return result.output;
-        }
+        },
       });
-      enabledTools.push('providerToolsAgent');
+      enabledTools.push("providerToolsAgent");
     }
 
     // Document Agent as a single tool (using streaming version)
-    const documentAgentStreaming = this.configLoader.getDocumentAgentStreaming();
+    const documentAgentStreaming =
+      this.configLoader.getDocumentAgentStreaming();
     const documentAgentConfig = this.configLoader.getDocumentAgentConfig();
 
-    if (documentAgentStreaming && documentAgentConfig?.enabled && this.config.tools?.documentAgent?.enabled) {
+    if (
+      documentAgentStreaming &&
+      documentAgentConfig?.enabled &&
+      this.config.tools?.documentAgent?.enabled
+    ) {
       // Check if tool description is missing and throw error
       if (!this.config.tools.documentAgent.description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'documentAgent tool description is required when tool is enabled'
+          "documentAgent tool description is required when tool is enabled"
         );
       }
 
       // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.documentAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.documentAgent.tool_input?.instruction?.parameter_description) {
+      if (
+        !this.config.tools.documentAgent.tool_input?.operation
+          ?.parameter_description ||
+        !this.config.tools.documentAgent.tool_input?.instruction
+          ?.parameter_description
+      ) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'documentAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
+          "documentAgent tool parameter descriptions (operation and instruction) are required when tool is enabled"
         );
       }
 
       tools.documentAgent = tool({
         description: this.config.tools.documentAgent.description,
         inputSchema: z.object({
-          operation: z.enum(['create', 'update', 'revert', 'suggestion']).describe(
-            this.config.tools.documentAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.documentAgent.tool_input.instruction.parameter_description
-          ),
-          documentId: z.string().uuid().optional().describe(
-            this.config.tools.documentAgent.tool_input.documentId.parameter_description
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            this.config.tools.documentAgent.tool_input.targetVersion.parameter_description
-          )
+          operation: z
+            .enum(["create", "update", "revert", "suggestion"])
+            .describe(
+              this.config.tools.documentAgent.tool_input.operation
+                .parameter_description
+            ),
+          instruction: z
+            .string()
+            .describe(
+              this.config.tools.documentAgent.tool_input.instruction
+                .parameter_description
+            ),
+          documentId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(
+              this.config.tools.documentAgent.tool_input.documentId
+                .parameter_description
+            ),
+          targetVersion: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              this.config.tools.documentAgent.tool_input.targetVersion
+                .parameter_description
+            ),
         }),
-        execute: async (params: { operation: 'create' | 'update' | 'revert' | 'suggestion'; instruction: string; documentId?: string; targetVersion?: number }) => {
-          console.log('📄 [TOOL-CALL] Document Agent executing');
-          console.log('📄 [TOOL-CALL] Operation:', params.operation);
-          console.log('📄 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('📄 [TOOL-CALL] Document ID:', params.documentId || 'not provided');
-          console.log('📄 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
+        execute: async (params: {
+          operation: "create" | "update" | "revert" | "suggestion";
+          instruction: string;
+          documentId?: string;
+          targetVersion?: number;
+        }) => {
+          console.log("📄 [TOOL-CALL] Document Agent executing");
+          console.log("📄 [TOOL-CALL] Operation:", params.operation);
+          console.log(
+            "📄 [TOOL-CALL] Instruction:",
+            params.instruction.substring(0, 100)
+          );
+          console.log(
+            "📄 [TOOL-CALL] Document ID:",
+            params.documentId || "not provided"
+          );
+          console.log(
+            "📄 [TOOL-CALL] Target Version:",
+            params.targetVersion || "not provided"
+          );
 
           // Execute document agent (streaming version)
           const result = await documentAgentStreaming.execute({
@@ -119,76 +179,124 @@ export class AgentToolBuilder {
             targetVersion: params.targetVersion,
             dataStream,
             user,
-            chatId: chatId
+            chatId,
           });
 
           // Return the structured output from document agent
-          console.log('📄 [TOOL-CALL] documentAgent returning type:', typeof result.output);
-          console.log('📄 [TOOL-CALL] documentAgent returning value:', JSON.stringify(result.output));
+          console.log(
+            "📄 [TOOL-CALL] documentAgent returning type:",
+            typeof result.output
+          );
+          console.log(
+            "📄 [TOOL-CALL] documentAgent returning value:",
+            JSON.stringify(result.output)
+          );
 
           // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
+          if (result.output && typeof result.output === "object") {
             const cleanOutput = {
               id: result.output.id,
               title: result.output.title,
-              kind: result.output.kind || 'text'
+              kind: result.output.kind || "text",
             };
-            console.log('📄 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            console.log(
+              "📄 [TOOL-CALL] Returning cleaned output:",
+              JSON.stringify(cleanOutput)
+            );
             return cleanOutput;
           }
 
           return result.output;
-        }
+        },
       });
-      enabledTools.push('documentAgent');
+      enabledTools.push("documentAgent");
     }
 
     // Mermaid Agent as a single tool (using streaming version)
     const mermaidAgentStreaming = this.configLoader.getMermaidAgentStreaming();
     const mermaidAgentConfig = this.configLoader.getMermaidAgentConfig();
 
-    if (mermaidAgentStreaming && mermaidAgentConfig?.enabled && this.config.tools?.mermaidAgent?.enabled) {
+    if (
+      mermaidAgentStreaming &&
+      mermaidAgentConfig?.enabled &&
+      this.config.tools?.mermaidAgent?.enabled
+    ) {
       // Check if tool description is missing and throw error
       if (!this.config.tools.mermaidAgent.description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'mermaidAgent tool description is required when tool is enabled'
+          "mermaidAgent tool description is required when tool is enabled"
         );
       }
 
       // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.mermaidAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.mermaidAgent.tool_input?.instruction?.parameter_description) {
+      if (
+        !this.config.tools.mermaidAgent.tool_input?.operation
+          ?.parameter_description ||
+        !this.config.tools.mermaidAgent.tool_input?.instruction
+          ?.parameter_description
+      ) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'mermaidAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
+          "mermaidAgent tool parameter descriptions (operation and instruction) are required when tool is enabled"
         );
       }
 
       tools.mermaidAgent = tool({
         description: this.config.tools.mermaidAgent.description,
         inputSchema: z.object({
-          operation: z.enum(['generate', 'create', 'update', 'fix', 'revert']).describe(
-            this.config.tools.mermaidAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.mermaidAgent.tool_input.instruction.parameter_description
-          ),
-          diagramId: z.string().uuid().optional().describe(
-            this.config.tools.mermaidAgent.tool_input.diagramId.parameter_description
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            this.config.tools.mermaidAgent.tool_input.targetVersion.parameter_description
-          )
+          operation: z
+            .enum(["generate", "create", "update", "fix", "revert"])
+            .describe(
+              this.config.tools.mermaidAgent.tool_input.operation
+                .parameter_description
+            ),
+          instruction: z
+            .string()
+            .describe(
+              this.config.tools.mermaidAgent.tool_input.instruction
+                .parameter_description
+            ),
+          diagramId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(
+              this.config.tools.mermaidAgent.tool_input.diagramId
+                .parameter_description
+            ),
+          targetVersion: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              this.config.tools.mermaidAgent.tool_input.targetVersion
+                .parameter_description
+            ),
         }),
-        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'revert'; instruction: string; diagramId?: string; targetVersion?: number }) => {
-          console.log('🎨 [TOOL-CALL] Mermaid Agent executing');
-          console.log('🎨 [TOOL-CALL] Operation:', params.operation);
-          console.log('🎨 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('🎨 [TOOL-CALL] Diagram ID:', params.diagramId || 'not provided');
-          console.log('🎨 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
+        execute: async (params: {
+          operation: "generate" | "create" | "update" | "fix" | "revert";
+          instruction: string;
+          diagramId?: string;
+          targetVersion?: number;
+        }) => {
+          console.log("🎨 [TOOL-CALL] Mermaid Agent executing");
+          console.log("🎨 [TOOL-CALL] Operation:", params.operation);
+          console.log(
+            "🎨 [TOOL-CALL] Instruction:",
+            params.instruction.substring(0, 100)
+          );
+          console.log(
+            "🎨 [TOOL-CALL] Diagram ID:",
+            params.diagramId || "not provided"
+          );
+          console.log(
+            "🎨 [TOOL-CALL] Target Version:",
+            params.targetVersion || "not provided"
+          );
 
           // Execute mermaid agent (streaming version)
           const result = await mermaidAgentStreaming.execute({
@@ -198,18 +306,24 @@ export class AgentToolBuilder {
             targetVersion: params.targetVersion,
             dataStream,
             user,
-            chatId: chatId
+            chatId,
           });
 
           // Return the structured output from mermaid agent
-          console.log('🎨 [TOOL-CALL] mermaidAgent returning type:', typeof result.output);
-          console.log('🎨 [TOOL-CALL] mermaidAgent returning value:', JSON.stringify(result.output));
+          console.log(
+            "🎨 [TOOL-CALL] mermaidAgent returning type:",
+            typeof result.output
+          );
+          console.log(
+            "🎨 [TOOL-CALL] mermaidAgent returning value:",
+            JSON.stringify(result.output)
+          );
 
           // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
+          if (result.output && typeof result.output === "object") {
             // For generate mode, return the code directly
             if (result.output.generated && result.output.code) {
-              console.log('🎨 [TOOL-CALL] Returning generated code');
+              console.log("🎨 [TOOL-CALL] Returning generated code");
               return { code: result.output.code, generated: true };
             }
 
@@ -217,64 +331,112 @@ export class AgentToolBuilder {
             const cleanOutput = {
               id: result.output.id,
               title: result.output.title,
-              kind: result.output.kind || 'mermaid code'
+              kind: result.output.kind || "mermaid code",
             };
-            console.log('🎨 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            console.log(
+              "🎨 [TOOL-CALL] Returning cleaned output:",
+              JSON.stringify(cleanOutput)
+            );
             return cleanOutput;
           }
 
           return result.output;
-        }
+        },
       });
-      enabledTools.push('mermaidAgent');
+      enabledTools.push("mermaidAgent");
     }
 
     // Python Agent as a single tool (using streaming version)
     const pythonAgentStreaming = this.configLoader.getPythonAgentStreaming();
     const pythonAgentConfig = this.configLoader.getPythonAgentConfig();
 
-    if (pythonAgentStreaming && pythonAgentConfig?.enabled && this.config.tools?.pythonAgent?.enabled) {
+    if (
+      pythonAgentStreaming &&
+      pythonAgentConfig?.enabled &&
+      this.config.tools?.pythonAgent?.enabled
+    ) {
       // Check if tool description is missing and throw error
       if (!this.config.tools.pythonAgent.description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'pythonAgent tool description is required when tool is enabled'
+          "pythonAgent tool description is required when tool is enabled"
         );
       }
 
       // Check if tool parameter descriptions are missing and throw error
-      if (!this.config.tools.pythonAgent.tool_input?.operation?.parameter_description ||
-          !this.config.tools.pythonAgent.tool_input?.instruction?.parameter_description) {
+      if (
+        !this.config.tools.pythonAgent.tool_input?.operation
+          ?.parameter_description ||
+        !this.config.tools.pythonAgent.tool_input?.instruction
+          ?.parameter_description
+      ) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'pythonAgent tool parameter descriptions (operation and instruction) are required when tool is enabled'
+          "pythonAgent tool parameter descriptions (operation and instruction) are required when tool is enabled"
         );
       }
 
       tools.pythonAgent = tool({
         description: this.config.tools.pythonAgent.description,
         inputSchema: z.object({
-          operation: z.enum(['generate', 'create', 'update', 'fix', 'explain', 'revert']).describe(
-            this.config.tools.pythonAgent.tool_input.operation.parameter_description
-          ),
-          instruction: z.string().describe(
-            this.config.tools.pythonAgent.tool_input.instruction.parameter_description
-          ),
-          codeId: z.string().uuid().optional().describe(
-            this.config.tools.pythonAgent.tool_input.codeId.parameter_description
-          ),
-          targetVersion: z.number().int().positive().optional().describe(
-            this.config.tools.pythonAgent.tool_input.targetVersion.parameter_description
-          )
+          operation: z
+            .enum(["generate", "create", "update", "fix", "explain", "revert"])
+            .describe(
+              this.config.tools.pythonAgent.tool_input.operation
+                .parameter_description
+            ),
+          instruction: z
+            .string()
+            .describe(
+              this.config.tools.pythonAgent.tool_input.instruction
+                .parameter_description
+            ),
+          codeId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(
+              this.config.tools.pythonAgent.tool_input.codeId
+                .parameter_description
+            ),
+          targetVersion: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              this.config.tools.pythonAgent.tool_input.targetVersion
+                .parameter_description
+            ),
         }),
-        execute: async (params: { operation: 'generate' | 'create' | 'update' | 'fix' | 'explain' | 'revert'; instruction: string; codeId?: string; targetVersion?: number }) => {
-          console.log('🐍 [TOOL-CALL] Python Agent executing');
-          console.log('🐍 [TOOL-CALL] Operation:', params.operation);
-          console.log('🐍 [TOOL-CALL] Instruction:', params.instruction.substring(0, 100));
-          console.log('🐍 [TOOL-CALL] Code ID:', params.codeId || 'not provided');
-          console.log('🐍 [TOOL-CALL] Target Version:', params.targetVersion || 'not provided');
+        execute: async (params: {
+          operation:
+            | "generate"
+            | "create"
+            | "update"
+            | "fix"
+            | "explain"
+            | "revert";
+          instruction: string;
+          codeId?: string;
+          targetVersion?: number;
+        }) => {
+          console.log("🐍 [TOOL-CALL] Python Agent executing");
+          console.log("🐍 [TOOL-CALL] Operation:", params.operation);
+          console.log(
+            "🐍 [TOOL-CALL] Instruction:",
+            params.instruction.substring(0, 100)
+          );
+          console.log(
+            "🐍 [TOOL-CALL] Code ID:",
+            params.codeId || "not provided"
+          );
+          console.log(
+            "🐍 [TOOL-CALL] Target Version:",
+            params.targetVersion || "not provided"
+          );
 
           // Execute python agent (streaming version)
           const result = await pythonAgentStreaming.execute({
@@ -284,18 +446,24 @@ export class AgentToolBuilder {
             targetVersion: params.targetVersion,
             dataStream,
             user,
-            chatId: chatId
+            chatId,
           });
 
           // Return the structured output from python agent
-          console.log('🐍 [TOOL-CALL] pythonAgent returning type:', typeof result.output);
-          console.log('🐍 [TOOL-CALL] pythonAgent returning value:', JSON.stringify(result.output));
+          console.log(
+            "🐍 [TOOL-CALL] pythonAgent returning type:",
+            typeof result.output
+          );
+          console.log(
+            "🐍 [TOOL-CALL] pythonAgent returning value:",
+            JSON.stringify(result.output)
+          );
 
           // IMPORTANT: Verify the return value is JSON serializable
-          if (result.output && typeof result.output === 'object') {
+          if (result.output && typeof result.output === "object") {
             // For generate mode, return the code directly
             if (result.output.generated && result.output.code) {
-              console.log('🐍 [TOOL-CALL] Returning generated code');
+              console.log("🐍 [TOOL-CALL] Returning generated code");
               return { code: result.output.code, generated: true };
             }
 
@@ -303,92 +471,123 @@ export class AgentToolBuilder {
             const cleanOutput = {
               id: result.output.id,
               title: result.output.title,
-              kind: result.output.kind || 'python code'
+              kind: result.output.kind || "python code",
             };
-            console.log('🐍 [TOOL-CALL] Returning cleaned output:', JSON.stringify(cleanOutput));
+            console.log(
+              "🐍 [TOOL-CALL] Returning cleaned output:",
+              JSON.stringify(cleanOutput)
+            );
             return cleanOutput;
           }
 
           return result.output;
-        }
+        },
       });
-      enabledTools.push('pythonAgent');
+      enabledTools.push("pythonAgent");
     }
 
     // GitHub MCP Agent as a single tool
     const gitMcpAgent = this.configLoader.getGitMcpAgent();
     const gitMcpAgentConfig = this.configLoader.getGitMcpAgentConfig();
 
-    if (gitMcpAgent && gitMcpAgentConfig?.enabled && this.config.tools?.gitMcpAgent?.enabled) {
+    if (
+      gitMcpAgent &&
+      gitMcpAgentConfig?.enabled &&
+      this.config.tools?.gitMcpAgent?.enabled
+    ) {
       // Check if tool description is missing and throw error
       if (!this.config.tools.gitMcpAgent.description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'gitMcpAgent tool description is required when tool is enabled'
+          "gitMcpAgent tool description is required when tool is enabled"
         );
       }
 
       // Check if tool parameter description is missing and throw error
       if (!this.config.tools.gitMcpAgent.tool_input?.parameter_description) {
         throw new AgentError(
-          'google-chat',
+          "google-chat",
           ErrorCodes.INVALID_CONFIGURATION,
-          'gitMcpAgent tool parameter description is required when tool is enabled'
+          "gitMcpAgent tool parameter description is required when tool is enabled"
         );
       }
 
       tools.gitMcpAgent = tool({
         description: this.config.tools.gitMcpAgent.description,
         inputSchema: z.object({
-          input: z.string().describe(this.config.tools.gitMcpAgent.tool_input.parameter_description)
+          input: z
+            .string()
+            .describe(
+              this.config.tools.gitMcpAgent.tool_input.parameter_description
+            ),
         }),
         execute: async (params: { input: string }) => {
-          console.log('\n' + '█'.repeat(80));
-          console.log('🎯 [CHAT-AGENT] Delegating to GitHub MCP Agent');
-          console.log('█'.repeat(80));
-          console.log('📝 [CHAT-AGENT] User query:', params.input.substring(0, 150) + (params.input.length > 150 ? '...' : ''));
-          console.log('█'.repeat(80));
+          console.log(`\n${"█".repeat(80)}`);
+          console.log("🎯 [CHAT-AGENT] Delegating to GitHub MCP Agent");
+          console.log("█".repeat(80));
+          console.log(
+            "📝 [CHAT-AGENT] User query:",
+            params.input.substring(0, 150) +
+              (params.input.length > 150 ? "..." : "")
+          );
+          console.log("█".repeat(80));
 
           // Check if agent is ready
           if (!gitMcpAgent.isReady()) {
-            console.error('❌ [CHAT-AGENT] GitHub MCP Agent not ready');
-            return 'Error: GitHub MCP Agent is not properly configured. Please ensure GitHub PAT and Google API key are set.';
+            console.error("❌ [CHAT-AGENT] GitHub MCP Agent not ready");
+            return "Error: GitHub MCP Agent is not properly configured. Please ensure GitHub PAT and Google API key are set.";
           }
 
           // Execute GitHub MCP agent
           const result = await gitMcpAgent.execute({ input: params.input });
 
-          console.log('\n' + '█'.repeat(80));
-          console.log('🔙 [CHAT-AGENT] Received response from GitHub MCP Agent');
-          console.log('█'.repeat(80));
+          console.log(`\n${"█".repeat(80)}`);
+          console.log(
+            "🔙 [CHAT-AGENT] Received response from GitHub MCP Agent"
+          );
+          console.log("█".repeat(80));
           if (!result.success) {
-            console.error('❌ [CHAT-AGENT] GitHub MCP Agent returned error:', result.error);
-            console.log('█'.repeat(80) + '\n');
-            return `Error: ${result.error || 'Unknown error occurred'}`;
+            console.error(
+              "❌ [CHAT-AGENT] GitHub MCP Agent returned error:",
+              result.error
+            );
+            console.log(`${"█".repeat(80)}\n`);
+            return `Error: ${result.error || "Unknown error occurred"}`;
           }
 
-          console.log('✅ [CHAT-AGENT] GitHub MCP Agent completed successfully');
-          console.log('📊 [CHAT-AGENT] Response length:', result.output.length, 'chars');
+          console.log(
+            "✅ [CHAT-AGENT] GitHub MCP Agent completed successfully"
+          );
+          console.log(
+            "📊 [CHAT-AGENT] Response length:",
+            result.output.length,
+            "chars"
+          );
           if (result.toolCalls && result.toolCalls.length > 0) {
-            console.log('🔧 [CHAT-AGENT] MCP tools used:', result.toolCalls.map(tc => tc.toolName).join(', '));
+            console.log(
+              "🔧 [CHAT-AGENT] MCP tools used:",
+              result.toolCalls.map((tc) => tc.toolName).join(", ")
+            );
           }
-          console.log('📤 [CHAT-AGENT] Returning result to main Chat Agent for final response generation');
-          console.log('█'.repeat(80) + '\n');
+          console.log(
+            "📤 [CHAT-AGENT] Returning result to main Chat Agent for final response generation"
+          );
+          console.log(`${"█".repeat(80)}\n`);
 
           // Return ONLY the output string - AI SDK will use this to continue generation
           return result.output;
-        }
+        },
       });
-      enabledTools.push('gitMcpAgent');
+      enabledTools.push("gitMcpAgent");
     }
 
     if (enabledTools.length > 0) {
-      console.log('🔧 [TOOLS-READY] Enabled tools:', enabledTools.join(', '));
+      console.log("🔧 [TOOLS-READY] Enabled tools:", enabledTools.join(", "));
       return tools;
     }
 
-    console.log('⚠️  [TOOLS-READY] No tools enabled');
-    return undefined;
+    console.log("⚠️  [TOOLS-READY] No tools enabled");
+    return;
   }
 }

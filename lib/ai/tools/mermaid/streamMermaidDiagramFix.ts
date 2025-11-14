@@ -1,12 +1,12 @@
 import "server-only";
 
-import { streamObject } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
-import { saveDocument, getDocumentById } from "@/lib/db/queries";
-import type { ChatMessage } from "@/lib/types";
+import type { UIMessageStreamWriter } from "ai";
+import { streamObject } from "ai";
 import { z } from "zod";
+import { getDocumentById, saveDocument } from "@/lib/db/queries";
+import type { ChatMessage } from "@/lib/types";
 
 /**
  * Validate Mermaid syntax (basic validation)
@@ -16,19 +16,29 @@ function validateMermaidSyntax(diagram: string): boolean {
 
   // Check for common Mermaid diagram types
   const validTypes = [
-    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
-    'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie',
-    'gitgraph', 'mindmap', 'timeline', 'sankey'
+    "graph",
+    "flowchart",
+    "sequenceDiagram",
+    "classDiagram",
+    "stateDiagram",
+    "erDiagram",
+    "journey",
+    "gantt",
+    "pie",
+    "gitgraph",
+    "mindmap",
+    "timeline",
+    "sankey",
   ];
 
-  const firstLine = trimmed.split('\n')[0].toLowerCase();
-  const hasValidType = validTypes.some(type =>
+  const firstLine = trimmed.split("\n")[0].toLowerCase();
+  const hasValidType = validTypes.some((type) =>
     firstLine.includes(type.toLowerCase())
   );
 
   // Basic syntax checks
   const hasContent = trimmed.length > 0;
-  const notEmpty = trimmed !== '';
+  const notEmpty = trimmed !== "";
 
   return hasValidType && hasContent && notEmpty;
 }
@@ -49,11 +59,22 @@ export async function streamMermaidDiagramFix(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<void> {
-  const { diagramId, errorInfo, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const {
+    diagramId,
+    errorInfo,
+    systemPrompt,
+    userPromptTemplate,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+    metadata = {},
+  } = params;
 
-  console.log('🎨 [STREAM-FIX] Starting real-time diagram fix');
-  console.log('🎨 [STREAM-FIX] Diagram ID:', diagramId);
-  console.log('🎨 [STREAM-FIX] Model:', modelId);
+  console.log("🎨 [STREAM-FIX] Starting real-time diagram fix");
+  console.log("🎨 [STREAM-FIX] Diagram ID:", diagramId);
+  console.log("🎨 [STREAM-FIX] Model:", modelId);
 
   // Get the current diagram document
   const currentDocument = await getDocumentById({ id: diagramId });
@@ -61,8 +82,14 @@ export async function streamMermaidDiagramFix(params: {
     throw new Error(`Diagram with id ${diagramId} not found`);
   }
 
-  console.log('🎨 [STREAM-FIX] Current version:', currentDocument.version_number);
-  console.log('🎨 [STREAM-FIX] Current content length:', currentDocument.content?.length || 0);
+  console.log(
+    "🎨 [STREAM-FIX] Current version:",
+    currentDocument.version_number
+  );
+  console.log(
+    "🎨 [STREAM-FIX] Current content length:",
+    currentDocument.content?.length || 0
+  );
 
   // Write artifact metadata to inform UI
   dataStream.write({
@@ -89,7 +116,7 @@ export async function streamMermaidDiagramFix(params: {
     transient: true,
   });
 
-  console.log('🎨 [STREAM-FIX] Metadata written, starting LLM generation');
+  console.log("🎨 [STREAM-FIX] Metadata written, starting LLM generation");
 
   // Get the Google model instance with proper API key handling
   let model;
@@ -102,21 +129,25 @@ export async function streamMermaidDiagramFix(params: {
 
   // Build the prompt for diagram fix using template from config
   const prompt = userPromptTemplate
-    .replace('{currentContent}', currentDocument.content || '')
-    .replace('{errorInfo}', errorInfo);
+    .replace("{currentContent}", currentDocument.content || "")
+    .replace("{errorInfo}", errorInfo);
 
   try {
     // Use streamObject for structured diagram fixes
     const { partialObjectStream } = streamObject({
       model,
       system: systemPrompt,
-      prompt: prompt,
+      prompt,
       schema: z.object({
-        diagram: z.string().describe('Fixed Mermaid diagram with valid syntax and proper formatting'),
+        diagram: z
+          .string()
+          .describe(
+            "Fixed Mermaid diagram with valid syntax and proper formatting"
+          ),
       }),
     });
 
-    console.log('🎨 [STREAM-FIX] LLM streaming started');
+    console.log("🎨 [STREAM-FIX] LLM streaming started");
 
     // Accumulate content as it streams
     let fixedContent = "";
@@ -137,18 +168,18 @@ export async function streamMermaidDiagramFix(params: {
       }
     }
 
-    console.log('🎨 [STREAM-FIX] LLM generation complete');
-    console.log('🎨 [STREAM-FIX] Fixed content length:', fixedContent.length);
-    console.log('🎨 [STREAM-FIX] Total chunks streamed:', chunkCount);
+    console.log("🎨 [STREAM-FIX] LLM generation complete");
+    console.log("🎨 [STREAM-FIX] Fixed content length:", fixedContent.length);
+    console.log("🎨 [STREAM-FIX] Total chunks streamed:", chunkCount);
 
     // Validate Mermaid syntax before saving
     if (!validateMermaidSyntax(fixedContent)) {
-      throw new Error('Fixed diagram still contains invalid Mermaid syntax');
+      throw new Error("Fixed diagram still contains invalid Mermaid syntax");
     }
 
     // Save fixed diagram as new version
     if (user?.id) {
-      console.log('🎨 [STREAM-FIX] Saving to database as new version');
+      console.log("🎨 [STREAM-FIX] Saving to database as new version");
       await saveDocument({
         id: diagramId,
         title: currentDocument.title || "Untitled Diagram",
@@ -159,17 +190,17 @@ export async function streamMermaidDiagramFix(params: {
         parentVersionId: currentDocument.id,
         metadata: {
           ...metadata,
-          updateType: 'fix',
-          agent: 'GoogleMermaidAgentStreaming',
+          updateType: "fix",
+          agent: "GoogleMermaidAgentStreaming",
           fixedAt: new Date().toISOString(),
           modelUsed: modelId,
           previousVersion: currentDocument.version_number,
           errorFixed: errorInfo,
         },
       });
-      console.log('✅ [STREAM-FIX] Saved to database');
+      console.log("✅ [STREAM-FIX] Saved to database");
     } else {
-      console.log('⚠️ [STREAM-FIX] No user provided, skipping database save');
+      console.log("⚠️ [STREAM-FIX] No user provided, skipping database save");
     }
 
     // Signal streaming complete
@@ -179,11 +210,11 @@ export async function streamMermaidDiagramFix(params: {
       transient: true,
     });
 
-    console.log('✅ [STREAM-FIX] Diagram fix completed successfully');
-
+    console.log("✅ [STREAM-FIX] Diagram fix completed successfully");
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [STREAM-FIX] Fix failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [STREAM-FIX] Fix failed:", errorMessage);
 
     // Write error to stream
     dataStream.write({

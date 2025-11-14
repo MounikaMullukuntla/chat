@@ -280,7 +280,7 @@ export const Tools = ({
   setMetadata?: Dispatch<SetStateAction<any>>;
 }) => {
   // Filter tools based on isVisible
-  const visibleTools = tools.filter(tool => {
+  const visibleTools = tools.filter((tool) => {
     if (tool.isVisible) {
       return tool.isVisible({ metadata });
     }
@@ -305,12 +305,12 @@ export const Tools = ({
               icon={secondaryTool.icon}
               isAnimating={isAnimating}
               key={secondaryTool.description}
+              metadata={metadata}
               onClick={secondaryTool.onClick}
               selectedTool={selectedTool}
               sendMessage={sendMessage}
-              setSelectedTool={setSelectedTool}
-              metadata={metadata}
               setMetadata={setMetadata}
+              setSelectedTool={setSelectedTool}
             />
           ))}
       </AnimatePresence>
@@ -321,13 +321,13 @@ export const Tools = ({
         icon={primaryTool.icon}
         isAnimating={isAnimating}
         isToolbarVisible={isToolbarVisible}
+        metadata={metadata}
         onClick={primaryTool.onClick}
         selectedTool={selectedTool}
         sendMessage={sendMessage}
         setIsToolbarVisible={setIsToolbarVisible}
-        setSelectedTool={setSelectedTool}
-        metadata={metadata}
         setMetadata={setMetadata}
+        setSelectedTool={setSelectedTool}
       />
     </motion.div>
   );
@@ -488,13 +488,13 @@ const PureToolbar = ({
             isAnimating={isAnimating}
             isToolbarVisible={isToolbarVisible}
             key="tools"
+            metadata={metadata}
             selectedTool={selectedTool}
             sendMessage={sendMessage}
             setIsToolbarVisible={setIsToolbarVisible}
+            setMetadata={setMetadata}
             setSelectedTool={setSelectedTool}
             tools={toolsByArtifactKind}
-            metadata={metadata}
-            setMetadata={setMetadata}
           />
         )}
       </motion.div>
