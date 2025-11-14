@@ -1,12 +1,10 @@
 "use client";
 
-import {
-  DIFF_DELETE,
-  DIFF_INSERT,
-  type Diff,
-  diff_match_patch,
-} from "diff-match-patch";
+import DiffMatchPatch from "diff-match-patch";
 import { useMemo } from "react";
+
+// Type for diff tuples: [operation, text]
+type Diff = [number, string];
 
 type MermaidDiffViewerProps = {
   oldContent: string;
@@ -22,7 +20,7 @@ export function MermaidDiffViewer({
   newVersion,
 }: MermaidDiffViewerProps) {
   const diffs = useMemo(() => {
-    const dmp = new diff_match_patch();
+    const dmp = new DiffMatchPatch();
     const diff = dmp.diff_main(oldContent, newContent);
     dmp.diff_cleanupSemantic(diff);
     return diff;
@@ -43,11 +41,13 @@ export function MermaidDiffViewer({
         let textColor = "";
         let symbol = " ";
 
-        if (operation === DIFF_DELETE) {
+        if (operation === -1) {
+          // DIFF_DELETE
           bgColor = "bg-red-900/30";
           textColor = "text-red-200";
           symbol = "-";
-        } else if (operation === DIFF_INSERT) {
+        } else if (operation === 1) {
+          // DIFF_INSERT
           bgColor = "bg-green-900/30";
           textColor = "text-green-200";
           symbol = "+";
