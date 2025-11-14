@@ -448,6 +448,7 @@ function PureMultimodalInput({
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
           <SuggestedActions
+            adminConfig={adminConfig}
             chatId={chatId}
             selectedModelId={selectedModelId}
             selectedProvider={selectedProvider}
