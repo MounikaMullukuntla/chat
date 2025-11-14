@@ -1,12 +1,12 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, tool } from 'ai';
-import { z } from 'zod';
-import type { GitMcpAgentConfig, AgentResult } from '@/lib/types';
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { streamText, tool } from "ai";
+import { z } from "zod";
+import type { AgentResult, GitMcpAgentConfig } from "@/lib/types";
 
 export class GoogleGitMcpAgent {
-  private config: GitMcpAgentConfig;
+  private readonly config: GitMcpAgentConfig;
   private githubPAT?: string;
   private modelId?: string;
   private googleProvider?: any;
@@ -22,10 +22,10 @@ export class GoogleGitMcpAgent {
    */
   private validateConfig(): void {
     if (!this.config.systemPrompt) {
-      throw new Error('GitMcpAgent: systemPrompt is required in configuration');
+      throw new Error("GitMcpAgent: systemPrompt is required in configuration");
     }
     if (!this.config.rateLimit) {
-      throw new Error('GitMcpAgent: rateLimit is required in configuration');
+      throw new Error("GitMcpAgent: rateLimit is required in configuration");
     }
   }
 
@@ -34,8 +34,8 @@ export class GoogleGitMcpAgent {
    * @param pat GitHub Personal Access Token
    */
   setApiKey(pat: string): void {
-    if (!pat || pat.trim() === '') {
-      throw new Error('GitMcpAgent: GitHub PAT cannot be empty');
+    if (!pat || pat.trim() === "") {
+      throw new Error("GitMcpAgent: GitHub PAT cannot be empty");
     }
     this.githubPAT = pat;
   }
@@ -45,8 +45,8 @@ export class GoogleGitMcpAgent {
    * @param modelId Google model identifier
    */
   setModel(modelId: string): void {
-    if (!modelId || modelId.trim() === '') {
-      throw new Error('GitMcpAgent: Model ID cannot be empty');
+    if (!modelId || modelId.trim() === "") {
+      throw new Error("GitMcpAgent: Model ID cannot be empty");
     }
     this.modelId = modelId;
   }
@@ -56,8 +56,8 @@ export class GoogleGitMcpAgent {
    * @param apiKey Google API key
    */
   setGoogleApiKey(apiKey: string): void {
-    if (!apiKey || apiKey.trim() === '') {
-      throw new Error('GitMcpAgent: Google API key cannot be empty');
+    if (!apiKey || apiKey.trim() === "") {
+      throw new Error("GitMcpAgent: Google API key cannot be empty");
     }
     this.googleProvider = createGoogleGenerativeAI({ apiKey });
   }
@@ -68,10 +68,12 @@ export class GoogleGitMcpAgent {
    */
   private getModel(): any {
     if (!this.googleProvider) {
-      throw new Error('GitMcpAgent: Google provider not initialized. Call setGoogleApiKey first.');
+      throw new Error(
+        "GitMcpAgent: Google provider not initialized. Call setGoogleApiKey first."
+      );
     }
     if (!this.modelId) {
-      throw new Error('GitMcpAgent: Model ID not set. Call setModel first.');
+      throw new Error("GitMcpAgent: Model ID not set. Call setModel first.");
     }
     return this.googleProvider(this.modelId);
   }
@@ -85,7 +87,7 @@ export class GoogleGitMcpAgent {
     }
 
     if (!this.githubPAT) {
-      throw new Error('GitMcpAgent: GitHub PAT not set. Call setApiKey first.');
+      throw new Error("GitMcpAgent: GitHub PAT not set. Call setApiKey first.");
     }
 
     try {
@@ -94,32 +96,29 @@ export class GoogleGitMcpAgent {
       // - /x/all - All toolsets
       // - /readonly - Default toolset, readonly
       // - /x/all/readonly - All toolsets, readonly
-      const endpoint = 'https://api.githubcopilot.com/mcp/x/all/readonly';
+      const endpoint = "https://api.githubcopilot.com/mcp/x/all/readonly";
 
-      console.log('🔗 [MCP-CONNECTION] Connecting to GitHub MCP Server');
-      console.log('   Endpoint:', endpoint);
-      console.log('   Mode: readonly (read-only operations)');
+      console.log("🔗 [MCP-CONNECTION] Connecting to GitHub MCP Server");
+      console.log("   Endpoint:", endpoint);
+      console.log("   Mode: readonly (read-only operations)");
 
       // Create Streamable HTTP transport for GitHub's hosted MCP server
       // Note: GitHub MCP server requires Streamable HTTP transport (not SSE)
       // Headers must be passed via requestInit parameter
-      const transport = new StreamableHTTPClientTransport(
-        new URL(endpoint),
-        {
-          requestInit: {
-            headers: {
-              'Authorization': `Bearer ${this.githubPAT}`,
-              'X-MCP-Readonly': 'true', // Extra safety: header-based readonly mode
-            },
+      const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${this.githubPAT}`,
+            "X-MCP-Readonly": "true", // Extra safety: header-based readonly mode
           },
-        }
-      );
+        },
+      });
 
       // Create MCP client
       this.mcpClient = new Client(
         {
-          name: 'github-mcp-agent',
-          version: '1.0.0',
+          name: "github-mcp-agent",
+          version: "1.0.0",
         },
         {
           capabilities: {},
@@ -129,14 +128,20 @@ export class GoogleGitMcpAgent {
       // Connect to the server
       await this.mcpClient.connect(transport);
 
-      console.log('✅ [MCP-CONNECTION] Connected successfully via Streamable HTTP transport');
+      console.log(
+        "✅ [MCP-CONNECTION] Connected successfully via Streamable HTTP transport"
+      );
     } catch (error) {
-      console.error('❌ [GIT-MCP] Failed to initialize MCP client:', error);
+      console.error("❌ [GIT-MCP] Failed to initialize MCP client:", error);
 
       // Provide helpful error message based on error type
-      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
 
-      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.includes("Unauthorized")
+      ) {
         errorMessage = `Authentication failed (401). Please verify:
 1. Your GitHub PAT is valid and not expired
 2. Token has required scopes: repo, read:packages, read:org
@@ -144,7 +149,9 @@ export class GoogleGitMcpAgent {
 4. Token format is correct (ghp_xxx or github_pat_xxx)`;
       }
 
-      throw new Error(`GitMcpAgent: Failed to connect to GitHub MCP server: ${errorMessage}`);
+      throw new Error(
+        `GitMcpAgent: Failed to connect to GitHub MCP server: ${errorMessage}`
+      );
     }
   }
 
@@ -156,9 +163,9 @@ export class GoogleGitMcpAgent {
       try {
         await this.mcpClient.close();
         this.mcpClient = undefined;
-        console.log('✅ [GIT-MCP] MCP client closed successfully');
+        console.log("✅ [GIT-MCP] MCP client closed successfully");
       } catch (error) {
-        console.error('❌ [GIT-MCP] Error closing MCP client:', error);
+        console.error("❌ [GIT-MCP] Error closing MCP client:", error);
       }
     }
   }
@@ -168,7 +175,7 @@ export class GoogleGitMcpAgent {
    */
   private async getMCPToolsAsAISDKTools(): Promise<Record<string, any>> {
     if (!this.mcpClient) {
-      throw new Error('MCP client not initialized');
+      throw new Error("MCP client not initialized");
     }
 
     const mcpTools = await this.mcpClient.listTools();
@@ -184,14 +191,14 @@ export class GoogleGitMcpAgent {
         for (const [key, value] of Object.entries(parameters.properties)) {
           const prop = value as any;
           // Simple type conversion - extend as needed
-          if (prop.type === 'string') {
-            shape[key] = z.string().describe(prop.description || '');
-          } else if (prop.type === 'number') {
-            shape[key] = z.number().describe(prop.description || '');
-          } else if (prop.type === 'boolean') {
-            shape[key] = z.boolean().describe(prop.description || '');
+          if (prop.type === "string") {
+            shape[key] = z.string().describe(prop.description || "");
+          } else if (prop.type === "number") {
+            shape[key] = z.number().describe(prop.description || "");
+          } else if (prop.type === "boolean") {
+            shape[key] = z.boolean().describe(prop.description || "");
           } else {
-            shape[key] = z.any().describe(prop.description || '');
+            shape[key] = z.any().describe(prop.description || "");
           }
 
           // Handle optional fields
@@ -204,22 +211,27 @@ export class GoogleGitMcpAgent {
 
       // Create AI SDK tool
       aiSdkTools[mcpTool.name] = tool({
-        description: mcpTool.description || '',
+        description: mcpTool.description || "",
         parameters: zodSchema,
         execute: async (args: any) => {
           try {
             console.log(`🔧 [MCP-TOOL-EXEC] Executing tool: ${mcpTool.name}`);
-            console.log(`   Received args:`, JSON.stringify(args, null, 2));
+            console.log("   Received args:", JSON.stringify(args, null, 2));
 
-            const result = await this.mcpClient!.callTool({
+            const result = await this.mcpClient?.callTool({
               name: mcpTool.name,
               arguments: args,
             });
 
-            console.log(`✅ [MCP-TOOL-EXEC] Tool ${mcpTool.name} completed successfully`);
+            console.log(
+              `✅ [MCP-TOOL-EXEC] Tool ${mcpTool.name} completed successfully`
+            );
             return result.content;
           } catch (error) {
-            console.error(`❌ [MCP-TOOL-EXEC] Error calling tool ${mcpTool.name}:`, error);
+            console.error(
+              `❌ [MCP-TOOL-EXEC] Error calling tool ${mcpTool.name}:`,
+              error
+            );
             throw error;
           }
         },
@@ -237,44 +249,59 @@ export class GoogleGitMcpAgent {
   async execute(params: { input: string }): Promise<AgentResult> {
     const { input } = params;
 
-    console.log('\n' + '='.repeat(80));
-    console.log('🎯 [GIT-MCP-AGENT] EXECUTION START');
-    console.log('='.repeat(80));
-    console.log('📥 [USER-INPUT] Query received from Chat Agent:');
-    console.log('   ', input);
-    console.log('-'.repeat(80));
+    console.log(`\n${"=".repeat(80)}`);
+    console.log("🎯 [GIT-MCP-AGENT] EXECUTION START");
+    console.log("=".repeat(80));
+    console.log("📥 [USER-INPUT] Query received from Chat Agent:");
+    console.log("   ", input);
+    console.log("-".repeat(80));
 
-    if (!input || input.trim() === '') {
-      console.log('❌ [GIT-MCP-AGENT] Empty input error');
+    if (!input || input.trim() === "") {
+      console.log("❌ [GIT-MCP-AGENT] Empty input error");
       return {
-        output: 'Error: Input query cannot be empty',
+        output: "Error: Input query cannot be empty",
         success: false,
-        error: 'Empty input',
+        error: "Empty input",
       };
     }
 
     try {
       // Initialize MCP client
-      console.log('🔧 [MCP-CLIENT] Initializing connection to GitHub MCP server...');
+      console.log(
+        "🔧 [MCP-CLIENT] Initializing connection to GitHub MCP server..."
+      );
       await this.initializeMcpClient();
 
       // Get MCP tools and convert to AI SDK tools
-      console.log('🔍 [MCP-CLIENT] Discovering available tools from MCP server...');
+      console.log(
+        "🔍 [MCP-CLIENT] Discovering available tools from MCP server..."
+      );
       const tools = await this.getMCPToolsAsAISDKTools();
       const toolNames = Object.keys(tools);
 
-      console.log('✅ [MCP-CLIENT] Tool discovery complete');
-      console.log('📋 [MCP-CLIENT] Available tools count:', toolNames.length);
-      console.log('📋 [MCP-CLIENT] Tool names:', toolNames.slice(0, 10).join(', '), '...');
+      console.log("✅ [MCP-CLIENT] Tool discovery complete");
+      console.log("📋 [MCP-CLIENT] Available tools count:", toolNames.length);
+      console.log(
+        "📋 [MCP-CLIENT] Tool names:",
+        toolNames.slice(0, 10).join(", "),
+        "..."
+      );
 
       // Stream text with MCP tools
-      console.log('🤖 [GEMINI-MODEL] Starting AI model execution...');
-      console.log('🎛️  [GEMINI-MODEL] Model:', this.modelId);
-      console.log('🎛️  [GEMINI-MODEL] Temperature: 0.3');
-      console.log('🎛️  [GEMINI-MODEL] Max steps: 5');
-      console.log('📝 [GEMINI-MODEL] System prompt length:', this.config.systemPrompt.length, 'chars');
-      console.log('📝 [GEMINI-MODEL] User query:', input.substring(0, 100) + (input.length > 100 ? '...' : ''));
-      console.log('-'.repeat(80));
+      console.log("🤖 [GEMINI-MODEL] Starting AI model execution...");
+      console.log("🎛️  [GEMINI-MODEL] Model:", this.modelId);
+      console.log("🎛️  [GEMINI-MODEL] Temperature: 0.3");
+      console.log("🎛️  [GEMINI-MODEL] Max steps: 5");
+      console.log(
+        "📝 [GEMINI-MODEL] System prompt length:",
+        this.config.systemPrompt.length,
+        "chars"
+      );
+      console.log(
+        "📝 [GEMINI-MODEL] User query:",
+        input.substring(0, 100) + (input.length > 100 ? "..." : "")
+      );
+      console.log("-".repeat(80));
 
       const result = streamText({
         model: this.getModel(),
@@ -285,14 +312,14 @@ export class GoogleGitMcpAgent {
         temperature: 0.3, // Lower temperature for more deterministic responses
         onFinish: async () => {
           // Clean up MCP client after execution
-          console.log('🧹 [MCP-CLIENT] Cleaning up connection...');
+          console.log("🧹 [MCP-CLIENT] Cleaning up connection...");
           await this.closeMcpClient();
         },
       } as any);
 
       // Collect the response
-      console.log('📡 [STREAM] Processing model output stream...');
-      let fullOutput = '';
+      console.log("📡 [STREAM] Processing model output stream...");
+      let fullOutput = "";
       let stepCount = 0;
       const toolCalls: Array<{
         toolName: string;
@@ -301,72 +328,89 @@ export class GoogleGitMcpAgent {
       }> = [];
 
       for await (const chunk of result.fullStream) {
-        if (chunk.type === 'text-delta') {
-          const text = (chunk as any).text || '';
+        if (chunk.type === "text-delta") {
+          const text = (chunk as any).text || "";
           fullOutput += text;
           // Log first few characters of each text chunk
           if (text.length > 0) {
-            const preview = text.substring(0, 50).replace(/\n/g, '↵');
-            console.log('💬 [MODEL-OUTPUT] Text chunk:', preview + (text.length > 50 ? '...' : ''));
+            const preview = text.substring(0, 50).replace(/\n/g, "↵");
+            console.log(
+              "💬 [MODEL-OUTPUT] Text chunk:",
+              preview + (text.length > 50 ? "..." : "")
+            );
           }
-        } else if (chunk.type === 'tool-call') {
+        } else if (chunk.type === "tool-call") {
           stepCount++;
-          console.log('\n' + '─'.repeat(80));
-          console.log(`🔧 [TOOL-CALL] Step ${stepCount}: Model decided to call tool`);
-          console.log('   Tool name:', chunk.toolName);
+          console.log(`\n${"─".repeat(80)}`);
+          console.log(
+            `🔧 [TOOL-CALL] Step ${stepCount}: Model decided to call tool`
+          );
+          console.log("   Tool name:", chunk.toolName);
           const input = (chunk as any).input || {};
           const argsStr = JSON.stringify(input, null, 2);
-          const formattedArgs = argsStr.split('\n').map((line, i) => i === 0 ? line : '              ' + line).join('\n');
-          console.log('   Arguments:', formattedArgs);
-          console.log('─'.repeat(80));
+          const formattedArgs = argsStr
+            .split("\n")
+            .map((line, i) => (i === 0 ? line : `              ${line}`))
+            .join("\n");
+          console.log("   Arguments:", formattedArgs);
+          console.log("─".repeat(80));
 
           toolCalls.push({
             toolName: chunk.toolName,
             args: input,
             result: null, // Will be filled in by tool-result
           });
-        } else if (chunk.type === 'tool-result') {
-          console.log('📥 [TOOL-RESULT] Received result from MCP server');
+        } else if (chunk.type === "tool-result") {
+          console.log("📥 [TOOL-RESULT] Received result from MCP server");
           const output = (chunk as any).output || {};
           const resultStr = JSON.stringify(output);
           const resultPreview = resultStr.substring(0, 200);
-          console.log('   Result preview:', resultPreview + (resultStr.length > 200 ? '...' : ''));
-          console.log('   Result length:', resultStr.length, 'chars');
+          console.log(
+            "   Result preview:",
+            resultPreview + (resultStr.length > 200 ? "..." : "")
+          );
+          console.log("   Result length:", resultStr.length, "chars");
 
           // Find the corresponding tool call and add the result
-          const lastCall = toolCalls[toolCalls.length - 1];
+          const lastCall = toolCalls.at(-1);
           if (lastCall) {
             lastCall.result = output;
           }
-        } else if (chunk.type === 'start-step') {
+        } else if (chunk.type === "start-step") {
           console.log(`\n🚀 [STEP-START] Model starting step ${stepCount + 1}`);
-        } else if (chunk.type === 'finish-step') {
+        } else if (chunk.type === "finish-step") {
           console.log(`✓ [STEP-FINISH] Step ${stepCount} completed`);
         }
       }
 
-      console.log('\n' + '='.repeat(80));
-      console.log('✅ [GIT-MCP-AGENT] EXECUTION COMPLETE');
-      console.log('='.repeat(80));
-      console.log('📊 [SUMMARY] Total tool calls made:', toolCalls.length);
-      console.log('📊 [SUMMARY] Total steps executed:', stepCount);
-      console.log('📊 [SUMMARY] Output length:', fullOutput.length, 'chars');
+      console.log(`\n${"=".repeat(80)}`);
+      console.log("✅ [GIT-MCP-AGENT] EXECUTION COMPLETE");
+      console.log("=".repeat(80));
+      console.log("📊 [SUMMARY] Total tool calls made:", toolCalls.length);
+      console.log("📊 [SUMMARY] Total steps executed:", stepCount);
+      console.log("📊 [SUMMARY] Output length:", fullOutput.length, "chars");
 
       if (toolCalls.length > 0) {
-        console.log('📋 [SUMMARY] Tools used:');
+        console.log("📋 [SUMMARY] Tools used:");
         toolCalls.forEach((call, index) => {
           console.log(`   ${index + 1}. ${call.toolName}`);
           const argsStr = JSON.stringify(call.args || {});
-          console.log(`      Args: ${argsStr.substring(0, 100)}${argsStr.length > 100 ? '...' : ''}`);
+          console.log(
+            `      Args: ${argsStr.substring(0, 100)}${argsStr.length > 100 ? "..." : ""}`
+          );
         });
       }
-      console.log('='.repeat(80) + '\n');
+      console.log(`${"=".repeat(80)}\n`);
 
-      const finalOutput = fullOutput.trim() || 'Operation completed successfully';
+      const finalOutput =
+        fullOutput.trim() || "Operation completed successfully";
 
-      console.log('📤 [RETURN-TO-CHAT] Sending response back to Chat Agent:');
-      console.log('   Output length:', finalOutput.length, 'chars');
-      console.log('   First 200 chars:', finalOutput.substring(0, 200) + (finalOutput.length > 200 ? '...' : ''));
+      console.log("📤 [RETURN-TO-CHAT] Sending response back to Chat Agent:");
+      console.log("   Output length:", finalOutput.length, "chars");
+      console.log(
+        "   First 200 chars:",
+        finalOutput.substring(0, 200) + (finalOutput.length > 200 ? "..." : "")
+      );
 
       return {
         output: finalOutput,
@@ -374,16 +418,17 @@ export class GoogleGitMcpAgent {
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       };
     } catch (error) {
-      console.error('\n' + '='.repeat(80));
-      console.error('❌ [GIT-MCP-AGENT] EXECUTION ERROR');
-      console.error('='.repeat(80));
-      console.error('Error details:', error);
-      console.error('='.repeat(80) + '\n');
+      console.error(`\n${"=".repeat(80)}`);
+      console.error("❌ [GIT-MCP-AGENT] EXECUTION ERROR");
+      console.error("=".repeat(80));
+      console.error("Error details:", error);
+      console.error(`${"=".repeat(80)}\n`);
 
       // Clean up on error
       await this.closeMcpClient();
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       return {
         output: `Error executing GitHub operation: ${errorMessage}`,
         success: false,

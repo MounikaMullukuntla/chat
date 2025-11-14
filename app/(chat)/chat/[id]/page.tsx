@@ -3,21 +3,23 @@ import { notFound } from "next/navigation";
 
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
+
 // Default model constant
 const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";
+
+import { getCurrentUser } from "@/lib/auth/server";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
-import { getCurrentUser } from "@/lib/auth/server";
 
 // Force dynamic rendering for authenticated pages
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { id } = params;
 
   // Reject IDs that look like file paths (e.g., stackframe.js, *.map, etc.)
-  if (id.includes('.') || id.includes('/')) {
+  if (id.includes(".") || id.includes("/")) {
     notFound();
   }
 
@@ -59,7 +61,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           autoResume={true}
           id={chat.id}
           initialChatModel={DEFAULT_CHAT_MODEL}
-          initialLastContext={chat.lastContext as any ?? undefined}
+          initialLastContext={(chat.lastContext as any) ?? undefined}
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility as any}
           isReadonly={isReadonly}
@@ -75,7 +77,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         autoResume={true}
         id={chat.id}
         initialChatModel={chatModelFromCookie.value}
-        initialLastContext={chat.lastContext as any ?? undefined}
+        initialLastContext={(chat.lastContext as any) ?? undefined}
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility as any}
         isReadonly={isReadonly}

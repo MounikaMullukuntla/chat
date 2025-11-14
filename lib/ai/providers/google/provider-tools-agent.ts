@@ -1,8 +1,7 @@
 import "server-only";
 
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import { streamText } from "ai";
-import type { UIMessageStreamWriter } from "ai";
 import type { ProviderToolsAgentConfig } from "../../core/types";
 
 /**
@@ -15,7 +14,7 @@ export class GoogleProviderToolsAgent {
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
 
-  constructor(private config: ProviderToolsAgentConfig) {
+  constructor(private readonly config: ProviderToolsAgentConfig) {
     this.validateConfig();
   }
 
@@ -25,7 +24,7 @@ export class GoogleProviderToolsAgent {
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
     this.googleProvider = createGoogleGenerativeAI({
-      apiKey: apiKey,
+      apiKey,
     });
   }
 
@@ -42,7 +41,9 @@ export class GoogleProviderToolsAgent {
    */
   private getModel() {
     if (!this.modelId) {
-      throw new Error("GoogleProviderToolsAgent: Model ID not set. Call setModel() before using tools.");
+      throw new Error(
+        "GoogleProviderToolsAgent: Model ID not set. Call setModel() before using tools."
+      );
     }
 
     if (this.googleProvider) {
@@ -71,9 +72,12 @@ export class GoogleProviderToolsAgent {
    * This is the main method called by Chat Agent
    * Uses generateText for proper tool integration with AI SDK v5
    */
-  async execute(params: {
-    input: string;
-  }): Promise<{ output: string; success: boolean; toolCalls?: any[]; reasoning?: string }> {
+  async execute(params: { input: string }): Promise<{
+    output: string;
+    success: boolean;
+    toolCalls?: any[];
+    reasoning?: string;
+  }> {
     const { input } = params;
 
     try {
@@ -82,7 +86,10 @@ export class GoogleProviderToolsAgent {
       // Build tools for this agent
       const tools = this.buildTools();
 
-      console.log('🔧 [PROVIDER-TOOLS] Starting with tools:', Object.keys(tools));
+      console.log(
+        "🔧 [PROVIDER-TOOLS] Starting with tools:",
+        Object.keys(tools)
+      );
 
       // Configure with Google-specific thinking support
       const config: any = {
@@ -94,7 +101,7 @@ export class GoogleProviderToolsAgent {
       };
 
       // Enable thinking mode for delegated agent if supported
-      if (this.modelId?.includes('thinking')) {
+      if (this.modelId?.includes("thinking")) {
         config.providerOptions = {
           google: {
             thinkingConfig: {
@@ -107,9 +114,9 @@ export class GoogleProviderToolsAgent {
 
       // Use streamText to get full result with tool calls and reasoning
       const result = streamText(config);
-      
+
       // Collect the full text output
-      let fullOutput = '';
+      let fullOutput = "";
       for await (const chunk of result.textStream) {
         fullOutput += chunk;
       }
@@ -119,19 +126,26 @@ export class GoogleProviderToolsAgent {
       const toolCalls = await finalResult.toolCalls;
       const reasoning = await finalResult.reasoning;
 
-      console.log('✅ [PROVIDER-TOOLS] Completed execution, output length:', fullOutput.length);
-      console.log('🔧 [PROVIDER-TOOLS] Tool calls executed:', toolCalls?.length || 0);
+      console.log(
+        "✅ [PROVIDER-TOOLS] Completed execution, output length:",
+        fullOutput.length
+      );
+      console.log(
+        "🔧 [PROVIDER-TOOLS] Tool calls executed:",
+        toolCalls?.length || 0
+      );
 
       return {
         output: fullOutput,
         success: true,
         toolCalls: toolCalls || [],
-        reasoning: reasoning?.map(r => r.text || '').join('\n') || undefined,
+        reasoning: reasoning?.map((r) => r.text || "").join("\n") || undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
-      console.error('❌ [PROVIDER-TOOLS] Execution failed:', errorMessage);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
+      console.error("❌ [PROVIDER-TOOLS] Execution failed:", errorMessage);
 
       return {
         output: `Error: ${errorMessage}`,
@@ -164,6 +178,4 @@ export class GoogleProviderToolsAgent {
 
     return tools;
   }
-
-
 }

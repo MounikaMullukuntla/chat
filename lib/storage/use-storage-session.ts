@@ -2,11 +2,11 @@
  * Hook for managing storage sessions and cleanup
  */
 
-'use client';
+"use client";
 
-import { useEffect, useCallback } from 'react';
-import { localStorageManager } from './local-storage-manager';
-import type { StorageConfig, StorageEvent } from './types';
+import { useCallback, useEffect } from "react";
+import { localStorageManager } from "./local-storage-manager";
+import type { StorageConfig, StorageEvent } from "./types";
 
 export function useStorageSession() {
   // Configure storage
@@ -17,7 +17,7 @@ export function useStorageSession() {
   // Configure session storage
   const configureSessionStorage = useCallback((enabled: boolean) => {
     // Simplified - just log for now
-    console.log('Session storage configuration:', enabled);
+    console.log("Session storage configuration:", enabled);
   }, []);
 
   // Get storage status
@@ -26,7 +26,7 @@ export function useStorageSession() {
       usingSessionStorage: false,
       autoCleanupEnabled: true,
       hasData: localStorageManager.hasData(),
-      storageHealth: localStorageManager.checkStorageHealth()
+      storageHealth: localStorageManager.checkStorageHealth(),
     };
   }, []);
 
@@ -52,7 +52,7 @@ export function useStorageSession() {
     forceCleanup,
     getStorageQuota,
     checkStorageHealth,
-    isAuthenticated: true // Simplified - assume always authenticated
+    isAuthenticated: true, // Simplified - assume always authenticated
   };
 }
 
@@ -63,7 +63,9 @@ export function useStorageEvents(
   onStorageEvent?: (event: StorageEvent) => void
 ) {
   useEffect(() => {
-    if (!onStorageEvent) return;
+    if (!onStorageEvent) {
+      return;
+    }
 
     localStorageManager.addEventListener(onStorageEvent);
 

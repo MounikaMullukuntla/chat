@@ -2,8 +2,8 @@
  * Storage helper functions for API keys and integrations
  */
 
-import { localStorageManager } from './local-storage-manager';
-import type { APIProvider, StorageEvent } from './types';
+import { localStorageManager } from "./local-storage-manager";
+import type { APIProvider, StorageEvent } from "./types";
 
 /**
  * API Key helpers
@@ -17,7 +17,7 @@ export const apiKeyHelpers = {
     console.log(`🔑 [DEBUG] Getting API key for ${provider}:`, {
       hasKey: !!apiKey,
       keyLength: apiKey?.length || 0,
-      keyPrefix: apiKey?.substring(0, 10) || 'none'
+      keyPrefix: apiKey?.substring(0, 10) || "none",
     });
     return apiKey;
   },
@@ -27,7 +27,7 @@ export const apiKeyHelpers = {
    */
   set: (provider: APIProvider, key: string): void => {
     if (!key.trim()) {
-      throw new Error('API key cannot be empty');
+      throw new Error("API key cannot be empty");
     }
     localStorageManager.setAPIKey(provider, key.trim());
   },
@@ -51,41 +51,58 @@ export const apiKeyHelpers = {
    */
   getConfiguredProviders: (): APIProvider[] => {
     const apiKeys = localStorageManager.getAllAPIKeys();
-    return Object.keys(apiKeys).filter(key => !!apiKeys[key as APIProvider]) as APIProvider[];
+    return Object.keys(apiKeys).filter(
+      (key) => !!apiKeys[key as APIProvider]
+    ) as APIProvider[];
   },
 
   /**
    * Validate API key format (basic validation)
    */
-  validateFormat: (provider: APIProvider, key: string): { valid: boolean; error?: string } => {
+  validateFormat: (
+    provider: APIProvider,
+    key: string
+  ): { valid: boolean; error?: string } => {
     if (!key || !key.trim()) {
-      return { valid: false, error: 'API key is required' };
+      return { valid: false, error: "API key is required" };
     }
 
     const trimmedKey = key.trim();
 
     switch (provider) {
-      case 'google':
-        if (!trimmedKey.startsWith('AIza') || trimmedKey.length < 20) {
-          return { valid: false, error: 'Google API key should start with "AIza" and be at least 20 characters' };
+      case "google":
+        if (!trimmedKey.startsWith("AIza") || trimmedKey.length < 20) {
+          return {
+            valid: false,
+            error:
+              'Google API key should start with "AIza" and be at least 20 characters',
+          };
         }
         break;
-      case 'anthropic':
-        if (!trimmedKey.startsWith('sk-ant-') || trimmedKey.length < 20) {
-          return { valid: false, error: 'Anthropic API key should start with "sk-ant-" and be at least 20 characters' };
+      case "anthropic":
+        if (!trimmedKey.startsWith("sk-ant-") || trimmedKey.length < 20) {
+          return {
+            valid: false,
+            error:
+              'Anthropic API key should start with "sk-ant-" and be at least 20 characters',
+          };
         }
         break;
-      case 'openai':
-        if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 20) {
-          return { valid: false, error: 'OpenAI API key should start with "sk-" and be at least 20 characters' };
+      case "openai":
+        if (!trimmedKey.startsWith("sk-") || trimmedKey.length < 20) {
+          return {
+            valid: false,
+            error:
+              'OpenAI API key should start with "sk-" and be at least 20 characters',
+          };
         }
         break;
       default:
-        return { valid: false, error: 'Unknown provider' };
+        return { valid: false, error: "Unknown provider" };
     }
 
     return { valid: true };
-  }
+  },
 };
 
 /**
@@ -104,7 +121,7 @@ export const githubHelpers = {
    */
   setToken: (token: string): void => {
     if (!token.trim()) {
-      throw new Error('GitHub token cannot be empty');
+      throw new Error("GitHub token cannot be empty");
     }
     localStorageManager.setGitHubPAT(token.trim());
   },
@@ -133,7 +150,9 @@ export const githubHelpers = {
   /**
    * Update GitHub integration data
    */
-  updateIntegration: (data: Parameters<typeof localStorageManager.updateGitHubIntegration>[0]) => {
+  updateIntegration: (
+    data: Parameters<typeof localStorageManager.updateGitHubIntegration>[0]
+  ) => {
     localStorageManager.updateGitHubIntegration(data);
   },
 
@@ -142,25 +161,32 @@ export const githubHelpers = {
    */
   validateTokenFormat: (token: string): { valid: boolean; error?: string } => {
     if (!token || !token.trim()) {
-      return { valid: false, error: 'GitHub token is required' };
+      return { valid: false, error: "GitHub token is required" };
     }
 
     const trimmedToken = token.trim();
 
     // GitHub PATs can be classic (ghp_) or fine-grained (github_pat_)
-    if (!trimmedToken.startsWith('ghp_') && !trimmedToken.startsWith('github_pat_')) {
-      return { 
-        valid: false, 
-        error: 'GitHub token should start with "ghp_" (classic) or "github_pat_" (fine-grained)' 
+    if (
+      !trimmedToken.startsWith("ghp_") &&
+      !trimmedToken.startsWith("github_pat_")
+    ) {
+      return {
+        valid: false,
+        error:
+          'GitHub token should start with "ghp_" (classic) or "github_pat_" (fine-grained)',
       };
     }
 
     if (trimmedToken.length < 20) {
-      return { valid: false, error: 'GitHub token should be at least 20 characters' };
+      return {
+        valid: false,
+        error: "GitHub token should be at least 20 characters",
+      };
     }
 
     return { valid: true };
-  }
+  },
 };
 
 /**
@@ -201,44 +227,47 @@ export const storageHelpers = {
   getSummary: () => {
     const configuredProviders = apiKeyHelpers.getConfiguredProviders();
     const hasGitHub = githubHelpers.hasToken();
-    
+
     return {
       apiKeys: {
         count: configuredProviders.length,
-        providers: configuredProviders
+        providers: configuredProviders,
       },
       integrations: {
-        github: hasGitHub
+        github: hasGitHub,
       },
-      totalItems: configuredProviders.length + (hasGitHub ? 1 : 0)
+      totalItems: configuredProviders.length + (hasGitHub ? 1 : 0),
     };
   },
 
   /**
    * Configure storage settings
    */
-  configure: (config: Partial<import('./types').StorageConfig>): void => {
+  configure: (config: Partial<import("./types").StorageConfig>): void => {
     localStorageManager.configure(config);
   },
 
   /**
    * Get current storage configuration
    */
-  getConfig: (): import('./types').StorageConfig => {
+  getConfig: (): import("./types").StorageConfig => {
     return localStorageManager.getConfig();
   },
 
   /**
    * Get storage quota information
    */
-  getQuota: (): import('./types').StorageQuotaInfo | null => {
+  getQuota: (): import("./types").StorageQuotaInfo | null => {
     return localStorageManager.getStorageQuota();
   },
 
   /**
    * Check storage health
    */
-  checkHealth: (): { healthy: boolean; errors: import('./types').StorageError[] } => {
+  checkHealth: (): {
+    healthy: boolean;
+    errors: import("./types").StorageError[];
+  } => {
     return localStorageManager.checkStorageHealth();
   },
 
@@ -254,7 +283,7 @@ export const storageHelpers = {
    */
   cleanup: (): void => {
     localStorageManager.cleanupOnLogout();
-  }
+  },
 };
 
 /**
@@ -263,5 +292,5 @@ export const storageHelpers = {
 export const storage = {
   apiKeys: apiKeyHelpers,
   github: githubHelpers,
-  general: storageHelpers
+  general: storageHelpers,
 };

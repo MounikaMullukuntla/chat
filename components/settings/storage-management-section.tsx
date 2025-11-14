@@ -2,19 +2,27 @@
  * Storage Management Section - Advanced storage configuration and monitoring
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useStorageSession, useStorageEvents } from '@/lib/storage/use-storage-session';
-import { storage } from '@/lib/storage/helpers';
-import type { StorageEvent, StorageError } from '@/lib/storage/types';
+import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import type { StorageError, StorageEvent } from "@/lib/storage/types";
+import {
+  useStorageEvents,
+  useStorageSession,
+} from "@/lib/storage/use-storage-session";
 
 export function StorageManagementSection() {
   const {
@@ -24,7 +32,7 @@ export function StorageManagementSection() {
     forceCleanup,
     getStorageQuota,
     checkStorageHealth,
-    isAuthenticated
+    isAuthenticated,
   } = useStorageSession();
 
   const [storageStatus, setStorageStatus] = useState(getStorageStatus());
@@ -34,8 +42,8 @@ export function StorageManagementSection() {
 
   // Listen to storage events
   useStorageEvents((event) => {
-    setEvents(prev => [event, ...prev.slice(0, 4)]); // Keep last 5 events
-    
+    setEvents((prev) => [event, ...prev.slice(0, 4)]); // Keep last 5 events
+
     // Update status when events occur
     setStorageStatus(getStorageStatus());
     setStorageQuota(getStorageQuota());
@@ -48,7 +56,7 @@ export function StorageManagementSection() {
       setStorageStatus(getStorageStatus());
       setStorageQuota(getStorageQuota());
       setStorageHealth(checkStorageHealth());
-    }, 30000); // Every 30 seconds
+    }, 30_000); // Every 30 seconds
 
     return () => clearInterval(interval);
   }, [getStorageStatus, getStorageQuota, checkStorageHealth]);
@@ -64,31 +72,37 @@ export function StorageManagementSection() {
   };
 
   const handleForceCleanup = () => {
-    if (confirm('Are you sure you want to clear all stored API keys and integrations?')) {
+    if (
+      confirm(
+        "Are you sure you want to clear all stored API keys and integrations?"
+      )
+    ) {
       forceCleanup();
     }
   };
 
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return "0 B";
+    }
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const getHealthBadgeVariant = (healthy: boolean) => {
-    return healthy ? 'default' : 'destructive';
+    return healthy ? "default" : "destructive";
   };
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
-      case 'storage-error':
-        return 'text-red-600';
-      case 'storage-cleared':
-        return 'text-orange-600';
+      case "storage-error":
+        return "text-red-600";
+      case "storage-cleared":
+        return "text-orange-600";
       default:
-        return 'text-green-600';
+        return "text-green-600";
     }
   };
 
@@ -123,18 +137,18 @@ export function StorageManagementSection() {
       <CardContent className="space-y-6">
         {/* Storage Configuration */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium">Configuration</h4>
-          
+          <h4 className="font-medium text-sm">Configuration</h4>
+
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="session-storage">Use Session Storage</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Store data only for the current browser session
               </p>
             </div>
             <Switch
-              id="session-storage"
               checked={storageStatus.usingSessionStorage}
+              id="session-storage"
               onCheckedChange={handleSessionStorageToggle}
             />
           </div>
@@ -142,13 +156,13 @@ export function StorageManagementSection() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="auto-cleanup">Auto Cleanup on Logout</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Automatically clear stored data when logging out
               </p>
             </div>
             <Switch
-              id="auto-cleanup"
               checked={storageStatus.autoCleanupEnabled}
+              id="auto-cleanup"
               onCheckedChange={handleAutoCleanupToggle}
             />
           </div>
@@ -156,20 +170,24 @@ export function StorageManagementSection() {
 
         {/* Storage Status */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium">Status</h4>
-          
+          <h4 className="font-medium text-sm">Status</h4>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Storage Type</Label>
-              <Badge variant={storageStatus.usingSessionStorage ? 'secondary' : 'default'}>
-                {storageStatus.usingSessionStorage ? 'Session' : 'Local'}
+              <Badge
+                variant={
+                  storageStatus.usingSessionStorage ? "secondary" : "default"
+                }
+              >
+                {storageStatus.usingSessionStorage ? "Session" : "Local"}
               </Badge>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Health Status</Label>
               <Badge variant={getHealthBadgeVariant(storageHealth.healthy)}>
-                {storageHealth.healthy ? 'Healthy' : 'Issues Detected'}
+                {storageHealth.healthy ? "Healthy" : "Issues Detected"}
               </Badge>
             </div>
           </div>
@@ -179,11 +197,12 @@ export function StorageManagementSection() {
               <div className="flex justify-between text-sm">
                 <Label>Storage Usage</Label>
                 <span className="text-muted-foreground">
-                  {formatBytes(storageQuota.used)} / {formatBytes(storageQuota.total)}
+                  {formatBytes(storageQuota.used)} /{" "}
+                  {formatBytes(storageQuota.total)}
                 </span>
               </div>
-              <Progress value={storageQuota.percentage} className="h-2" />
-              <p className="text-xs text-muted-foreground">
+              <Progress className="h-2" value={storageQuota.percentage} />
+              <p className="text-muted-foreground text-xs">
                 {storageQuota.percentage.toFixed(1)}% used
               </p>
             </div>
@@ -193,7 +212,7 @@ export function StorageManagementSection() {
         {/* Health Issues */}
         {!storageHealth.healthy && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-red-600">Health Issues</h4>
+            <h4 className="font-medium text-red-600 text-sm">Health Issues</h4>
             {storageHealth.errors.map((error: StorageError, index: number) => (
               <Alert key={index} variant="destructive">
                 <AlertDescription>
@@ -207,10 +226,10 @@ export function StorageManagementSection() {
         {/* Recent Events */}
         {events.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Recent Events</h4>
+            <h4 className="font-medium text-sm">Recent Events</h4>
             <div className="space-y-1">
               {events.map((event, index) => (
-                <div key={index} className="text-xs p-2 bg-muted rounded">
+                <div className="rounded bg-muted p-2 text-xs" key={index}>
                   <span className={getEventTypeColor(event.type)}>
                     {event.type}
                   </span>
@@ -220,9 +239,7 @@ export function StorageManagementSection() {
                     </span>
                   )}
                   {event.error && (
-                    <span className="ml-2 text-red-600">
-                      - {event.error}
-                    </span>
+                    <span className="ml-2 text-red-600">- {event.error}</span>
                   )}
                   <span className="ml-2 text-muted-foreground">
                     {new Date(event.timestamp).toLocaleTimeString()}
@@ -235,24 +252,24 @@ export function StorageManagementSection() {
 
         {/* Actions */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Actions</h4>
+          <h4 className="font-medium text-sm">Actions</h4>
           <div className="flex gap-2">
             <Button
-              variant="outline"
-              size="sm"
               onClick={() => {
                 setStorageStatus(getStorageStatus());
                 setStorageQuota(getStorageQuota());
                 setStorageHealth(checkStorageHealth());
               }}
+              size="sm"
+              variant="outline"
             >
               Refresh Status
             </Button>
             <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleForceCleanup}
               disabled={!storageStatus.hasData}
+              onClick={handleForceCleanup}
+              size="sm"
+              variant="destructive"
             >
               Clear All Data
             </Button>

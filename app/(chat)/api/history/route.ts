@@ -1,6 +1,7 @@
+import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
-import { requireAuth, createAuthErrorResponse } from "@/lib/auth/server";
-import { getChatsByUserId, deleteAllChatsByUserId } from "@/lib/db/queries";
+import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
+import { deleteAllChatsByUserId, getChatsByUserId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   // Authenticate user with Supabase
-  let user;
+  let user: User;
   try {
     const authResult = await requireAuth();
     user = authResult.user;

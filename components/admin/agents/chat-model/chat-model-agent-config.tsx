@@ -1,22 +1,32 @@
 "use client";
 
+import { ChevronDown, Loader2, Save } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Save, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
-interface ToolInputParameter {
+type ToolInputParameter = {
   parameter_name: string;
   parameter_description: string;
-}
+};
 
-interface ToolConfig {
+type ToolConfig = {
   description: string;
   enabled: boolean;
   tool_input?: {
@@ -24,13 +34,13 @@ interface ToolConfig {
     parameter_description?: string;
     [key: string]: ToolInputParameter | string | undefined;
   };
-}
+};
 
-interface FileTypeConfig {
+type FileTypeConfig = {
   enabled: boolean;
-}
+};
 
-interface ChatModelAgentConfig {
+type ChatModelAgentConfig = {
   enabled: boolean;
   systemPrompt: string;
   capabilities: {
@@ -56,26 +66,71 @@ interface ChatModelAgentConfig {
     mermaidAgent?: ToolConfig;
     gitMcpAgent?: ToolConfig;
   };
-}
+};
 
-interface ChatModelAgentConfigProps {
+type ChatModelAgentConfigProps = {
   provider: string;
   initialConfig: ChatModelAgentConfig;
   onSave: (config: ChatModelAgentConfig) => Promise<void>;
-}
+};
 
 const TOOL_INFO = {
-  providerToolsAgent: { title: "Provider Tools Agent", description: "Web search, URL analysis, code execution" },
-  documentAgent: { title: "Document Agent", description: "Create, update, and manage text documents" },
-  pythonAgent: { title: "Python Agent", description: "Create, update, and execute Python code" },
-  mermaidAgent: { title: "Mermaid Agent", description: "Create and update Mermaid diagrams" },
-  gitMcpAgent: { title: "GitHub MCP Agent", description: "GitHub repository operations and code search" },
+  providerToolsAgent: {
+    title: "Provider Tools Agent",
+    description: "Web search, URL analysis, code execution",
+  },
+  documentAgent: {
+    title: "Document Agent",
+    description: "Create, update, and manage text documents",
+  },
+  pythonAgent: {
+    title: "Python Agent",
+    description: "Create, update, and execute Python code",
+  },
+  mermaidAgent: {
+    title: "Mermaid Agent",
+    description: "Create and update Mermaid diagrams",
+  },
+  gitMcpAgent: {
+    title: "GitHub MCP Agent",
+    description: "GitHub repository operations and code search",
+  },
 } as const;
 
-const CODE_FILES = ["py", "ipynb", "js", "jsx", "ts", "tsx", "html", "css", "json", "xml", "sql", "sh", "bat", "ps1"];
-const TEXT_FILES = ["txt", "md", "yaml", "yml", "toml", "ini", "cfg", "conf", "log", "csv"];
+const CODE_FILES = [
+  "py",
+  "ipynb",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "html",
+  "css",
+  "json",
+  "xml",
+  "sql",
+  "sh",
+  "bat",
+  "ps1",
+];
+const TEXT_FILES = [
+  "txt",
+  "md",
+  "yaml",
+  "yml",
+  "toml",
+  "ini",
+  "cfg",
+  "conf",
+  "log",
+  "csv",
+];
 
-export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatModelAgentConfigProps) {
+export function ChatModelAgentConfig({
+  provider,
+  initialConfig,
+  onSave,
+}: ChatModelAgentConfigProps) {
   const [config, setConfig] = useState<ChatModelAgentConfig>(initialConfig);
   const [saving, setSaving] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -96,7 +151,10 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
     }
   };
 
-  const updateTool = (toolName: keyof typeof config.tools, updates: Partial<ToolConfig>) => {
+  const updateTool = (
+    toolName: keyof typeof config.tools,
+    updates: Partial<ToolConfig>
+  ) => {
     setConfig((prev) => ({
       ...prev,
       tools: {
@@ -112,17 +170,21 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
   const updateToolInputParameter = (
     toolName: keyof typeof config.tools,
     paramKey: string,
-    field: 'parameter_name' | 'parameter_description',
+    field: "parameter_name" | "parameter_description",
     value: string
   ) => {
     setConfig((prev) => {
       const tool = prev.tools[toolName];
-      if (!tool || !tool.tool_input) return prev;
+      if (!tool || !tool.tool_input) {
+        return prev;
+      }
 
-      const isSimpleFormat = 'parameter_name' in tool.tool_input && typeof tool.tool_input.parameter_name === 'string';
+      const isSimpleFormat =
+        "parameter_name" in tool.tool_input &&
+        typeof tool.tool_input.parameter_name === "string";
 
       let updatedToolInput;
-      if (isSimpleFormat && paramKey === 'root') {
+      if (isSimpleFormat && paramKey === "root") {
         // Simple format: direct parameter_name and parameter_description
         updatedToolInput = {
           ...tool.tool_input,
@@ -153,16 +215,27 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
     });
   };
 
-  const isSimpleToolInput = (toolInput: ToolConfig['tool_input']): boolean => {
-    if (!toolInput) return false;
-    return 'parameter_name' in toolInput && typeof toolInput.parameter_name === 'string';
+  const isSimpleToolInput = (toolInput: ToolConfig["tool_input"]): boolean => {
+    if (!toolInput) {
+      return false;
+    }
+    return (
+      "parameter_name" in toolInput &&
+      typeof toolInput.parameter_name === "string"
+    );
   };
 
-  const getComplexParameters = (toolInput: ToolConfig['tool_input']): Array<{ key: string; param: ToolInputParameter }> => {
-    if (!toolInput || isSimpleToolInput(toolInput)) return [];
+  const getComplexParameters = (
+    toolInput: ToolConfig["tool_input"]
+  ): Array<{ key: string; param: ToolInputParameter }> => {
+    if (!toolInput || isSimpleToolInput(toolInput)) {
+      return [];
+    }
 
     return Object.entries(toolInput)
-      .filter(([key]) => key !== 'parameter_name' && key !== 'parameter_description')
+      .filter(
+        ([key]) => key !== "parameter_name" && key !== "parameter_description"
+      )
       .map(([key, value]) => ({
         key,
         param: value as ToolInputParameter,
@@ -209,12 +282,15 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
             <div>
               <CardTitle>Chat Model Agent ({provider})</CardTitle>
               <CardDescription>
-                Configure the main chat agent with file input and tool delegation
+                Configure the main chat agent with file input and tool
+                delegation
               </CardDescription>
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+              onCheckedChange={(enabled) =>
+                setConfig((prev) => ({ ...prev, enabled }))
+              }
             />
           </div>
         </CardHeader>
@@ -224,15 +300,20 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
       <Card>
         <CardHeader>
           <CardTitle>System Prompt</CardTitle>
-          <CardDescription>Define the agent's behavior, personality, and tool usage instructions</CardDescription>
+          <CardDescription>
+            Define the agent's behavior, personality, and tool usage
+            instructions
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
-            value={config.systemPrompt}
-            onChange={(e) => setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-            rows={20}
             className="font-mono text-sm"
+            onChange={(e) =>
+              setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))
+            }
             placeholder="Enter the system prompt that defines the agent's behavior..."
+            rows={20}
+            value={config.systemPrompt}
           />
         </CardContent>
       </Card>
@@ -241,55 +322,66 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
       <Card>
         <CardHeader>
           <CardTitle>Rate Limits</CardTitle>
-          <CardDescription>Control usage limits for the chat agent</CardDescription>
+          <CardDescription>
+            Control usage limits for the chat agent
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="perMinute">Per Minute</Label>
             <Input
               id="perMinute"
-              type="number"
-              min={1}
               max={1000}
-              value={config.rateLimit.perMinute}
+              min={1}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perMinute: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perMinute: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perMinute}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="perHour">Per Hour</Label>
             <Input
               id="perHour"
-              type="number"
+              max={10_000}
               min={1}
-              max={10000}
-              value={config.rateLimit.perHour}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perHour: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perHour: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perHour}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="perDay">Per Day</Label>
             <Input
               id="perDay"
-              type="number"
+              max={100_000}
               min={1}
-              max={100000}
-              value={config.rateLimit.perDay}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perDay: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perDay: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perDay}
             />
           </div>
         </CardContent>
@@ -297,12 +389,15 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
       {/* File Input Configuration */}
       <Card>
-        <Collapsible open={openSections.fileTypes} onOpenChange={() => toggleSection("fileTypes")}>
+        <Collapsible
+          onOpenChange={() => toggleSection("fileTypes")}
+          open={openSections.fileTypes}
+        >
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Button className="h-6 w-6 p-0" size="sm" variant="ghost">
                     <ChevronDown
                       className={`h-4 w-4 transition-transform ${openSections.fileTypes ? "rotate-180" : ""}`}
                     />
@@ -310,13 +405,18 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                 </CollapsibleTrigger>
                 <div>
                   <CardTitle>File Input</CardTitle>
-                  <CardDescription>Configure which file types can be uploaded</CardDescription>
+                  <CardDescription>
+                    Configure which file types can be uploaded
+                  </CardDescription>
                 </div>
               </div>
               <Switch
                 checked={config.capabilities.fileInput}
                 onCheckedChange={(fileInput) =>
-                  setConfig((prev) => ({ ...prev, capabilities: { ...prev.capabilities, fileInput } }))
+                  setConfig((prev) => ({
+                    ...prev,
+                    capabilities: { ...prev.capabilities, fileInput },
+                  }))
                 }
               />
             </div>
@@ -326,16 +426,24 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
             <CardContent className="space-y-6 border-t pt-6">
               {/* Code Files */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Code Files</Label>
+                <Label className="font-medium text-sm">Code Files</Label>
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
                   {CODE_FILES.map((ext) => (
-                    <div key={ext} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                    <div
+                      className="flex items-center space-x-2 rounded-md border px-3 py-2"
+                      key={ext}
+                    >
                       <Switch
+                        checked={
+                          config.fileInputTypes.codeFiles[ext]?.enabled || false
+                        }
                         id={`code-${ext}`}
-                        checked={config.fileInputTypes.codeFiles[ext]?.enabled || false}
                         onCheckedChange={() => toggleFileType("codeFiles", ext)}
                       />
-                      <Label htmlFor={`code-${ext}`} className="text-xs font-mono cursor-pointer">
+                      <Label
+                        className="cursor-pointer font-mono text-xs"
+                        htmlFor={`code-${ext}`}
+                      >
                         {ext}
                       </Label>
                     </div>
@@ -345,16 +453,24 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
               {/* Text Files */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Text Files</Label>
+                <Label className="font-medium text-sm">Text Files</Label>
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                   {TEXT_FILES.map((ext) => (
-                    <div key={ext} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                    <div
+                      className="flex items-center space-x-2 rounded-md border px-3 py-2"
+                      key={ext}
+                    >
                       <Switch
+                        checked={
+                          config.fileInputTypes.textFiles[ext]?.enabled || false
+                        }
                         id={`text-${ext}`}
-                        checked={config.fileInputTypes.textFiles[ext]?.enabled || false}
                         onCheckedChange={() => toggleFileType("textFiles", ext)}
                       />
-                      <Label htmlFor={`text-${ext}`} className="text-xs font-mono cursor-pointer">
+                      <Label
+                        className="cursor-pointer font-mono text-xs"
+                        htmlFor={`text-${ext}`}
+                      >
                         {ext}
                       </Label>
                     </div>
@@ -364,7 +480,9 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
               {/* Special File Types */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Document & Media Types</Label>
+                <Label className="font-medium text-sm">
+                  Document & Media Types
+                </Label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
                     { key: "pdf", label: "PDF" },
@@ -372,16 +490,30 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                     { key: "excel", label: "Excel" },
                     { key: "images", label: "Images" },
                   ].map(({ key, label }) => {
-                    const fileType = config.fileInputTypes[key as keyof typeof config.fileInputTypes];
-                    const isEnabled = Boolean(typeof fileType === 'object' && 'enabled' in fileType ? fileType.enabled : false);
+                    const fileType =
+                      config.fileInputTypes[
+                        key as keyof typeof config.fileInputTypes
+                      ];
+                    const isEnabled = Boolean(
+                      typeof fileType === "object" && "enabled" in fileType
+                        ? fileType.enabled
+                        : false
+                    );
                     return (
-                      <div key={key} className="flex items-center space-x-2 rounded-md border px-3 py-2">
+                      <div
+                        className="flex items-center space-x-2 rounded-md border px-3 py-2"
+                        key={key}
+                      >
                         <Switch
-                          id={key}
                           checked={isEnabled as boolean}
-                          onCheckedChange={() => toggleSpecialFileType(key as "pdf" | "ppt" | "excel" | "images")}
+                          id={key}
+                          onCheckedChange={() =>
+                            toggleSpecialFileType(
+                              key as "pdf" | "ppt" | "excel" | "images"
+                            )
+                          }
                         />
-                        <Label htmlFor={key} className="text-xs cursor-pointer">
+                        <Label className="cursor-pointer text-xs" htmlFor={key}>
                           {label}
                         </Label>
                       </div>
@@ -396,11 +528,14 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
       {/* Delegated Tools */}
       <Card>
-        <Collapsible open={openSections.tools} onOpenChange={() => toggleSection("tools")}>
+        <Collapsible
+          onOpenChange={() => toggleSection("tools")}
+          open={openSections.tools}
+        >
           <CardHeader>
             <div className="flex items-center gap-3">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Button className="h-6 w-6 p-0" size="sm" variant="ghost">
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${openSections.tools ? "rotate-180" : ""}`}
                   />
@@ -408,7 +543,9 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
               </CollapsibleTrigger>
               <div>
                 <CardTitle>Delegated Agent Tools</CardTitle>
-                <CardDescription>Configure which specialized agents the chat agent can use</CardDescription>
+                <CardDescription>
+                  Configure which specialized agents the chat agent can use
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -419,72 +556,114 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                 const toolName = toolKey as keyof typeof config.tools;
                 const tool = config.tools[toolName];
 
-                if (!tool) return null;
+                if (!tool) {
+                  return null;
+                }
 
-                const hasToolInput = tool.tool_input && Object.keys(tool.tool_input).length > 0;
-                const isSimple = hasToolInput && isSimpleToolInput(tool.tool_input);
-                const complexParams = hasToolInput ? getComplexParameters(tool.tool_input) : [];
+                const hasToolInput =
+                  tool.tool_input && Object.keys(tool.tool_input).length > 0;
+                const isSimple =
+                  hasToolInput && isSimpleToolInput(tool.tool_input);
+                const complexParams = hasToolInput
+                  ? getComplexParameters(tool.tool_input)
+                  : [];
 
                 return (
-                  <div key={toolName} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+                  <div
+                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                    key={toolName}
+                  >
                     <div className="flex-1 space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium">{toolInfo.title}</h4>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-muted-foreground text-sm">
                             {tool.enabled ? "Enabled" : "Disabled"}
                           </span>
                           <Switch
                             checked={tool.enabled}
-                            onCheckedChange={(enabled) => updateTool(toolName, { enabled })}
+                            onCheckedChange={(enabled) =>
+                              updateTool(toolName, { enabled })
+                            }
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor={`${String(toolName)}-description`} className="text-xs">
+                        <Label
+                          className="text-xs"
+                          htmlFor={`${String(toolName)}-description`}
+                        >
                           Tool Description
                         </Label>
                         <Textarea
-                          id={`${String(toolName)}-description`}
-                          value={tool.description}
-                          onChange={(e) => updateTool(toolName, { description: e.target.value })}
-                          rows={2}
                           className="resize-none text-sm"
+                          id={`${String(toolName)}-description`}
+                          onChange={(e) =>
+                            updateTool(toolName, {
+                              description: e.target.value,
+                            })
+                          }
                           placeholder={toolInfo.description}
+                          rows={2}
+                          value={tool.description}
                         />
                       </div>
 
                       {/* Tool Input Parameters */}
                       {hasToolInput && (
-                        <div className="space-y-3 rounded-md border border-dashed p-3 bg-muted/30">
-                          <Label className="text-xs font-semibold">Tool Input Parameters</Label>
+                        <div className="space-y-3 rounded-md border border-dashed bg-muted/30 p-3">
+                          <Label className="font-semibold text-xs">
+                            Tool Input Parameters
+                          </Label>
 
                           {isSimple ? (
                             // Simple format: single parameter
                             <div className="space-y-3">
                               <div className="space-y-2">
-                                <Label htmlFor={`${String(toolName)}-param-name`} className="text-xs text-muted-foreground">
+                                <Label
+                                  className="text-muted-foreground text-xs"
+                                  htmlFor={`${String(toolName)}-param-name`}
+                                >
                                   Parameter Name
                                 </Label>
                                 <Input
+                                  className="font-mono text-sm"
                                   id={`${String(toolName)}-param-name`}
-                                  value={tool.tool_input?.parameter_name || ''}
-                                  onChange={(e) => updateToolInputParameter(toolName, 'root', 'parameter_name', e.target.value)}
-                                  className="text-sm font-mono"
+                                  onChange={(e) =>
+                                    updateToolInputParameter(
+                                      toolName,
+                                      "root",
+                                      "parameter_name",
+                                      e.target.value
+                                    )
+                                  }
                                   placeholder="e.g., input"
+                                  value={tool.tool_input?.parameter_name || ""}
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor={`${String(toolName)}-param-desc`} className="text-xs text-muted-foreground">
+                                <Label
+                                  className="text-muted-foreground text-xs"
+                                  htmlFor={`${String(toolName)}-param-desc`}
+                                >
                                   Parameter Description
                                 </Label>
                                 <Textarea
-                                  id={`${String(toolName)}-param-desc`}
-                                  value={tool.tool_input?.parameter_description || ''}
-                                  onChange={(e) => updateToolInputParameter(toolName, 'root', 'parameter_description', e.target.value)}
-                                  rows={2}
                                   className="resize-none text-sm"
+                                  id={`${String(toolName)}-param-desc`}
+                                  onChange={(e) =>
+                                    updateToolInputParameter(
+                                      toolName,
+                                      "root",
+                                      "parameter_description",
+                                      e.target.value
+                                    )
+                                  }
                                   placeholder="Description of what this parameter does"
+                                  rows={2}
+                                  value={
+                                    tool.tool_input?.parameter_description || ""
+                                  }
                                 />
                               </div>
                             </div>
@@ -492,33 +671,58 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
                             // Complex format: multiple parameters
                             <div className="space-y-4">
                               {complexParams.map(({ key, param }) => (
-                                <div key={key} className="space-y-3 rounded-md border p-3 bg-background">
+                                <div
+                                  className="space-y-3 rounded-md border bg-background p-3"
+                                  key={key}
+                                >
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs font-mono font-semibold text-primary">{key}</span>
+                                    <span className="font-mono font-semibold text-primary text-xs">
+                                      {key}
+                                    </span>
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor={`${String(toolName)}-${key}-name`} className="text-xs text-muted-foreground">
+                                    <Label
+                                      className="text-muted-foreground text-xs"
+                                      htmlFor={`${String(toolName)}-${key}-name`}
+                                    >
                                       Parameter Name
                                     </Label>
                                     <Input
+                                      className="font-mono text-sm"
                                       id={`${String(toolName)}-${key}-name`}
-                                      value={param.parameter_name || ''}
-                                      onChange={(e) => updateToolInputParameter(toolName, key, 'parameter_name', e.target.value)}
-                                      className="text-sm font-mono"
+                                      onChange={(e) =>
+                                        updateToolInputParameter(
+                                          toolName,
+                                          key,
+                                          "parameter_name",
+                                          e.target.value
+                                        )
+                                      }
                                       placeholder="e.g., operation, instruction"
+                                      value={param.parameter_name || ""}
                                     />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label htmlFor={`${String(toolName)}-${key}-desc`} className="text-xs text-muted-foreground">
+                                    <Label
+                                      className="text-muted-foreground text-xs"
+                                      htmlFor={`${String(toolName)}-${key}-desc`}
+                                    >
                                       Parameter Description
                                     </Label>
                                     <Textarea
-                                      id={`${String(toolName)}-${key}-desc`}
-                                      value={param.parameter_description || ''}
-                                      onChange={(e) => updateToolInputParameter(toolName, key, 'parameter_description', e.target.value)}
-                                      rows={2}
                                       className="resize-none text-sm"
+                                      id={`${String(toolName)}-${key}-desc`}
+                                      onChange={(e) =>
+                                        updateToolInputParameter(
+                                          toolName,
+                                          key,
+                                          "parameter_description",
+                                          e.target.value
+                                        )
+                                      }
                                       placeholder="Description of what this parameter does"
+                                      rows={2}
+                                      value={param.parameter_description || ""}
                                     />
                                   </div>
                                 </div>
@@ -538,7 +742,7 @@ export function ChatModelAgentConfig({ provider, initialConfig, onSave }: ChatMo
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button disabled={saving} onClick={handleSave}>
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

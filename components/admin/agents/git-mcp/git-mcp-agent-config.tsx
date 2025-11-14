@@ -1,21 +1,27 @@
 "use client";
 
+import { Loader2, Save } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
-interface SimpleToolConfig {
+type SimpleToolConfig = {
   description: string;
   enabled: boolean;
-}
+};
 
-interface GitMcpAgentConfig {
+type GitMcpAgentConfig = {
   enabled: boolean;
   systemPrompt: string;
   rateLimit: {
@@ -31,24 +37,46 @@ interface GitMcpAgentConfig {
     code_search?: SimpleToolConfig;
     branches?: SimpleToolConfig;
   };
-}
+};
 
-interface GitMcpAgentConfigProps {
+type GitMcpAgentConfigProps = {
   provider: string;
   initialConfig: GitMcpAgentConfig;
   onSave: (config: GitMcpAgentConfig) => Promise<void>;
-}
+};
 
 const TOOL_INFO = {
-  repos: { title: "Repository Operations", description: "Browse code, get repo info, list contents, search files" },
-  issues: { title: "Issue Management", description: "List issues, search issues, get issue details" },
-  pull_requests: { title: "Pull Request Operations", description: "List pull requests, get PR details, review changes" },
-  users: { title: "User Operations", description: "Get user info, list repos, analyze contributions" },
-  code_search: { title: "Code Search", description: "Find patterns, functions, and references across codebase" },
-  branches: { title: "Branch Operations", description: "List branches, get commits, compare branches" },
+  repos: {
+    title: "Repository Operations",
+    description: "Browse code, get repo info, list contents, search files",
+  },
+  issues: {
+    title: "Issue Management",
+    description: "List issues, search issues, get issue details",
+  },
+  pull_requests: {
+    title: "Pull Request Operations",
+    description: "List pull requests, get PR details, review changes",
+  },
+  users: {
+    title: "User Operations",
+    description: "Get user info, list repos, analyze contributions",
+  },
+  code_search: {
+    title: "Code Search",
+    description: "Find patterns, functions, and references across codebase",
+  },
+  branches: {
+    title: "Branch Operations",
+    description: "List branches, get commits, compare branches",
+  },
 } as const;
 
-export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAgentConfigProps) {
+export function GitMcpAgentConfig({
+  provider,
+  initialConfig,
+  onSave,
+}: GitMcpAgentConfigProps) {
   const [config, setConfig] = useState<GitMcpAgentConfig>(initialConfig);
   const [saving, setSaving] = useState(false);
 
@@ -65,7 +93,10 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
     }
   };
 
-  const updateTool = (toolName: keyof typeof config.tools, updates: Partial<SimpleToolConfig>) => {
+  const updateTool = (
+    toolName: keyof typeof config.tools,
+    updates: Partial<SimpleToolConfig>
+  ) => {
     setConfig((prev) => ({
       ...prev,
       tools: {
@@ -87,12 +118,15 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
             <div>
               <CardTitle>GitHub MCP Agent ({provider})</CardTitle>
               <CardDescription>
-                Configure GitHub integration for repositories, issues, PRs, and code search
+                Configure GitHub integration for repositories, issues, PRs, and
+                code search
               </CardDescription>
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) => setConfig((prev) => ({ ...prev, enabled }))}
+              onCheckedChange={(enabled) =>
+                setConfig((prev) => ({ ...prev, enabled }))
+              }
             />
           </div>
         </CardHeader>
@@ -102,15 +136,19 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
       <Card>
         <CardHeader>
           <CardTitle>System Prompt</CardTitle>
-          <CardDescription>Define the agent's behavior and instructions</CardDescription>
+          <CardDescription>
+            Define the agent's behavior and instructions
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
-            value={config.systemPrompt}
-            onChange={(e) => setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-            rows={12}
             className="font-mono text-sm"
+            onChange={(e) =>
+              setConfig((prev) => ({ ...prev, systemPrompt: e.target.value }))
+            }
             placeholder="Enter the system prompt that defines the agent's behavior..."
+            rows={12}
+            value={config.systemPrompt}
           />
         </CardContent>
       </Card>
@@ -119,55 +157,66 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
       <Card>
         <CardHeader>
           <CardTitle>Rate Limits</CardTitle>
-          <CardDescription>Control usage limits for the GitHub MCP agent</CardDescription>
+          <CardDescription>
+            Control usage limits for the GitHub MCP agent
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="perMinute">Per Minute</Label>
             <Input
               id="perMinute"
-              type="number"
-              min={1}
               max={1000}
-              value={config.rateLimit.perMinute}
+              min={1}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perMinute: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perMinute: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perMinute}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="perHour">Per Hour</Label>
             <Input
               id="perHour"
-              type="number"
+              max={10_000}
               min={1}
-              max={10000}
-              value={config.rateLimit.perHour}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perHour: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perHour: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perHour}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="perDay">Per Day</Label>
             <Input
               id="perDay"
-              type="number"
+              max={100_000}
               min={1}
-              max={100000}
-              value={config.rateLimit.perDay}
               onChange={(e) =>
                 setConfig((prev) => ({
                   ...prev,
-                  rateLimit: { ...prev.rateLimit, perDay: parseInt(e.target.value) || 1 },
+                  rateLimit: {
+                    ...prev.rateLimit,
+                    perDay: Number.parseInt(e.target.value, 10) || 1,
+                  },
                 }))
               }
+              type="number"
+              value={config.rateLimit.perDay}
             />
           </div>
         </CardContent>
@@ -177,39 +226,53 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
       <Card>
         <CardHeader>
           <CardTitle>Tools</CardTitle>
-          <CardDescription>Configure which GitHub operations are available</CardDescription>
+          <CardDescription>
+            Configure which GitHub operations are available
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {Object.entries(TOOL_INFO).map(([toolKey, toolInfo]) => {
             const toolName = toolKey as keyof typeof config.tools;
             const tool = config.tools[toolName];
 
-            if (!tool) return null;
+            if (!tool) {
+              return null;
+            }
 
             return (
-              <div key={toolName} className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div
+                className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                key={toolName}
+              >
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium">{toolInfo.title}</h4>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {tool.enabled ? "Enabled" : "Disabled"}
                       </span>
                       <Switch
                         checked={tool.enabled}
-                        onCheckedChange={(enabled) => updateTool(toolName, { enabled })}
+                        onCheckedChange={(enabled) =>
+                          updateTool(toolName, { enabled })
+                        }
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor={`${toolName}-description`} className="text-xs">
+                    <Label
+                      className="text-xs"
+                      htmlFor={`${toolName}-description`}
+                    >
                       Description
                     </Label>
                     <Input
                       id={`${toolName}-description`}
-                      value={tool.description}
-                      onChange={(e) => updateTool(toolName, { description: e.target.value })}
+                      onChange={(e) =>
+                        updateTool(toolName, { description: e.target.value })
+                      }
                       placeholder={toolInfo.description}
+                      value={tool.description}
                     />
                   </div>
                 </div>
@@ -221,7 +284,7 @@ export function GitMcpAgentConfig({ provider, initialConfig, onSave }: GitMcpAge
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button disabled={saving} onClick={handleSave}>
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

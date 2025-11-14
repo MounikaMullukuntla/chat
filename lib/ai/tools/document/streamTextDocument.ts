@@ -1,9 +1,9 @@
 import "server-only";
 
-import { streamText } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
+import type { UIMessageStreamWriter } from "ai";
+import { streamText } from "ai";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID, stripMarkdownCodeFences } from "@/lib/utils";
@@ -24,13 +24,24 @@ export async function streamTextDocument(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<string> {
-  const { title, instruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const {
+    title,
+    instruction,
+    systemPrompt,
+    userPromptTemplate,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+    metadata = {},
+  } = params;
   const documentId = generateUUID();
 
-  console.log('📄 [STREAM-CREATE] Starting real-time document creation');
-  console.log('📄 [STREAM-CREATE] Document ID:', documentId);
-  console.log('📄 [STREAM-CREATE] Title:', title);
-  console.log('📄 [STREAM-CREATE] Model:', modelId);
+  console.log("📄 [STREAM-CREATE] Starting real-time document creation");
+  console.log("📄 [STREAM-CREATE] Document ID:", documentId);
+  console.log("📄 [STREAM-CREATE] Title:", title);
+  console.log("📄 [STREAM-CREATE] Model:", modelId);
 
   // Write artifact metadata to open side panel
   dataStream.write({
@@ -57,7 +68,7 @@ export async function streamTextDocument(params: {
     transient: true,
   });
 
-  console.log('📄 [STREAM-CREATE] Metadata written, starting LLM generation');
+  console.log("📄 [STREAM-CREATE] Metadata written, starting LLM generation");
 
   // Get the Google model instance with proper API key handling
   let model;
@@ -70,8 +81,8 @@ export async function streamTextDocument(params: {
 
   // Build the prompt for document creation using template from config
   const userPrompt = userPromptTemplate
-    .replace('{title}', title)
-    .replace('{instruction}', instruction);
+    .replace("{title}", title)
+    .replace("{instruction}", instruction);
 
   try {
     // Use streamText to get real-time generation
@@ -82,7 +93,7 @@ export async function streamTextDocument(params: {
       temperature: 0.7,
     });
 
-    console.log('📄 [STREAM-CREATE] LLM streaming started');
+    console.log("📄 [STREAM-CREATE] LLM streaming started");
 
     // Accumulate content as it streams
     let draftContent = "";
@@ -94,7 +105,7 @@ export async function streamTextDocument(params: {
 
       if (type === "text-delta") {
         // In AI SDK v5, text-delta events have a 'textDelta' property
-        const text = (delta as any).textDelta || (delta as any).text || '';
+        const text = (delta as any).textDelta || (delta as any).text || "";
         draftContent += text;
         chunkCount++;
 
@@ -107,20 +118,28 @@ export async function streamTextDocument(params: {
       }
     }
 
-    console.log('📄 [STREAM-CREATE] LLM generation complete');
-    console.log('📄 [STREAM-CREATE] Total content length:', draftContent.length);
-    console.log('📄 [STREAM-CREATE] Total chunks streamed:', chunkCount);
+    console.log("📄 [STREAM-CREATE] LLM generation complete");
+    console.log(
+      "📄 [STREAM-CREATE] Total content length:",
+      draftContent.length
+    );
+    console.log("📄 [STREAM-CREATE] Total chunks streamed:", chunkCount);
 
     // Strip markdown code fences if LLM wrapped the output
     const cleanedContent = stripMarkdownCodeFences(draftContent);
     if (cleanedContent !== draftContent) {
-      console.log('⚠️ [STREAM-CREATE] Stripped markdown code fences from output');
-      console.log('📄 [STREAM-CREATE] Cleaned content length:', cleanedContent.length);
+      console.log(
+        "⚠️ [STREAM-CREATE] Stripped markdown code fences from output"
+      );
+      console.log(
+        "📄 [STREAM-CREATE] Cleaned content length:",
+        cleanedContent.length
+      );
     }
 
     // Save document to database if user is provided
     if (user?.id) {
-      console.log('📄 [STREAM-CREATE] Saving to database for user:', user.id);
+      console.log("📄 [STREAM-CREATE] Saving to database for user:", user.id);
       await saveDocument({
         id: documentId,
         title,
@@ -130,15 +149,15 @@ export async function streamTextDocument(params: {
         chatId,
         metadata: {
           ...metadata,
-          updateType: 'create',
-          agentInfo: 'document-agent-streaming',
+          updateType: "create",
+          agentInfo: "document-agent-streaming",
           createdAt: new Date().toISOString(),
           modelUsed: modelId,
         },
       });
-      console.log('✅ [STREAM-CREATE] Saved to database');
+      console.log("✅ [STREAM-CREATE] Saved to database");
     } else {
-      console.log('⚠️ [STREAM-CREATE] No user provided, skipping database save');
+      console.log("⚠️ [STREAM-CREATE] No user provided, skipping database save");
     }
 
     // Signal streaming complete
@@ -148,12 +167,12 @@ export async function streamTextDocument(params: {
       transient: true,
     });
 
-    console.log('✅ [STREAM-CREATE] Document creation completed successfully');
+    console.log("✅ [STREAM-CREATE] Document creation completed successfully");
     return documentId;
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [STREAM-CREATE] Generation failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
 
     // Write error to stream
     dataStream.write({

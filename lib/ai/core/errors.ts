@@ -13,7 +13,7 @@ export class ProviderError extends Error {
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'ProviderError';
+    this.name = "ProviderError";
   }
 
   /**
@@ -27,8 +27,8 @@ export class ProviderError extends Error {
    * Convert to ChatSDKError for API responses
    */
   toChatSDKError(): any {
-    const { ChatSDKError } = require('../../errors');
-    return new ChatSDKError('bad_request:api', this.getUserFriendlyMessage());
+    const { ChatSDKError } = require("../../errors");
+    return new ChatSDKError("bad_request:api", this.getUserFriendlyMessage());
   }
 }
 
@@ -43,7 +43,7 @@ export class AgentError extends Error {
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'AgentError';
+    this.name = "AgentError";
   }
 
   /**
@@ -57,8 +57,8 @@ export class AgentError extends Error {
    * Convert to ChatSDKError for API responses
    */
   toChatSDKError(): any {
-    const { ChatSDKError } = require('../../errors');
-    return new ChatSDKError('bad_request:api', this.getUserFriendlyMessage());
+    const { ChatSDKError } = require("../../errors");
+    return new ChatSDKError("bad_request:api", this.getUserFriendlyMessage());
   }
 }
 
@@ -72,22 +72,24 @@ export class ConfigurationError extends Error {
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'ConfigurationError';
+    this.name = "ConfigurationError";
   }
 
   /**
    * Get user-friendly error message
    */
   getUserFriendlyMessage(): string {
-    return getUserFriendlyMessage('INVALID_CONFIGURATION', { configKey: this.configKey });
+    return getUserFriendlyMessage("INVALID_CONFIGURATION", {
+      configKey: this.configKey,
+    });
   }
 
   /**
    * Convert to ChatSDKError for API responses
    */
   toChatSDKError(): any {
-    const { ChatSDKError } = require('../../errors');
-    return new ChatSDKError('bad_request:api', this.getUserFriendlyMessage());
+    const { ChatSDKError } = require("../../errors");
+    return new ChatSDKError("bad_request:api", this.getUserFriendlyMessage());
   }
 }
 
@@ -100,22 +102,25 @@ export class StreamingError extends Error {
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'StreamingError';
+    this.name = "StreamingError";
   }
 
   /**
    * Get user-friendly error message
    */
   getUserFriendlyMessage(): string {
-    return getUserFriendlyMessage('STREAMING_FAILED');
+    return getUserFriendlyMessage("STREAMING_FAILED");
   }
 
   /**
    * Convert to ChatSDKError for API responses
    */
   toChatSDKError(): any {
-    const { ChatSDKError } = require('../../errors');
-    return new ChatSDKError('bad_request:stream', this.getUserFriendlyMessage());
+    const { ChatSDKError } = require("../../errors");
+    return new ChatSDKError(
+      "bad_request:stream",
+      this.getUserFriendlyMessage()
+    );
   }
 }
 
@@ -124,124 +129,129 @@ export class StreamingError extends Error {
  */
 export const ErrorCodes = {
   // Provider errors
-  PROVIDER_UNAVAILABLE: 'PROVIDER_UNAVAILABLE',
-  PROVIDER_NOT_FOUND: 'PROVIDER_NOT_FOUND',
-  PROVIDER_DISABLED: 'PROVIDER_DISABLED',
-  PROVIDER_CONFIG_INVALID: 'PROVIDER_CONFIG_INVALID',
-  PROVIDER_API_ERROR: 'PROVIDER_API_ERROR',
-  
+  PROVIDER_UNAVAILABLE: "PROVIDER_UNAVAILABLE",
+  PROVIDER_NOT_FOUND: "PROVIDER_NOT_FOUND",
+  PROVIDER_DISABLED: "PROVIDER_DISABLED",
+  PROVIDER_CONFIG_INVALID: "PROVIDER_CONFIG_INVALID",
+  PROVIDER_API_ERROR: "PROVIDER_API_ERROR",
+
   // Agent errors
-  AGENT_CREATION_FAILED: 'AGENT_CREATION_FAILED',
-  AGENT_NOT_FOUND: 'AGENT_NOT_FOUND',
-  AGENT_DISABLED: 'AGENT_DISABLED',
-  AGENT_TYPE_INVALID: 'AGENT_TYPE_INVALID',
-  
+  AGENT_CREATION_FAILED: "AGENT_CREATION_FAILED",
+  AGENT_NOT_FOUND: "AGENT_NOT_FOUND",
+  AGENT_DISABLED: "AGENT_DISABLED",
+  AGENT_TYPE_INVALID: "AGENT_TYPE_INVALID",
+
   // Configuration errors
-  INVALID_CONFIGURATION: 'INVALID_CONFIGURATION',
-  CONFIG_NOT_FOUND: 'CONFIG_NOT_FOUND',
-  CONFIG_VALIDATION_FAILED: 'CONFIG_VALIDATION_FAILED',
-  
+  INVALID_CONFIGURATION: "INVALID_CONFIGURATION",
+  CONFIG_NOT_FOUND: "CONFIG_NOT_FOUND",
+  CONFIG_VALIDATION_FAILED: "CONFIG_VALIDATION_FAILED",
+
   // Model errors
-  MODEL_NOT_SUPPORTED: 'MODEL_NOT_SUPPORTED',
-  MODEL_NOT_FOUND: 'MODEL_NOT_FOUND',
-  MODEL_DISABLED: 'MODEL_DISABLED',
-  
+  MODEL_NOT_SUPPORTED: "MODEL_NOT_SUPPORTED",
+  MODEL_NOT_FOUND: "MODEL_NOT_FOUND",
+  MODEL_DISABLED: "MODEL_DISABLED",
+
   // Streaming errors
-  STREAMING_FAILED: 'STREAMING_FAILED',
-  REASONING_FAILED: 'REASONING_FAILED',
-  
+  STREAMING_FAILED: "STREAMING_FAILED",
+  REASONING_FAILED: "REASONING_FAILED",
+
   // Rate limiting and authentication
-  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
-  AUTHENTICATION_FAILED: 'AUTHENTICATION_FAILED',
-  
+  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  AUTHENTICATION_FAILED: "AUTHENTICATION_FAILED",
+
   // Database errors
-  DATABASE_CONNECTION_FAILED: 'DATABASE_CONNECTION_FAILED',
-  DATABASE_QUERY_FAILED: 'DATABASE_QUERY_FAILED',
-  DATABASE_VALIDATION_FAILED: 'DATABASE_VALIDATION_FAILED'
+  DATABASE_CONNECTION_FAILED: "DATABASE_CONNECTION_FAILED",
+  DATABASE_QUERY_FAILED: "DATABASE_QUERY_FAILED",
+  DATABASE_VALIDATION_FAILED: "DATABASE_VALIDATION_FAILED",
 } as const;
 
-export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
+export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 /**
 
  * Get user-friendly error messages for different error codes
  */
 export function getUserFriendlyMessage(
-  code: string, 
-  context?: { provider?: string; agent?: string; configKey?: string; model?: string }
+  code: string,
+  context?: {
+    provider?: string;
+    agent?: string;
+    configKey?: string;
+    model?: string;
+  }
 ): string {
   const { provider, agent, configKey, model } = context || {};
 
   switch (code) {
     // Provider errors
     case ErrorCodes.PROVIDER_UNAVAILABLE:
-      return `The ${provider || 'AI'} provider is currently unavailable. Please try again later.`;
+      return `The ${provider || "AI"} provider is currently unavailable. Please try again later.`;
     case ErrorCodes.PROVIDER_NOT_FOUND:
       return `The requested provider "${provider}" was not found. Please check your configuration.`;
     case ErrorCodes.PROVIDER_DISABLED:
-      return `The ${provider || 'AI'} provider is currently disabled. Please contact your administrator.`;
+      return `The ${provider || "AI"} provider is currently disabled. Please contact your administrator.`;
     case ErrorCodes.PROVIDER_CONFIG_INVALID:
-      return `The ${provider || 'AI'} provider configuration is invalid. Please check your settings.`;
+      return `The ${provider || "AI"} provider configuration is invalid. Please check your settings.`;
     case ErrorCodes.PROVIDER_API_ERROR:
-      return `There was an error communicating with the ${provider || 'AI'} provider. Please try again.`;
+      return `There was an error communicating with the ${provider || "AI"} provider. Please try again.`;
 
     // Agent errors
     case ErrorCodes.AGENT_CREATION_FAILED:
-      return `Failed to create the ${agent || 'AI'} agent. Please check your configuration.`;
+      return `Failed to create the ${agent || "AI"} agent. Please check your configuration.`;
     case ErrorCodes.AGENT_NOT_FOUND:
       return `The requested agent "${agent}" was not found. Please check your configuration.`;
     case ErrorCodes.AGENT_DISABLED:
-      return `The ${agent || 'AI'} agent is currently disabled. Please contact your administrator.`;
+      return `The ${agent || "AI"} agent is currently disabled. Please contact your administrator.`;
     case ErrorCodes.AGENT_TYPE_INVALID:
       return `The agent type "${agent}" is not supported. Please use a valid agent type.`;
 
     // Configuration errors
     case ErrorCodes.INVALID_CONFIGURATION:
-      return configKey 
+      return configKey
         ? `The configuration for "${configKey}" is invalid. Please check your settings.`
-        : 'The configuration is invalid. Please check your settings.';
+        : "The configuration is invalid. Please check your settings.";
     case ErrorCodes.CONFIG_NOT_FOUND:
       return configKey
         ? `Configuration for "${configKey}" was not found. Please check your setup.`
-        : 'Required configuration was not found. Please check your setup.';
+        : "Required configuration was not found. Please check your setup.";
     case ErrorCodes.CONFIG_VALIDATION_FAILED:
-      return 'Configuration validation failed. Please check your settings and try again.';
+      return "Configuration validation failed. Please check your settings and try again.";
 
     // Model errors
     case ErrorCodes.MODEL_NOT_SUPPORTED:
       return model
         ? `The model "${model}" is not supported by this provider.`
-        : 'The requested model is not supported.';
+        : "The requested model is not supported.";
     case ErrorCodes.MODEL_NOT_FOUND:
       return model
         ? `The model "${model}" was not found. Please select a different model.`
-        : 'The requested model was not found.';
+        : "The requested model was not found.";
     case ErrorCodes.MODEL_DISABLED:
       return model
         ? `The model "${model}" is currently disabled.`
-        : 'The selected model is currently disabled.';
+        : "The selected model is currently disabled.";
 
     // Streaming errors
     case ErrorCodes.STREAMING_FAILED:
-      return 'Failed to stream the response. Please try again.';
+      return "Failed to stream the response. Please try again.";
     case ErrorCodes.REASONING_FAILED:
-      return 'Failed to process reasoning content. The response may be incomplete.';
+      return "Failed to process reasoning content. The response may be incomplete.";
 
     // Rate limiting and authentication
     case ErrorCodes.RATE_LIMIT_EXCEEDED:
-      return 'You have exceeded the rate limit. Please wait a moment before trying again.';
+      return "You have exceeded the rate limit. Please wait a moment before trying again.";
     case ErrorCodes.AUTHENTICATION_FAILED:
-      return 'Authentication failed. Please check your credentials.';
+      return "Authentication failed. Please check your credentials.";
 
     // Database errors
     case ErrorCodes.DATABASE_CONNECTION_FAILED:
-      return 'Unable to connect to the database. Please try again later.';
+      return "Unable to connect to the database. Please try again later.";
     case ErrorCodes.DATABASE_QUERY_FAILED:
-      return 'Database query failed. Please try again later.';
+      return "Database query failed. Please try again later.";
     case ErrorCodes.DATABASE_VALIDATION_FAILED:
-      return 'Database validation failed. Please check your input and try again.';
+      return "Database validation failed. Please check your input and try again.";
 
     default:
-      return 'An unexpected error occurred. Please try again later.';
+      return "An unexpected error occurred. Please try again later.";
   }
 }
 
@@ -268,22 +278,25 @@ export class DatabaseErrorHandler {
       console.error(`Database operation failed: ${context.operation}`, {
         context,
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       // Convert to appropriate error type
       if (error instanceof Error) {
-        if (error.message.includes('connection')) {
+        if (error.message.includes("connection")) {
           throw new ConfigurationError(
-            context.configKey || 'database',
+            context.configKey || "database",
             getUserFriendlyMessage(ErrorCodes.DATABASE_CONNECTION_FAILED),
             error
           );
         }
-        
-        if (error.message.includes('validation') || error.message.includes('constraint')) {
+
+        if (
+          error.message.includes("validation") ||
+          error.message.includes("constraint")
+        ) {
           throw new ConfigurationError(
-            context.configKey || 'database',
+            context.configKey || "database",
             getUserFriendlyMessage(ErrorCodes.DATABASE_VALIDATION_FAILED),
             error
           );
@@ -292,7 +305,7 @@ export class DatabaseErrorHandler {
 
       // Default to query failed error
       throw new ConfigurationError(
-        context.configKey || 'database',
+        context.configKey || "database",
         getUserFriendlyMessage(ErrorCodes.DATABASE_QUERY_FAILED),
         error instanceof Error ? error : new Error(String(error))
       );
@@ -306,10 +319,10 @@ export class DatabaseErrorHandler {
     configKey: string,
     getter: () => Promise<T | null>
   ): Promise<T> {
-    const result = await this.withErrorHandling(
-      getter,
-      { operation: 'getConfig', configKey }
-    );
+    const result = await DatabaseErrorHandler.withErrorHandling(getter, {
+      operation: "getConfig",
+      configKey,
+    });
 
     if (!result) {
       throw new ConfigurationError(
@@ -330,11 +343,11 @@ export class DatabaseErrorHandler {
     validator: (config: any) => { isValid: boolean; errors: string[] }
   ): void {
     const validation = validator(config);
-    
+
     if (!validation.isValid) {
       throw new ConfigurationError(
         configKey,
-        `Configuration validation failed: ${validation.errors.join(', ')}`
+        `Configuration validation failed: ${validation.errors.join(", ")}`
       );
     }
   }
@@ -350,7 +363,10 @@ export class DatabaseErrorHandler {
     try {
       return await operation();
     } catch (error) {
-      if (error instanceof ConfigurationError || error instanceof ProviderError) {
+      if (
+        error instanceof ConfigurationError ||
+        error instanceof ProviderError
+      ) {
         throw error; // Re-throw our custom errors
       }
 
@@ -397,11 +413,15 @@ export class ErrorUtils {
   /**
    * Check if an error is a known chat agent error
    */
-  static isChatAgentError(error: unknown): error is ProviderError | AgentError | ConfigurationError | StreamingError {
-    return error instanceof ProviderError ||
-           error instanceof AgentError ||
-           error instanceof ConfigurationError ||
-           error instanceof StreamingError;
+  static isChatAgentError(
+    error: unknown
+  ): error is ProviderError | AgentError | ConfigurationError | StreamingError {
+    return (
+      error instanceof ProviderError ||
+      error instanceof AgentError ||
+      error instanceof ConfigurationError ||
+      error instanceof StreamingError
+    );
   }
 
   /**
@@ -414,20 +434,29 @@ export class ErrorUtils {
 
     if (error instanceof Error) {
       // Check for common error patterns
-      if (error.message.includes('network') || error.message.includes('connection')) {
+      if (
+        error.message.includes("network") ||
+        error.message.includes("connection")
+      ) {
         return getUserFriendlyMessage(ErrorCodes.PROVIDER_UNAVAILABLE);
       }
-      
-      if (error.message.includes('rate limit') || error.message.includes('quota')) {
+
+      if (
+        error.message.includes("rate limit") ||
+        error.message.includes("quota")
+      ) {
         return getUserFriendlyMessage(ErrorCodes.RATE_LIMIT_EXCEEDED);
       }
-      
-      if (error.message.includes('auth') || error.message.includes('unauthorized')) {
+
+      if (
+        error.message.includes("auth") ||
+        error.message.includes("unauthorized")
+      ) {
         return getUserFriendlyMessage(ErrorCodes.AUTHENTICATION_FAILED);
       }
     }
 
-    return 'An unexpected error occurred. Please try again later.';
+    return "An unexpected error occurred. Please try again later.";
   }
 
   /**
@@ -436,12 +465,12 @@ export class ErrorUtils {
   static logError(error: unknown, context?: Record<string, any>): void {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
-    
-    console.error('Chat Agent Error:', {
+
+    console.error("Chat Agent Error:", {
       message,
       stack,
       context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

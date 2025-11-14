@@ -1,15 +1,8 @@
 import "server-only";
 
-import {
-  and,
-  desc,
-  eq,
-} from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { ChatSDKError } from "../../errors";
-import {
-  type GithubRepository,
-  githubRepositories,
-} from "../drizzle-schema";
+import { type GithubRepository, githubRepositories } from "../drizzle-schema";
 import { db } from "./base";
 
 export async function getGithubRepositoriesByUserId({
@@ -104,9 +97,15 @@ export async function updateGithubRepository({
   try {
     const updates: Partial<GithubRepository> = {};
 
-    if (isActive !== undefined) updates.isActive = isActive;
-    if (lastAccessed) updates.lastAccessed = lastAccessed;
-    if (defaultBranch) updates.defaultBranch = defaultBranch;
+    if (isActive !== undefined) {
+      updates.isActive = isActive;
+    }
+    if (lastAccessed) {
+      updates.lastAccessed = lastAccessed;
+    }
+    if (defaultBranch) {
+      updates.defaultBranch = defaultBranch;
+    }
 
     const [updated] = await db
       .update(githubRepositories)

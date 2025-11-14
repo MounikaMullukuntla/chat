@@ -1,9 +1,9 @@
 import "server-only";
 
-import { streamText } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
+import type { UIMessageStreamWriter } from "ai";
+import { streamText } from "ai";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { stripMarkdownCodeFences } from "@/lib/utils";
@@ -24,12 +24,26 @@ export async function streamTextDocumentUpdate(params: {
   apiKey?: string;
   metadata?: Record<string, any>;
 }): Promise<string> {
-  const { documentId, updateInstruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey, metadata = {} } = params;
+  const {
+    documentId,
+    updateInstruction,
+    systemPrompt,
+    userPromptTemplate,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+    metadata = {},
+  } = params;
 
-  console.log('📝 [STREAM-UPDATE] Starting real-time document update');
-  console.log('📝 [STREAM-UPDATE] Document ID:', documentId);
-  console.log('📝 [STREAM-UPDATE] Model:', modelId);
-  console.log('📝 [STREAM-UPDATE] Instruction:', updateInstruction.substring(0, 100));
+  console.log("📝 [STREAM-UPDATE] Starting real-time document update");
+  console.log("📝 [STREAM-UPDATE] Document ID:", documentId);
+  console.log("📝 [STREAM-UPDATE] Model:", modelId);
+  console.log(
+    "📝 [STREAM-UPDATE] Instruction:",
+    updateInstruction.substring(0, 100)
+  );
 
   // Fetch the existing document from database
   const document = await getDocumentById({ id: documentId });
@@ -38,12 +52,17 @@ export async function streamTextDocumentUpdate(params: {
     throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  if (document.kind !== 'text') {
-    throw new Error(`Document ${documentId} is not a text document (kind: ${document.kind})`);
+  if (document.kind !== "text") {
+    throw new Error(
+      `Document ${documentId} is not a text document (kind: ${document.kind})`
+    );
   }
 
-  console.log('📝 [STREAM-UPDATE] Existing document found:', document.title);
-  console.log('📝 [STREAM-UPDATE] Current content length:', document.content?.length || 0);
+  console.log("📝 [STREAM-UPDATE] Existing document found:", document.title);
+  console.log(
+    "📝 [STREAM-UPDATE] Current content length:",
+    document.content?.length || 0
+  );
 
   // Write artifact metadata to inform UI which document is being updated
   dataStream.write({
@@ -71,7 +90,9 @@ export async function streamTextDocumentUpdate(params: {
     transient: true,
   });
 
-  console.log('📝 [STREAM-UPDATE] Metadata written, cleared artifact panel, starting LLM generation');
+  console.log(
+    "📝 [STREAM-UPDATE] Metadata written, cleared artifact panel, starting LLM generation"
+  );
 
   // Get the Google model instance with proper API key handling
   let model;
@@ -84,8 +105,8 @@ export async function streamTextDocumentUpdate(params: {
 
   // Build the prompt for document update using template from config
   const userPrompt = userPromptTemplate
-    .replace('{currentContent}', document.content || '')
-    .replace('{updateInstruction}', updateInstruction);
+    .replace("{currentContent}", document.content || "")
+    .replace("{updateInstruction}", updateInstruction);
 
   try {
     // Use streamText to get real-time generation
@@ -96,7 +117,7 @@ export async function streamTextDocumentUpdate(params: {
       temperature: 0.7,
     });
 
-    console.log('📝 [STREAM-UPDATE] LLM streaming started');
+    console.log("📝 [STREAM-UPDATE] LLM streaming started");
 
     // Accumulate content as it streams
     let draftContent = "";
@@ -108,7 +129,7 @@ export async function streamTextDocumentUpdate(params: {
 
       if (type === "text-delta") {
         // In AI SDK v5, text-delta events have a 'textDelta' property
-        const text = (delta as any).textDelta || (delta as any).text || '';
+        const text = (delta as any).textDelta || (delta as any).text || "";
         draftContent += text;
         chunkCount++;
 
@@ -121,20 +142,28 @@ export async function streamTextDocumentUpdate(params: {
       }
     }
 
-    console.log('📝 [STREAM-UPDATE] LLM generation complete');
-    console.log('📝 [STREAM-UPDATE] Updated content length:', draftContent.length);
-    console.log('📝 [STREAM-UPDATE] Total chunks streamed:', chunkCount);
+    console.log("📝 [STREAM-UPDATE] LLM generation complete");
+    console.log(
+      "📝 [STREAM-UPDATE] Updated content length:",
+      draftContent.length
+    );
+    console.log("📝 [STREAM-UPDATE] Total chunks streamed:", chunkCount);
 
     // Strip markdown code fences if LLM wrapped the output
     const cleanedContent = stripMarkdownCodeFences(draftContent);
     if (cleanedContent !== draftContent) {
-      console.log('⚠️ [STREAM-UPDATE] Stripped markdown code fences from output');
-      console.log('📝 [STREAM-UPDATE] Cleaned content length:', cleanedContent.length);
+      console.log(
+        "⚠️ [STREAM-UPDATE] Stripped markdown code fences from output"
+      );
+      console.log(
+        "📝 [STREAM-UPDATE] Cleaned content length:",
+        cleanedContent.length
+      );
     }
 
     // Save updated document to database if user is provided
     if (user?.id) {
-      console.log('📝 [STREAM-UPDATE] Saving to database for user:', user.id);
+      console.log("📝 [STREAM-UPDATE] Saving to database for user:", user.id);
       await saveDocument({
         id: documentId,
         title: document.title,
@@ -145,17 +174,17 @@ export async function streamTextDocumentUpdate(params: {
         parentVersionId: `${document.id}`, // Link to previous version
         metadata: {
           ...metadata,
-          updateType: 'update',
-          agentInfo: 'document-agent-streaming',
+          updateType: "update",
+          agentInfo: "document-agent-streaming",
           previousVersion: document.version_number,
           updatedAt: new Date().toISOString(),
           modelUsed: modelId,
           updateInstruction,
         },
       });
-      console.log('✅ [STREAM-UPDATE] Saved to database');
+      console.log("✅ [STREAM-UPDATE] Saved to database");
     } else {
-      console.log('⚠️ [STREAM-UPDATE] No user provided, skipping database save');
+      console.log("⚠️ [STREAM-UPDATE] No user provided, skipping database save");
     }
 
     // Signal streaming complete
@@ -165,12 +194,12 @@ export async function streamTextDocumentUpdate(params: {
       transient: true,
     });
 
-    console.log('✅ [STREAM-UPDATE] Document update completed successfully');
+    console.log("✅ [STREAM-UPDATE] Document update completed successfully");
     return documentId;
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [STREAM-UPDATE] Update failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [STREAM-UPDATE] Update failed:", errorMessage);
 
     // Write error to stream
     dataStream.write({

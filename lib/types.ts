@@ -35,13 +35,13 @@ export type Attachment = {
 };
 
 // Enhanced admin configuration interfaces for chat input enhancements
-export interface ModelCapabilities {
+export type ModelCapabilities = {
   supportsThinkingMode: boolean;
   fileInputEnabled: boolean;
   allowedFileTypes: string[];
-}
+};
 
-export interface EnhancedModelConfig {
+export type EnhancedModelConfig = {
   id: string;
   name: string;
   description: string;
@@ -56,22 +56,22 @@ export interface EnhancedModelConfig {
   supportsThinkingMode: boolean;
   fileInputEnabled: boolean;
   allowedFileTypes: string[];
-}
+};
 
-export interface ProviderCapabilities {
+export type ProviderCapabilities = {
   enabled: boolean;
   models: Record<string, EnhancedModelConfig>;
   // Provider-level file input settings
   fileInputEnabled: boolean;
   allowedFileTypes: string[];
-}
+};
 
-export interface AdminConfigSummary {
+export type AdminConfigSummary = {
   providers: Record<string, ProviderCapabilities>;
-}
+};
 
 // GitHub integration types
-export interface GitHubRepo {
+export type GitHubRepo = {
   id: number;
   name: string;
   full_name: string;
@@ -84,40 +84,43 @@ export interface GitHubRepo {
   stargazers_count?: number;
   forks_count?: number;
   language?: string;
-}
+};
 
-export interface GitHubSearchResponse {
+export type GitHubSearchResponse = {
   total_count: number;
   incomplete_results: boolean;
   items: GitHubRepo[];
-}
+};
 
-export interface GitHubContextState {
+export type GitHubContextState = {
   searchQuery: string;
   searchResults: GitHubRepo[];
   selectedRepos: GitHubRepo[];
   isLoading: boolean;
   error: string | null;
-}
+};
 
 // GitHub MCP Agent Types
-export interface RateLimit {
+export type RateLimit = {
   perMinute: number;
   perHour: number;
   perDay: number;
-}
+};
 
-export interface GitMcpAgentConfig {
+export type GitMcpAgentConfig = {
   enabled: boolean;
   systemPrompt: string;
   rateLimit: RateLimit;
-  tools: Record<string, {
-    description: string;
-    enabled: boolean;
-  }>;
-}
+  tools: Record<
+    string,
+    {
+      description: string;
+      enabled: boolean;
+    }
+  >;
+};
 
-export interface AgentResult {
+export type AgentResult = {
   output: string;
   success: boolean;
   toolCalls?: Array<{
@@ -127,36 +130,36 @@ export interface AgentResult {
   }>;
   reasoning?: string;
   error?: string;
-}
+};
 
-export interface GitHubFile {
+export type GitHubFile = {
   path: string;
   name: string;
-  type: 'file';
+  type: "file";
   size?: number;
   sha?: string;
   content?: string;
   url?: string;
-}
+};
 
-export interface GitHubFolder {
+export type GitHubFolder = {
   path: string;
   name: string;
-  type: 'dir';
+  type: "dir";
   contents?: Array<GitHubFile | GitHubFolder>;
   url?: string;
-}
+};
 
-export interface GitHubBranch {
+export type GitHubBranch = {
   name: string;
   commit: {
     sha: string;
     url: string;
   };
   protected: boolean;
-}
+};
 
-export interface GitHubCommit {
+export type GitHubCommit = {
   sha: string;
   commit: {
     message: string;
@@ -171,12 +174,12 @@ export interface GitHubCommit {
     avatar_url: string;
   };
   url: string;
-}
+};
 
-export interface GitHubIssue {
+export type GitHubIssue = {
   number: number;
   title: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   user: {
     login: string;
     avatar_url: string;
@@ -188,12 +191,12 @@ export interface GitHubIssue {
     color: string;
   }>;
   body?: string;
-}
+};
 
-export interface GitHubPullRequest {
+export type GitHubPullRequest = {
   number: number;
   title: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   user: {
     login: string;
     avatar_url: string;
@@ -210,11 +213,11 @@ export interface GitHubPullRequest {
   };
   draft: boolean;
   merged: boolean;
-}
+};
 
-export interface GitHubContext {
+export type GitHubContext = {
   repos: GitHubRepo[];
   files: GitHubFile[];
   folders: GitHubFolder[];
   branches?: GitHubBranch[];
-}
+};

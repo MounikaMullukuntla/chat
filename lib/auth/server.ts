@@ -1,32 +1,31 @@
 /**
  * Supabase Server-Side Authentication Utilities
- * 
+ *
  * This file provides server-side authentication utilities for Supabase Auth.
  * Use these functions in Server Components, API Routes, and Server Actions.
  */
 
-import { createServerComponentClient } from '@/lib/db/supabase-client'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import type { User, Session } from '@supabase/supabase-js'
+import type { Session, User } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
+import { createServerComponentClient } from "@/lib/db/supabase-client";
 
 // Types for server auth results
-export interface ServerAuthResult {
-  user: User
-  session: Session
-}
+export type ServerAuthResult = {
+  user: User;
+  session: Session;
+};
 
 export interface ServerAuthError extends Error {
-  code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'SESSION_EXPIRED' | 'UNKNOWN_ERROR'
-  statusCode: number
+  code: "UNAUTHORIZED" | "FORBIDDEN" | "SESSION_EXPIRED" | "UNKNOWN_ERROR";
+  statusCode: number;
 }
 
 /**
  * Get the current authenticated user from server context
  * Returns null if no user is authenticated
- * 
+ *
  * @returns Promise with current user or null
- * 
+ *
  * @example
  * // In Server Component
  * export default async function MyPage() {
@@ -39,27 +38,30 @@ export interface ServerAuthError extends Error {
  */
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const supabase = await createServerComponentClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const supabase = await createServerComponentClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
     if (error) {
-      console.error('Error getting current user:', error)
-      return null
+      console.error("Error getting current user:", error);
+      return null;
     }
-    
-    return user
+
+    return user;
   } catch (err) {
-    console.error('Error in getCurrentUser:', err)
-    return null
+    console.error("Error in getCurrentUser:", err);
+    return null;
   }
 }
 
 /**
  * Get the current session from server context
  * Returns null if no session exists
- * 
+ *
  * @returns Promise with current session or null
- * 
+ *
  * @example
  * // In API Route
  * export async function GET() {
@@ -72,28 +74,31 @@ export async function getCurrentUser(): Promise<User | null> {
  */
 export async function getSession(): Promise<Session | null> {
   try {
-    const supabase = await createServerComponentClient()
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
+    const supabase = await createServerComponentClient();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error) {
-      console.error('Error getting session:', error)
-      return null
+      console.error("Error getting session:", error);
+      return null;
     }
-    
-    return session
+
+    return session;
   } catch (err) {
-    console.error('Error in getSession:', err)
-    return null
+    console.error("Error in getSession:", err);
+    return null;
   }
 }
 
 /**
  * Require authentication - throws error if user is not authenticated
  * Use this in API routes and server actions that require authentication
- * 
+ *
  * @returns Promise with authenticated user and session
  * @throws ServerAuthError if user is not authenticated
- * 
+ *
  * @example
  * // In API Route
  * export async function POST() {
@@ -106,26 +111,26 @@ export async function getSession(): Promise<Session | null> {
  * }
  */
 export async function requireAuth(): Promise<ServerAuthResult> {
-  const user = await getCurrentUser()
-  const session = await getSession()
-  
+  const user = await getCurrentUser();
+  const session = await getSession();
+
   if (!user || !session) {
-    const error = new Error('Authentication required') as ServerAuthError
-    error.code = 'UNAUTHORIZED'
-    error.statusCode = 401
-    throw error
+    const error = new Error("Authentication required") as ServerAuthError;
+    error.code = "UNAUTHORIZED";
+    error.statusCode = 401;
+    throw error;
   }
-  
-  return { user, session }
+
+  return { user, session };
 }
 
 /**
  * Require admin authentication - throws error if user is not admin
  * Use this in API routes and server actions that require admin privileges
- * 
+ *
  * @returns Promise with authenticated admin user and session
  * @throws ServerAuthError if user is not authenticated or not admin
- * 
+ *
  * @example
  * // In API Route
  * export async function DELETE() {
@@ -138,26 +143,26 @@ export async function requireAuth(): Promise<ServerAuthResult> {
  * }
  */
 export async function requireAdmin(): Promise<ServerAuthResult> {
-  const { user, session } = await requireAuth()
-  
-  const userRole = await getUserRole(user)
-  
-  if (userRole !== 'admin') {
-    const error = new Error('Admin privileges required') as ServerAuthError
-    error.code = 'FORBIDDEN'
-    error.statusCode = 403
-    throw error
+  const { user, session } = await requireAuth();
+
+  const userRole = await getUserRole(user);
+
+  if (userRole !== "admin") {
+    const error = new Error("Admin privileges required") as ServerAuthError;
+    error.code = "FORBIDDEN";
+    error.statusCode = 403;
+    throw error;
   }
-  
-  return { user, session }
+
+  return { user, session };
 }
 
 /**
  * Get the user's role from metadata
- * 
+ *
  * @param user - Optional user object, if not provided will fetch current user
  * @returns Promise with user role ('admin' or 'user')
- * 
+ *
  * @example
  * // In Server Component
  * export default async function AdminPanel() {
@@ -168,28 +173,30 @@ export async function requireAdmin(): Promise<ServerAuthResult> {
  *   return <AdminDashboard />
  * }
  */
-export async function getUserRole(user?: User | null): Promise<'admin' | 'user'> {
+export async function getUserRole(
+  user?: User | null
+): Promise<"admin" | "user"> {
   try {
-    const currentUser = user || await getCurrentUser()
-    
+    const currentUser = user || (await getCurrentUser());
+
     if (!currentUser) {
-      return 'user' // Default to user role if no user found
+      return "user"; // Default to user role if no user found
     }
 
-    const role = currentUser.user_metadata?.role
-    return role === 'admin' ? 'admin' : 'user'
+    const role = currentUser.user_metadata?.role;
+    return role === "admin" ? "admin" : "user";
   } catch (err) {
-    console.error('Error getting user role:', err)
-    return 'user' // Default to user role on error
+    console.error("Error getting user role:", err);
+    return "user"; // Default to user role on error
   }
 }
 
 /**
  * Check if the user has admin privileges
- * 
+ *
  * @param user - Optional user object, if not provided will fetch current user
  * @returns Promise with boolean indicating admin status
- * 
+ *
  * @example
  * // In Server Component
  * export default async function MyPage() {
@@ -204,21 +211,21 @@ export async function getUserRole(user?: User | null): Promise<'admin' | 'user'>
  */
 export async function isAdmin(user?: User | null): Promise<boolean> {
   try {
-    const role = await getUserRole(user)
-    return role === 'admin'
+    const role = await getUserRole(user);
+    return role === "admin";
   } catch (err) {
-    console.error('Error checking admin status:', err)
-    return false // Default to false on error
+    console.error("Error checking admin status:", err);
+    return false; // Default to false on error
   }
 }
 
 /**
  * Validate session from request (for API routes)
  * Extracts and validates session from request headers/cookies
- * 
+ *
  * @param request - The incoming request object
  * @returns Promise with session or null
- * 
+ *
  * @example
  * // In API Route
  * export async function GET(request: Request) {
@@ -229,31 +236,36 @@ export async function isAdmin(user?: User | null): Promise<boolean> {
  *   // ... handle authenticated request
  * }
  */
-export async function validateSession(request: Request): Promise<Session | null> {
+export async function validateSession(
+  _request: Request
+): Promise<Session | null> {
   try {
     // For API routes, we need to create a server client with the request cookies
-    const supabase = await createServerComponentClient()
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
+    const supabase = await createServerComponentClient();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error) {
-      console.error('Error validating session:', error)
-      return null
+      console.error("Error validating session:", error);
+      return null;
     }
-    
-    return session
+
+    return session;
   } catch (err) {
-    console.error('Error in validateSession:', err)
-    return null
+    console.error("Error in validateSession:", err);
+    return null;
   }
 }
 
 /**
  * Require authentication with redirect (for Server Components)
  * Redirects to login page if user is not authenticated
- * 
+ *
  * @param redirectTo - Optional URL to redirect to after login
  * @returns Promise with authenticated user and session
- * 
+ *
  * @example
  * // In Server Component
  * export default async function ProtectedPage() {
@@ -262,27 +274,29 @@ export async function validateSession(request: Request): Promise<Session | null>
  *   return <div>Welcome {user.email}</div>
  * }
  */
-export async function requireAuthWithRedirect(redirectTo?: string): Promise<ServerAuthResult> {
-  const user = await getCurrentUser()
-  const session = await getSession()
-  
+export async function requireAuthWithRedirect(
+  redirectTo?: string
+): Promise<ServerAuthResult> {
+  const user = await getCurrentUser();
+  const session = await getSession();
+
   if (!user || !session) {
-    const loginUrl = redirectTo 
+    const loginUrl = redirectTo
       ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
-      : '/login'
-    redirect(loginUrl)
+      : "/login";
+    redirect(loginUrl);
   }
-  
-  return { user, session }
+
+  return { user, session };
 }
 
 /**
  * Require admin with redirect (for Server Components)
  * Redirects to login or home page if user is not admin
- * 
+ *
  * @param redirectTo - Optional URL to redirect to after login (for non-authenticated users)
  * @returns Promise with authenticated admin user and session
- * 
+ *
  * @example
  * // In Server Component
  * export default async function AdminPage() {
@@ -291,33 +305,35 @@ export async function requireAuthWithRedirect(redirectTo?: string): Promise<Serv
  *   return <AdminDashboard />
  * }
  */
-export async function requireAdminWithRedirect(redirectTo?: string): Promise<ServerAuthResult> {
-  const user = await getCurrentUser()
-  const session = await getSession()
-  
+export async function requireAdminWithRedirect(
+  redirectTo?: string
+): Promise<ServerAuthResult> {
+  const user = await getCurrentUser();
+  const session = await getSession();
+
   if (!user || !session) {
-    const loginUrl = redirectTo 
+    const loginUrl = redirectTo
       ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
-      : '/login'
-    redirect(loginUrl)
+      : "/login";
+    redirect(loginUrl);
   }
-  
-  const userRole = await getUserRole(user)
-  
-  if (userRole !== 'admin') {
-    redirect('/') // Redirect to home page for non-admin users
+
+  const userRole = await getUserRole(user);
+
+  if (userRole !== "admin") {
+    redirect("/"); // Redirect to home page for non-admin users
   }
-  
-  return { user, session }
+
+  return { user, session };
 }
 
 /**
  * Create error response for API routes
  * Helper function to create consistent error responses
- * 
+ *
  * @param error - The ServerAuthError or regular Error
  * @returns Response object with appropriate status and message
- * 
+ *
  * @example
  * // In API Route
  * export async function POST() {
@@ -329,41 +345,43 @@ export async function requireAdminWithRedirect(redirectTo?: string): Promise<Ser
  *   }
  * }
  */
-export function createAuthErrorResponse(error: ServerAuthError | Error): Response {
-  if ('statusCode' in error && 'code' in error) {
+export function createAuthErrorResponse(
+  error: ServerAuthError | Error
+): Response {
+  if ("statusCode" in error && "code" in error) {
     return new Response(
-      JSON.stringify({ 
-        error: error.message, 
-        code: error.code 
-      }), 
-      { 
+      JSON.stringify({
+        error: error.message,
+        code: error.code,
+      }),
+      {
         status: error.statusCode,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" },
       }
-    )
+    );
   }
-  
+
   // Generic error response
   return new Response(
-    JSON.stringify({ 
-      error: 'Internal server error',
-      code: 'UNKNOWN_ERROR'
-    }), 
-    { 
+    JSON.stringify({
+      error: "Internal server error",
+      code: "UNKNOWN_ERROR",
+    }),
+    {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { "Content-Type": "application/json" },
     }
-  )
+  );
 }
 
 /**
  * Check if user has specific role
  * More flexible role checking for future role expansion
- * 
+ *
  * @param requiredRole - The role to check for
  * @param user - Optional user object, if not provided will fetch current user
  * @returns Promise with boolean indicating if user has the required role
- * 
+ *
  * @example
  * // In Server Component
  * export default async function ModeratorPanel() {
@@ -374,23 +392,26 @@ export function createAuthErrorResponse(error: ServerAuthError | Error): Respons
  *   return <ModeratorDashboard />
  * }
  */
-export async function hasRole(requiredRole: 'admin' | 'user', user?: User | null): Promise<boolean> {
+export async function hasRole(
+  requiredRole: "admin" | "user",
+  user?: User | null
+): Promise<boolean> {
   try {
-    const userRole = await getUserRole(user)
-    return userRole === requiredRole
+    const userRole = await getUserRole(user);
+    return userRole === requiredRole;
   } catch (err) {
-    console.error('Error checking user role:', err)
-    return false
+    console.error("Error checking user role:", err);
+    return false;
   }
 }
 
 /**
  * Get user metadata safely
  * Returns user metadata with type safety and defaults
- * 
+ *
  * @param user - Optional user object, if not provided will fetch current user
  * @returns Promise with user metadata
- * 
+ *
  * @example
  * // In Server Component
  * export default async function UserProfile() {
@@ -404,36 +425,36 @@ export async function hasRole(requiredRole: 'admin' | 'user', user?: User | null
  * }
  */
 export async function getUserMetadata(user?: User | null): Promise<{
-  role: 'admin' | 'user'
-  isActive: boolean
+  role: "admin" | "user";
+  isActive: boolean;
   settings?: {
-    theme?: string
-    defaultModel?: string
-    notifications?: boolean
-  }
+    theme?: string;
+    defaultModel?: string;
+    notifications?: boolean;
+  };
 }> {
   try {
-    const currentUser = user || await getCurrentUser()
-    
+    const currentUser = user || (await getCurrentUser());
+
     if (!currentUser) {
       return {
-        role: 'user',
-        isActive: false
-      }
+        role: "user",
+        isActive: false,
+      };
     }
 
-    const metadata = currentUser.user_metadata || {}
-    
+    const metadata = currentUser.user_metadata || {};
+
     return {
-      role: metadata.role === 'admin' ? 'admin' : 'user',
+      role: metadata.role === "admin" ? "admin" : "user",
       isActive: metadata.isActive ?? true,
-      settings: metadata.settings || {}
-    }
+      settings: metadata.settings || {},
+    };
   } catch (err) {
-    console.error('Error getting user metadata:', err)
+    console.error("Error getting user metadata:", err);
     return {
-      role: 'user',
-      isActive: false
-    }
+      role: "user",
+      isActive: false,
+    };
   }
 }

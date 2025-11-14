@@ -1,37 +1,43 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { Settings, Key, GitBranch, Database, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Database, GitBranch, Key, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { APIKeySection } from "./api-key-section";
-import { GitHubIntegrationSection } from "./github-integration-section";
-import { StorageManagementSection } from "./storage-management-section";
-import { SettingsErrorBoundary, useErrorHandler } from "./error-boundary";
-import { 
-  SettingsLoadingState, 
-  SettingsErrorState, 
-  NetworkState, 
-  ConnectedState,
-  ComponentLoading 
-} from "./fallback-states";
-import { GoogleVerificationService } from "@/lib/verification/google-verification-service";
-import { AnthropicVerificationService } from "@/lib/verification/anthropic-verification-service";
-import { OpenAIVerificationService } from "@/lib/verification/openai-verification-service";
-import { storage } from "@/lib/storage/helpers";
-import { useNetworkStatus, useNetworkRetry } from "@/hooks/use-network-status";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNetworkRetry, useNetworkStatus } from "@/hooks/use-network-status";
 import { useToastNotifications } from "@/hooks/use-toast-notifications";
-import { ToastNotifications } from "./toast-notifications";
-import { SettingsEnhancements } from "./settings-enhancements";
+import { storage } from "@/lib/storage/helpers";
 import { cn } from "@/lib/utils";
+import { AnthropicVerificationService } from "@/lib/verification/anthropic-verification-service";
+import { GoogleVerificationService } from "@/lib/verification/google-verification-service";
+import { OpenAIVerificationService } from "@/lib/verification/openai-verification-service";
+import { APIKeySection } from "./api-key-section";
+import { SettingsErrorBoundary, useErrorHandler } from "./error-boundary";
+import {
+  ComponentLoading,
+  ConnectedState,
+  NetworkState,
+  SettingsErrorState,
+  SettingsLoadingState,
+} from "./fallback-states";
+import { GitHubIntegrationSection } from "./github-integration-section";
+import { SettingsEnhancements } from "./settings-enhancements";
+import { StorageManagementSection } from "./storage-management-section";
+import { ToastNotifications } from "./toast-notifications";
 
-interface SettingsPageProps {
+type SettingsPageProps = {
   className?: string;
-}
+};
 
 export function SettingsPage({ className }: SettingsPageProps) {
   const router = useRouter();
@@ -39,12 +45,12 @@ export function SettingsPage({ className }: SettingsPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showConnectedState, setShowConnectedState] = useState(false);
-  
+
   // API Key states
   const [googleKey, setGoogleKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [openaiKey, setOpenaiKey] = useState("");
-  
+
   // Verification services
   const googleService = new GoogleVerificationService();
   const anthropicService = new AnthropicVerificationService();
@@ -60,15 +66,15 @@ export function SettingsPage({ className }: SettingsPageProps) {
     // Handle keyboard shortcuts for tab navigation
     if (event.ctrlKey || event.metaKey) {
       switch (event.key) {
-        case '1':
+        case "1":
           event.preventDefault();
           setActiveTab("api-keys");
           break;
-        case '2':
+        case "2":
           event.preventDefault();
           setActiveTab("integrations");
           break;
-        case '3':
+        case "3":
           event.preventDefault();
           setActiveTab("storage");
           break;
@@ -78,9 +84,9 @@ export function SettingsPage({ className }: SettingsPageProps) {
 
   // Add keyboard event listener
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
 
@@ -91,25 +97,31 @@ export function SettingsPage({ className }: SettingsPageProps) {
       setError(null);
 
       // Simulate a small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Load existing API keys
-      const existingGoogleKey = storage.apiKeys.get('google');
-      const existingAnthropicKey = storage.apiKeys.get('anthropic');
-      const existingOpenaiKey = storage.apiKeys.get('openai');
-      
-      if (existingGoogleKey) setGoogleKey(existingGoogleKey);
-      if (existingAnthropicKey) setAnthropicKey(existingAnthropicKey);
-      if (existingOpenaiKey) setOpenaiKey(existingOpenaiKey);
+      const existingGoogleKey = storage.apiKeys.get("google");
+      const existingAnthropicKey = storage.apiKeys.get("anthropic");
+      const existingOpenaiKey = storage.apiKeys.get("openai");
+
+      if (existingGoogleKey) {
+        setGoogleKey(existingGoogleKey);
+      }
+      if (existingAnthropicKey) {
+        setAnthropicKey(existingAnthropicKey);
+      }
+      if (existingOpenaiKey) {
+        setOpenaiKey(existingOpenaiKey);
+      }
 
       // Check storage health
       const healthCheck = storage.general.checkHealth();
       if (!healthCheck.healthy) {
-        console.warn('Storage health issues detected:', healthCheck.errors);
+        console.warn("Storage health issues detected:", healthCheck.errors);
       }
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load settings';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load settings";
       setError(errorMessage);
       handleError(err instanceof Error ? err : new Error(errorMessage));
     } finally {
@@ -123,66 +135,100 @@ export function SettingsPage({ className }: SettingsPageProps) {
   }, [initializeSettings]);
 
   // Handle network reconnection
-  useNetworkRetry(useCallback(() => {
-    if (error) {
-      setShowConnectedState(true);
-      toast.success('Connection restored', 'Reloading settings...');
-      initializeSettings();
-      setTimeout(() => setShowConnectedState(false), 3000);
-    }
-  }, [error, initializeSettings, toast]));
+  useNetworkRetry(
+    useCallback(() => {
+      if (error) {
+        setShowConnectedState(true);
+        toast.success("Connection restored", "Reloading settings...");
+        initializeSettings();
+        setTimeout(() => setShowConnectedState(false), 3000);
+      }
+    }, [error, initializeSettings, toast])
+  );
 
   // API Key handlers with error handling
-  const handleGoogleKeyChange = useCallback((value: string) => {
-    try {
-      setGoogleKey(value);
-      if (value.trim()) {
-        storage.apiKeys.set('google', value);
-        toast.success('Google API key saved', 'Your API key has been stored locally.');
-      } else {
-        storage.apiKeys.remove('google');
-        toast.info('Google API key removed', 'Your API key has been cleared.');
+  const handleGoogleKeyChange = useCallback(
+    (value: string) => {
+      try {
+        setGoogleKey(value);
+        if (value.trim()) {
+          storage.apiKeys.set("google", value);
+          toast.success(
+            "Google API key saved",
+            "Your API key has been stored locally."
+          );
+        } else {
+          storage.apiKeys.remove("google");
+          toast.info(
+            "Google API key removed",
+            "Your API key has been cleared."
+          );
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to save Google API key";
+        toast.error("Failed to save API key", errorMessage);
+        handleError(err instanceof Error ? err : new Error(errorMessage));
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save Google API key';
-      toast.error('Failed to save API key', errorMessage);
-      handleError(err instanceof Error ? err : new Error(errorMessage));
-    }
-  }, [handleError, toast]);
+    },
+    [handleError, toast]
+  );
 
-  const handleAnthropicKeyChange = useCallback((value: string) => {
-    try {
-      setAnthropicKey(value);
-      if (value.trim()) {
-        storage.apiKeys.set('anthropic', value);
-        toast.success('Anthropic API key saved', 'Your API key has been stored locally.');
-      } else {
-        storage.apiKeys.remove('anthropic');
-        toast.info('Anthropic API key removed', 'Your API key has been cleared.');
+  const handleAnthropicKeyChange = useCallback(
+    (value: string) => {
+      try {
+        setAnthropicKey(value);
+        if (value.trim()) {
+          storage.apiKeys.set("anthropic", value);
+          toast.success(
+            "Anthropic API key saved",
+            "Your API key has been stored locally."
+          );
+        } else {
+          storage.apiKeys.remove("anthropic");
+          toast.info(
+            "Anthropic API key removed",
+            "Your API key has been cleared."
+          );
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to save Anthropic API key";
+        toast.error("Failed to save API key", errorMessage);
+        handleError(err instanceof Error ? err : new Error(errorMessage));
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save Anthropic API key';
-      toast.error('Failed to save API key', errorMessage);
-      handleError(err instanceof Error ? err : new Error(errorMessage));
-    }
-  }, [handleError, toast]);
+    },
+    [handleError, toast]
+  );
 
-  const handleOpenaiKeyChange = useCallback((value: string) => {
-    try {
-      setOpenaiKey(value);
-      if (value.trim()) {
-        storage.apiKeys.set('openai', value);
-        toast.success('OpenAI API key saved', 'Your API key has been stored locally.');
-      } else {
-        storage.apiKeys.remove('openai');
-        toast.info('OpenAI API key removed', 'Your API key has been cleared.');
+  const handleOpenaiKeyChange = useCallback(
+    (value: string) => {
+      try {
+        setOpenaiKey(value);
+        if (value.trim()) {
+          storage.apiKeys.set("openai", value);
+          toast.success(
+            "OpenAI API key saved",
+            "Your API key has been stored locally."
+          );
+        } else {
+          storage.apiKeys.remove("openai");
+          toast.info(
+            "OpenAI API key removed",
+            "Your API key has been cleared."
+          );
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to save OpenAI API key";
+        toast.error("Failed to save API key", errorMessage);
+        handleError(err instanceof Error ? err : new Error(errorMessage));
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save OpenAI API key';
-      toast.error('Failed to save API key', errorMessage);
-      handleError(err instanceof Error ? err : new Error(errorMessage));
-    }
-  }, [handleError, toast]);
+    },
+    [handleError, toast]
+  );
 
   // Get storage summary for display
   const storageSummary = storage.general.getSummary();
@@ -198,8 +244,8 @@ export function SettingsPage({ className }: SettingsPageProps) {
       <SettingsErrorState
         className={className}
         error={error}
-        onRetry={initializeSettings}
         onReload={() => window.location.reload()}
+        onRetry={initializeSettings}
       />
     );
   }
@@ -209,310 +255,349 @@ export function SettingsPage({ className }: SettingsPageProps) {
       {/* Network Status Indicators */}
       <NetworkState isOnline={isOnline} onRetry={initializeSettings} />
       {showConnectedState && <ConnectedState />}
-      
+
       {/* Slow Connection Warning */}
       {isOnline && isSlowConnection && (
         <div className="fixed top-4 left-4 z-50">
           <Card className="w-80 border-yellow-200 bg-yellow-50">
             <CardContent className="p-3">
-              <div className="flex items-center gap-2 text-yellow-800 text-sm">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
+              <div className="flex items-center gap-2 text-sm text-yellow-800">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
                 Slow connection detected. Some features may be slower.
               </div>
             </CardContent>
           </Card>
         </div>
       )}
-      
+
       {/* Main Content */}
       <div className={cn("container mx-auto px-4 py-4 sm:py-8", className)}>
-        <div className="max-w-4xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push('/chat')}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                aria-label="Back to chat"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Chat</span>
-              </Button>
-              <Settings className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                Settings
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-                Manage your API keys and integrations. All data is stored locally in your browser.
-              </p>
-            </div>
-          </div>
-          
-          {/* Storage Summary and Enhancements */}
-          {storageSummary.totalItems > 0 ? (
-            <SettingsEnhancements />
-          ) : (
-            <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 bg-gray-400 rounded-full flex-shrink-0"></div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        No Configuration
-                      </div>
-                      <div className="text-xs text-blue-700 dark:text-blue-300">
-                        Add your API keys and integrations to get started
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-800 dark:text-blue-100 dark:border-blue-600 self-start sm:self-center">
-                    Local Storage
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Tab Navigation */}
-          <Card>
-            <CardContent className="p-3 sm:p-6">
-              <TabsList 
-                className="grid w-full grid-cols-3 gap-1 sm:gap-2 h-auto p-1"
-                role="tablist"
-                aria-label="Settings navigation"
-              >
-                <TabsTrigger
-                  value="api-keys"
-                  className="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4 h-auto data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
-                  role="tab"
-                  aria-controls="api-keys-panel"
-                  aria-selected={activeTab === "api-keys"}
-                  title="API Keys (Ctrl+1 or Cmd+1)"
+        <div className="mx-auto max-w-4xl">
+          {/* Page Header */}
+          <div className="mb-6 sm:mb-8">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3">
+                <Button
+                  aria-label="Back to chat"
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                  onClick={() => router.push("/chat")}
+                  size="sm"
+                  variant="ghost"
                 >
-                  <Key className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                  <div className="text-center">
-                    <div className="font-medium text-xs sm:text-sm">API Keys</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">
-                      Configure AI provider credentials
-                    </div>
-                    {storageSummary.apiKeys.count > 0 && (
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {storageSummary.apiKeys.count}
-                      </Badge>
-                    )}
-                  </div>
-                </TabsTrigger>
-                
-                <TabsTrigger
-                  value="integrations"
-                  className="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4 h-auto data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
-                  role="tab"
-                  aria-controls="integrations-panel"
-                  aria-selected={activeTab === "integrations"}
-                  title="Integrations (Ctrl+2 or Cmd+2)"
-                >
-                  <GitBranch className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                  <div className="text-center">
-                    <div className="font-medium text-xs sm:text-sm">Integrations</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">
-                      Connect external services
-                    </div>
-                    {storageSummary.integrations.github && (
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        GitHub
-                      </Badge>
-                    )}
-                  </div>
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="storage"
-                  className="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-4 h-auto data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
-                  role="tab"
-                  aria-controls="storage-panel"
-                  aria-selected={activeTab === "storage"}
-                  title="Storage (Ctrl+3 or Cmd+3)"
-                >
-                  <Database className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                  <div className="text-center">
-                    <div className="font-medium text-xs sm:text-sm">Storage</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden sm:block">
-                      Manage storage settings
-                    </div>
-                  </div>
-                </TabsTrigger>
-              </TabsList>
-              
-              {/* Keyboard shortcuts help - hidden on mobile */}
-              <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center hidden sm:block">
-                <span className="sr-only">Keyboard shortcuts: </span>
-                Use <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">Ctrl+1</kbd>, 
-                <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs ml-1">Ctrl+2</kbd>, 
-                <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs ml-1">Ctrl+3</kbd> to navigate tabs
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Back to Chat</span>
+                </Button>
+                <Settings
+                  aria-hidden="true"
+                  className="h-6 w-6 text-blue-600 sm:h-8 sm:w-8"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <h1 className="font-bold text-2xl text-gray-900 sm:text-3xl dark:text-white">
+                  Settings
+                </h1>
+                <p className="mt-1 text-gray-600 text-sm sm:text-base dark:text-gray-400">
+                  Manage your API keys and integrations. All data is stored
+                  locally in your browser.
+                </p>
+              </div>
+            </div>
 
-          {/* API Keys Tab */}
-          <TabsContent 
-            value="api-keys" 
-            className="space-y-6"
-            role="tabpanel"
-            id="api-keys-panel"
-            aria-labelledby="api-keys-tab"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5" aria-hidden="true" />
-                  API Keys
-                </CardTitle>
-                <CardDescription>
-                  Configure API keys for AI providers. Keys are stored locally in your browser and never sent to our servers.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-                {/* Security Notice */}
-                <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0">
-                      🔒
-                    </div>
-                    <div className="text-xs sm:text-sm min-w-0">
-                      <div className="font-medium text-green-900 dark:text-green-100 mb-1">
-                        Secure Local Storage
+            {/* Storage Summary and Enhancements */}
+            {storageSummary.totalItems > 0 ? (
+              <SettingsEnhancements />
+            ) : (
+              <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-2 w-2 flex-shrink-0 rounded-full bg-gray-400" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-blue-900 text-sm dark:text-blue-100">
+                          No Configuration
+                        </div>
+                        <div className="text-blue-700 text-xs dark:text-blue-300">
+                          Add your API keys and integrations to get started
+                        </div>
                       </div>
-                      <div className="text-green-700 dark:text-green-300">
-                        Your API keys are stored locally in your browser and are never transmitted to our servers. 
-                        They remain private and secure on your device.
+                    </div>
+                    <Badge
+                      className="self-start border-blue-300 bg-blue-100 text-blue-800 text-xs sm:self-center dark:border-blue-600 dark:bg-blue-800 dark:text-blue-100"
+                      variant="outline"
+                    >
+                      Local Storage
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Main Content */}
+          <Tabs
+            className="space-y-6"
+            onValueChange={setActiveTab}
+            value={activeTab}
+          >
+            {/* Tab Navigation */}
+            <Card>
+              <CardContent className="p-3 sm:p-6">
+                <TabsList
+                  aria-label="Settings navigation"
+                  className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:gap-2"
+                  role="tablist"
+                >
+                  <TabsTrigger
+                    aria-controls="api-keys-panel"
+                    aria-selected={activeTab === "api-keys"}
+                    className="flex h-auto flex-col items-center gap-1 p-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 sm:gap-2 sm:p-4 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
+                    role="tab"
+                    title="API Keys (Ctrl+1 or Cmd+1)"
+                    value="api-keys"
+                  >
+                    <Key aria-hidden="true" className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <div className="text-center">
+                      <div className="font-medium text-xs sm:text-sm">
+                        API Keys
+                      </div>
+                      <div className="mt-1 hidden text-gray-500 text-xs sm:block dark:text-gray-400">
+                        Configure AI provider credentials
+                      </div>
+                      {storageSummary.apiKeys.count > 0 && (
+                        <Badge className="mt-1 text-xs" variant="secondary">
+                          {storageSummary.apiKeys.count}
+                        </Badge>
+                      )}
+                    </div>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    aria-controls="integrations-panel"
+                    aria-selected={activeTab === "integrations"}
+                    className="flex h-auto flex-col items-center gap-1 p-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 sm:gap-2 sm:p-4 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
+                    role="tab"
+                    title="Integrations (Ctrl+2 or Cmd+2)"
+                    value="integrations"
+                  >
+                    <GitBranch
+                      aria-hidden="true"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
+                    />
+                    <div className="text-center">
+                      <div className="font-medium text-xs sm:text-sm">
+                        Integrations
+                      </div>
+                      <div className="mt-1 hidden text-gray-500 text-xs sm:block dark:text-gray-400">
+                        Connect external services
+                      </div>
+                      {storageSummary.integrations.github && (
+                        <Badge className="mt-1 text-xs" variant="secondary">
+                          GitHub
+                        </Badge>
+                      )}
+                    </div>
+                  </TabsTrigger>
+
+                  <TabsTrigger
+                    aria-controls="storage-panel"
+                    aria-selected={activeTab === "storage"}
+                    className="flex h-auto flex-col items-center gap-1 p-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 sm:gap-2 sm:p-4 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300"
+                    role="tab"
+                    title="Storage (Ctrl+3 or Cmd+3)"
+                    value="storage"
+                  >
+                    <Database
+                      aria-hidden="true"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
+                    />
+                    <div className="text-center">
+                      <div className="font-medium text-xs sm:text-sm">
+                        Storage
+                      </div>
+                      <div className="mt-1 hidden text-gray-500 text-xs sm:block dark:text-gray-400">
+                        Manage storage settings
+                      </div>
+                    </div>
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Keyboard shortcuts help - hidden on mobile */}
+                <div className="mt-4 hidden text-center text-gray-500 text-xs sm:block dark:text-gray-400">
+                  <span className="sr-only">Keyboard shortcuts: </span>
+                  Use{" "}
+                  <kbd className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">
+                    Ctrl+1
+                  </kbd>
+                  ,
+                  <kbd className="ml-1 rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">
+                    Ctrl+2
+                  </kbd>
+                  ,
+                  <kbd className="ml-1 rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">
+                    Ctrl+3
+                  </kbd>{" "}
+                  to navigate tabs
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* API Keys Tab */}
+            <TabsContent
+              aria-labelledby="api-keys-tab"
+              className="space-y-6"
+              id="api-keys-panel"
+              role="tabpanel"
+              value="api-keys"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key aria-hidden="true" className="h-5 w-5" />
+                    API Keys
+                  </CardTitle>
+                  <CardDescription>
+                    Configure API keys for AI providers. Keys are stored locally
+                    in your browser and never sent to our servers.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 p-4 sm:space-y-6 sm:p-6">
+                  {/* Security Notice */}
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 sm:p-4 dark:border-green-800 dark:bg-green-900/20">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600 sm:h-5 sm:w-5 dark:text-green-400">
+                        🔒
+                      </div>
+                      <div className="min-w-0 text-xs sm:text-sm">
+                        <div className="mb-1 font-medium text-green-900 dark:text-green-100">
+                          Secure Local Storage
+                        </div>
+                        <div className="text-green-700 dark:text-green-300">
+                          Your API keys are stored locally in your browser and
+                          are never transmitted to our servers. They remain
+                          private and secure on your device.
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <Separator />
+                  <Separator />
 
-                {/* Google AI API Key */}
-                <Suspense fallback={<ComponentLoading />}>
-                  <SettingsErrorBoundary>
-                    <APIKeySection
-                      provider="google"
-                      title="Google AI"
-                      description="Configure your Google AI API key to use Gemini models"
-                      placeholder="AIza..."
-                      value={googleKey}
-                      onChange={handleGoogleKeyChange}
-                      onVerify={googleService.verify.bind(googleService)}
-                    />
-                  </SettingsErrorBoundary>
-                </Suspense>
+                  {/* Google AI API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Google AI API key to use Gemini models"
+                        onChange={handleGoogleKeyChange}
+                        onVerify={googleService.verify.bind(googleService)}
+                        placeholder="AIza..."
+                        provider="google"
+                        title="Google AI"
+                        value={googleKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
 
-                {/* Anthropic API Key */}
-                <Suspense fallback={<ComponentLoading />}>
-                  <SettingsErrorBoundary>
-                    <APIKeySection
-                      provider="anthropic"
-                      title="Anthropic"
-                      description="Configure your Anthropic API key to use Claude models"
-                      placeholder="sk-ant-..."
-                      value={anthropicKey}
-                      onChange={handleAnthropicKeyChange}
-                      onVerify={anthropicService.verify.bind(anthropicService)}
-                    />
-                  </SettingsErrorBoundary>
-                </Suspense>
+                  {/* Anthropic API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Anthropic API key to use Claude models"
+                        onChange={handleAnthropicKeyChange}
+                        onVerify={anthropicService.verify.bind(
+                          anthropicService
+                        )}
+                        placeholder="sk-ant-..."
+                        provider="anthropic"
+                        title="Anthropic"
+                        value={anthropicKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
 
-                {/* OpenAI API Key */}
-                <Suspense fallback={<ComponentLoading />}>
-                  <SettingsErrorBoundary>
-                    <APIKeySection
-                      provider="openai"
-                      title="OpenAI"
-                      description="Configure your OpenAI API key to use GPT models"
-                      placeholder="sk-..."
-                      value={openaiKey}
-                      onChange={handleOpenaiKeyChange}
-                      onVerify={openaiService.verify.bind(openaiService)}
-                    />
-                  </SettingsErrorBoundary>
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  {/* OpenAI API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your OpenAI API key to use GPT models"
+                        onChange={handleOpenaiKeyChange}
+                        onVerify={openaiService.verify.bind(openaiService)}
+                        placeholder="sk-..."
+                        provider="openai"
+                        title="OpenAI"
+                        value={openaiKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Integrations Tab */}
-          <TabsContent 
-            value="integrations" 
-            className="space-y-6"
-            role="tabpanel"
-            id="integrations-panel"
-            aria-labelledby="integrations-tab"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5" aria-hidden="true" />
-                  Integrations
-                </CardTitle>
-                <CardDescription>
-                  Connect external services to enhance your workflow. Integration data is stored locally for security.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-                {/* Security Notice */}
-                <div className="p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0">
-                      🔗
-                    </div>
-                    <div className="text-xs sm:text-sm min-w-0">
-                      <div className="font-medium text-blue-900 dark:text-blue-100 mb-1">
-                        Local Integration Storage
+            {/* Integrations Tab */}
+            <TabsContent
+              aria-labelledby="integrations-tab"
+              className="space-y-6"
+              id="integrations-panel"
+              role="tabpanel"
+              value="integrations"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitBranch aria-hidden="true" className="h-5 w-5" />
+                    Integrations
+                  </CardTitle>
+                  <CardDescription>
+                    Connect external services to enhance your workflow.
+                    Integration data is stored locally for security.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 p-4 sm:space-y-6 sm:p-6">
+                  {/* Security Notice */}
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 sm:h-5 sm:w-5 dark:text-blue-400">
+                        🔗
                       </div>
-                      <div className="text-blue-700 dark:text-blue-300">
-                        Integration tokens and data are stored locally in your browser for security. 
-                        You maintain full control over your credentials.
+                      <div className="min-w-0 text-xs sm:text-sm">
+                        <div className="mb-1 font-medium text-blue-900 dark:text-blue-100">
+                          Local Integration Storage
+                        </div>
+                        <div className="text-blue-700 dark:text-blue-300">
+                          Integration tokens and data are stored locally in your
+                          browser for security. You maintain full control over
+                          your credentials.
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <Separator />
+                  <Separator />
 
-                {/* GitHub Integration */}
-                <Suspense fallback={<ComponentLoading />}>
-                  <SettingsErrorBoundary>
-                    <GitHubIntegrationSection />
-                  </SettingsErrorBoundary>
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  {/* GitHub Integration */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <GitHubIntegrationSection />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Storage Management Tab */}
-          <TabsContent 
-            value="storage" 
-            className="space-y-6"
-            role="tabpanel"
-            id="storage-panel"
-            aria-labelledby="storage-tab"
-          >
-            <Suspense fallback={<ComponentLoading />}>
-              <SettingsErrorBoundary>
-                <StorageManagementSection />
-              </SettingsErrorBoundary>
-            </Suspense>
-          </TabsContent>
-        </Tabs>
+            {/* Storage Management Tab */}
+            <TabsContent
+              aria-labelledby="storage-tab"
+              className="space-y-6"
+              id="storage-panel"
+              role="tabpanel"
+              value="storage"
+            >
+              <Suspense fallback={<ComponentLoading />}>
+                <SettingsErrorBoundary>
+                  <StorageManagementSection />
+                </SettingsErrorBoundary>
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

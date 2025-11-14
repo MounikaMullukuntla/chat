@@ -1,6 +1,15 @@
 "use client";
 
+import {
+  ArrowRightIcon,
+  BarChart3Icon,
+  BrainIcon,
+  DollarSignIcon,
+} from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -8,30 +17,26 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart3Icon, DollarSignIcon, BrainIcon, ArrowRightIcon } from "lucide-react";
 
 // Dummy analytics data structure
-interface AgentAnalytics {
+type AgentAnalytics = {
   name: string;
   inputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
   cost: number;
   executionTime: number;
-}
+};
 
-interface ToolAnalytics {
+type ToolAnalytics = {
   name: string;
   input: string;
   output: string;
   executionTime: number;
   cost: number;
-}
+};
 
-interface MessageAnalytics {
+type MessageAnalytics = {
   mainAgent: AgentAnalytics;
   subAgents: AgentAnalytics[];
   tools: ToolAnalytics[];
@@ -44,7 +49,7 @@ interface MessageAnalytics {
   }[];
   totalCost: number;
   totalExecutionTime: number;
-}
+};
 
 // Generate dummy data for demonstration
 const generateDummyAnalytics = (): MessageAnalytics => {
@@ -55,7 +60,7 @@ const generateDummyAnalytics = (): MessageAnalytics => {
       outputTokens: 892,
       reasoningTokens: 456,
       cost: 0.0034,
-      executionTime: 2.3
+      executionTime: 2.3,
     },
     subAgents: [
       {
@@ -64,7 +69,7 @@ const generateDummyAnalytics = (): MessageAnalytics => {
         outputTokens: 567,
         reasoningTokens: 123,
         cost: 0.0012,
-        executionTime: 1.8
+        executionTime: 1.8,
       },
       {
         name: "Web Search Agent",
@@ -72,52 +77,58 @@ const generateDummyAnalytics = (): MessageAnalytics => {
         outputTokens: 234,
         reasoningTokens: 67,
         cost: 0.0008,
-        executionTime: 0.9
-      }
+        executionTime: 0.9,
+      },
     ],
     tools: [
       {
         name: "providerToolsAgent",
-        input: "Tell me content of https://ananth-portfolio-website.vercel.app/",
-        output: "The website 'Ananth's Portfolio' belongs to Ananth Pai, a software developer specializing in Artificial Intelligence...",
+        input:
+          "Tell me content of https://ananth-portfolio-website.vercel.app/",
+        output:
+          "The website 'Ananth's Portfolio' belongs to Ananth Pai, a software developer specializing in Artificial Intelligence...",
         executionTime: 1.2,
-        cost: 0.0005
+        cost: 0.0005,
       },
       {
         name: "urlContext",
         input: "https://ananth-portfolio-website.vercel.app/",
         output: "Portfolio website content extracted successfully",
         executionTime: 0.8,
-        cost: 0.0003
-      }
+        cost: 0.0003,
+      },
     ],
     agentInteractions: [
       {
         from: "Google Chat Agent",
         to: "Provider Tools Agent",
         input: "Analyze this URL: https://ananth-portfolio-website.vercel.app/",
-        output: "URL analysis complete. Found portfolio website with developer information.",
-        timestamp: "2024-11-06T10:30:15Z"
+        output:
+          "URL analysis complete. Found portfolio website with developer information.",
+        timestamp: "2024-11-06T10:30:15Z",
       },
       {
         from: "Provider Tools Agent",
         to: "Web Search Agent",
         input: "Search for additional context about Ananth Pai",
         output: "Found LinkedIn profile and GitHub repositories",
-        timestamp: "2024-11-06T10:30:18Z"
-      }
+        timestamp: "2024-11-06T10:30:18Z",
+      },
     ],
     totalCost: 0.0062,
-    totalExecutionTime: 5.0
+    totalExecutionTime: 5.0,
   };
 };
 
-interface MessageAnalyticsDialogProps {
+type MessageAnalyticsDialogProps = {
   children: React.ReactNode;
   messageId: string;
-}
+};
 
-export function MessageAnalyticsDialog({ children, messageId }: MessageAnalyticsDialogProps) {
+export function MessageAnalyticsDialog({
+  children,
+  messageId,
+}: MessageAnalyticsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const analytics = generateDummyAnalytics();
 
@@ -125,40 +136,38 @@ export function MessageAnalyticsDialog({ children, messageId }: MessageAnalytics
   const formatTime = (time: number) => `${time.toFixed(1)}s`;
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        {children}
-      </SheetTrigger>
+    <Sheet onOpenChange={setIsOpen} open={isOpen}>
+      <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="w-[800px] sm:max-w-[800px]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <BarChart3Icon className="size-5" />
             Message Analytics
-            <Badge variant="secondary" className="ml-2">
+            <Badge className="ml-2" variant="secondary">
               {messageId.slice(0, 8)}...
             </Badge>
           </SheetTitle>
         </SheetHeader>
-        
+
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-6">
             {/* Summary */}
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-lg border p-4">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex items-center gap-2">
                   <DollarSignIcon className="size-4 text-green-600" />
                   <span className="font-medium">Total Cost</span>
                 </div>
-                <div className="text-2xl font-bold text-green-600">
+                <div className="font-bold text-2xl text-green-600">
                   {formatCost(analytics.totalCost)}
                 </div>
               </div>
               <div className="rounded-lg border p-4">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex items-center gap-2">
                   <BrainIcon className="size-4 text-blue-600" />
                   <span className="font-medium">Total Time</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="font-bold text-2xl text-blue-600">
                   {formatTime(analytics.totalExecutionTime)}
                 </div>
               </div>
@@ -168,32 +177,46 @@ export function MessageAnalyticsDialog({ children, messageId }: MessageAnalytics
 
             {/* Main Agent */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Main Agent</h3>
+              <h3 className="mb-3 font-semibold text-lg">Main Agent</h3>
               <div className="rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-medium">{analytics.mainAgent.name}</span>
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-medium">
+                    {analytics.mainAgent.name}
+                  </span>
                   <Badge variant="default">Primary</Badge>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
                   <div>
                     <div className="text-muted-foreground">Input Tokens</div>
-                    <div className="font-medium">{analytics.mainAgent.inputTokens.toLocaleString()}</div>
+                    <div className="font-medium">
+                      {analytics.mainAgent.inputTokens.toLocaleString()}
+                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Output Tokens</div>
-                    <div className="font-medium">{analytics.mainAgent.outputTokens.toLocaleString()}</div>
+                    <div className="font-medium">
+                      {analytics.mainAgent.outputTokens.toLocaleString()}
+                    </div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Reasoning Tokens</div>
-                    <div className="font-medium">{analytics.mainAgent.reasoningTokens.toLocaleString()}</div>
+                    <div className="text-muted-foreground">
+                      Reasoning Tokens
+                    </div>
+                    <div className="font-medium">
+                      {analytics.mainAgent.reasoningTokens.toLocaleString()}
+                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Cost</div>
-                    <div className="font-medium text-green-600">{formatCost(analytics.mainAgent.cost)}</div>
+                    <div className="font-medium text-green-600">
+                      {formatCost(analytics.mainAgent.cost)}
+                    </div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Time</div>
-                    <div className="font-medium text-blue-600">{formatTime(analytics.mainAgent.executionTime)}</div>
+                    <div className="font-medium text-blue-600">
+                      {formatTime(analytics.mainAgent.executionTime)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -201,34 +224,50 @@ export function MessageAnalyticsDialog({ children, messageId }: MessageAnalytics
 
             {/* Sub Agents */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Sub Agents</h3>
+              <h3 className="mb-3 font-semibold text-lg">Sub Agents</h3>
               <div className="space-y-3">
                 {analytics.subAgents.map((agent, index) => (
-                  <div key={index} className="rounded-lg border p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="rounded-lg border p-4" key={index}>
+                    <div className="mb-3 flex items-center justify-between">
                       <span className="font-medium">{agent.name}</span>
                       <Badge variant="secondary">Sub Agent</Badge>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5">
                       <div>
-                        <div className="text-muted-foreground">Input Tokens</div>
-                        <div className="font-medium">{agent.inputTokens.toLocaleString()}</div>
+                        <div className="text-muted-foreground">
+                          Input Tokens
+                        </div>
+                        <div className="font-medium">
+                          {agent.inputTokens.toLocaleString()}
+                        </div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Output Tokens</div>
-                        <div className="font-medium">{agent.outputTokens.toLocaleString()}</div>
+                        <div className="text-muted-foreground">
+                          Output Tokens
+                        </div>
+                        <div className="font-medium">
+                          {agent.outputTokens.toLocaleString()}
+                        </div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Reasoning Tokens</div>
-                        <div className="font-medium">{agent.reasoningTokens.toLocaleString()}</div>
+                        <div className="text-muted-foreground">
+                          Reasoning Tokens
+                        </div>
+                        <div className="font-medium">
+                          {agent.reasoningTokens.toLocaleString()}
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Cost</div>
-                        <div className="font-medium text-green-600">{formatCost(agent.cost)}</div>
+                        <div className="font-medium text-green-600">
+                          {formatCost(agent.cost)}
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Time</div>
-                        <div className="font-medium text-blue-600">{formatTime(agent.executionTime)}</div>
+                        <div className="font-medium text-blue-600">
+                          {formatTime(agent.executionTime)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -238,28 +277,36 @@ export function MessageAnalyticsDialog({ children, messageId }: MessageAnalytics
 
             {/* Tools */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Tools Used</h3>
+              <h3 className="mb-3 font-semibold text-lg">Tools Used</h3>
               <div className="space-y-3">
                 {analytics.tools.map((tool, index) => (
-                  <div key={index} className="rounded-lg border p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="rounded-lg border p-4" key={index}>
+                    <div className="mb-3 flex items-center justify-between">
                       <span className="font-medium">{tool.name}</span>
                       <div className="flex gap-2">
                         <Badge variant="outline">{formatCost(tool.cost)}</Badge>
-                        <Badge variant="outline">{formatTime(tool.executionTime)}</Badge>
+                        <Badge variant="outline">
+                          {formatTime(tool.executionTime)}
+                        </Badge>
                       </div>
                     </div>
                     <div className="space-y-2 text-sm">
                       <div>
-                        <div className="text-muted-foreground mb-1">Input:</div>
-                        <div className="bg-muted p-2 rounded text-xs font-mono">
-                          {tool.input.length > 100 ? `${tool.input.slice(0, 100)}...` : tool.input}
+                        <div className="mb-1 text-muted-foreground">Input:</div>
+                        <div className="rounded bg-muted p-2 font-mono text-xs">
+                          {tool.input.length > 100
+                            ? `${tool.input.slice(0, 100)}...`
+                            : tool.input}
                         </div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground mb-1">Output:</div>
-                        <div className="bg-muted p-2 rounded text-xs font-mono">
-                          {tool.output.length > 100 ? `${tool.output.slice(0, 100)}...` : tool.output}
+                        <div className="mb-1 text-muted-foreground">
+                          Output:
+                        </div>
+                        <div className="rounded bg-muted p-2 font-mono text-xs">
+                          {tool.output.length > 100
+                            ? `${tool.output.slice(0, 100)}...`
+                            : tool.output}
                         </div>
                       </div>
                     </div>
@@ -270,28 +317,30 @@ export function MessageAnalyticsDialog({ children, messageId }: MessageAnalytics
 
             {/* Agent Interactions */}
             <div>
-              <h3 className="text-lg font-semibold mb-3">Agent Interactions</h3>
+              <h3 className="mb-3 font-semibold text-lg">Agent Interactions</h3>
               <div className="space-y-3">
                 {analytics.agentInteractions.map((interaction, index) => (
-                  <div key={index} className="rounded-lg border p-4">
-                    <div className="flex items-center gap-2 mb-3">
+                  <div className="rounded-lg border p-4" key={index}>
+                    <div className="mb-3 flex items-center gap-2">
                       <Badge variant="outline">{interaction.from}</Badge>
                       <ArrowRightIcon className="size-4 text-muted-foreground" />
                       <Badge variant="outline">{interaction.to}</Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <span className="ml-auto text-muted-foreground text-xs">
                         {new Date(interaction.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm">
                       <div>
-                        <div className="text-muted-foreground mb-1">Input:</div>
-                        <div className="bg-muted p-2 rounded text-xs">
+                        <div className="mb-1 text-muted-foreground">Input:</div>
+                        <div className="rounded bg-muted p-2 text-xs">
                           {interaction.input}
                         </div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground mb-1">Output:</div>
-                        <div className="bg-muted p-2 rounded text-xs">
+                        <div className="mb-1 text-muted-foreground">
+                          Output:
+                        </div>
+                        <div className="rounded bg-muted p-2 text-xs">
                           {interaction.output}
                         </div>
                       </div>

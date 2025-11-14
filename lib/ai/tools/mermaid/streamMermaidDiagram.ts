@@ -1,13 +1,13 @@
 import "server-only";
 
-import { streamObject } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
+import type { UIMessageStreamWriter } from "ai";
+import { streamObject } from "ai";
+import { z } from "zod";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
-import { z } from "zod";
 
 /**
  * Validate Mermaid syntax (basic validation)
@@ -17,19 +17,29 @@ function validateMermaidSyntax(diagram: string): boolean {
 
   // Check for common Mermaid diagram types
   const validTypes = [
-    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
-    'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie',
-    'gitgraph', 'mindmap', 'timeline', 'sankey'
+    "graph",
+    "flowchart",
+    "sequenceDiagram",
+    "classDiagram",
+    "stateDiagram",
+    "erDiagram",
+    "journey",
+    "gantt",
+    "pie",
+    "gitgraph",
+    "mindmap",
+    "timeline",
+    "sankey",
   ];
 
-  const firstLine = trimmed.split('\n')[0].toLowerCase();
-  const hasValidType = validTypes.some(type =>
+  const firstLine = trimmed.split("\n")[0].toLowerCase();
+  const hasValidType = validTypes.some((type) =>
     firstLine.includes(type.toLowerCase())
   );
 
   // Basic syntax checks
   const hasContent = trimmed.length > 0;
-  const notEmpty = trimmed !== '';
+  const notEmpty = trimmed !== "";
 
   return hasValidType && hasContent && notEmpty;
 }
@@ -50,14 +60,25 @@ export async function streamMermaidDiagram(params: {
   metadata?: Record<string, any>;
   streamToUI?: boolean; // If false, accumulate without streaming (for generate mode)
 }): Promise<{ documentId: string; content: string }> {
-  const { title, instruction, systemPrompt, dataStream, user, chatId, modelId, apiKey, metadata = {}, streamToUI = true } = params;
+  const {
+    title,
+    instruction,
+    systemPrompt,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+    metadata = {},
+    streamToUI = true,
+  } = params;
   const documentId = generateUUID();
 
-  console.log('🎨 [STREAM-CREATE] Starting real-time diagram creation');
-  console.log('🎨 [STREAM-CREATE] Document ID:', documentId);
-  console.log('🎨 [STREAM-CREATE] Title:', title);
-  console.log('🎨 [STREAM-CREATE] Model:', modelId);
-  console.log('🎨 [STREAM-CREATE] Stream to UI:', streamToUI);
+  console.log("🎨 [STREAM-CREATE] Starting real-time diagram creation");
+  console.log("🎨 [STREAM-CREATE] Document ID:", documentId);
+  console.log("🎨 [STREAM-CREATE] Title:", title);
+  console.log("🎨 [STREAM-CREATE] Model:", modelId);
+  console.log("🎨 [STREAM-CREATE] Stream to UI:", streamToUI);
 
   // Write artifact metadata only if streaming to UI
   if (streamToUI) {
@@ -85,7 +106,7 @@ export async function streamMermaidDiagram(params: {
       transient: true,
     });
 
-    console.log('🎨 [STREAM-CREATE] Metadata written, starting LLM generation');
+    console.log("🎨 [STREAM-CREATE] Metadata written, starting LLM generation");
   }
 
   // Get the Google model instance with proper API key handling
@@ -104,11 +125,15 @@ export async function streamMermaidDiagram(params: {
       system: systemPrompt,
       prompt: instruction,
       schema: z.object({
-        diagram: z.string().describe('Complete Mermaid diagram with valid syntax and proper formatting'),
+        diagram: z
+          .string()
+          .describe(
+            "Complete Mermaid diagram with valid syntax and proper formatting"
+          ),
       }),
     });
 
-    console.log('🎨 [STREAM-CREATE] LLM streaming started');
+    console.log("🎨 [STREAM-CREATE] LLM streaming started");
 
     // Accumulate content as it streams
     let generatedDiagram = "";
@@ -131,18 +156,23 @@ export async function streamMermaidDiagram(params: {
       }
     }
 
-    console.log('🎨 [STREAM-CREATE] LLM generation complete');
-    console.log('🎨 [STREAM-CREATE] Total content length:', generatedDiagram.length);
-    console.log('🎨 [STREAM-CREATE] Total chunks streamed:', chunkCount);
+    console.log("🎨 [STREAM-CREATE] LLM generation complete");
+    console.log(
+      "🎨 [STREAM-CREATE] Total content length:",
+      generatedDiagram.length
+    );
+    console.log("🎨 [STREAM-CREATE] Total chunks streamed:", chunkCount);
 
     // Validate Mermaid syntax before saving
     if (!validateMermaidSyntax(generatedDiagram)) {
-      throw new Error('Generated diagram does not contain valid Mermaid syntax');
+      throw new Error(
+        "Generated diagram does not contain valid Mermaid syntax"
+      );
     }
 
     // Save document to database if user is provided and streaming to UI
     if (user?.id && streamToUI) {
-      console.log('🎨 [STREAM-CREATE] Saving to database for user:', user.id);
+      console.log("🎨 [STREAM-CREATE] Saving to database for user:", user.id);
       await saveDocument({
         id: documentId,
         title,
@@ -152,17 +182,17 @@ export async function streamMermaidDiagram(params: {
         chatId,
         metadata: {
           ...metadata,
-          updateType: 'create',
-          agent: 'GoogleMermaidAgentStreaming',
+          updateType: "create",
+          agent: "GoogleMermaidAgentStreaming",
           createdAt: new Date().toISOString(),
           modelUsed: modelId,
         },
       });
-      console.log('✅ [STREAM-CREATE] Saved to database');
-    } else if (!streamToUI) {
-      console.log('ℹ️ [STREAM-CREATE] Generate mode - skipping database save');
+      console.log("✅ [STREAM-CREATE] Saved to database");
+    } else if (streamToUI) {
+      console.log("⚠️ [STREAM-CREATE] No user provided, skipping database save");
     } else {
-      console.log('⚠️ [STREAM-CREATE] No user provided, skipping database save');
+      console.log("ℹ️ [STREAM-CREATE] Generate mode - skipping database save");
     }
 
     // Signal streaming complete (only if streaming to UI)
@@ -174,12 +204,12 @@ export async function streamMermaidDiagram(params: {
       });
     }
 
-    console.log('✅ [STREAM-CREATE] Diagram creation completed successfully');
+    console.log("✅ [STREAM-CREATE] Diagram creation completed successfully");
     return { documentId, content: generatedDiagram };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [STREAM-CREATE] Generation failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
 
     // Write error to stream
     if (streamToUI) {

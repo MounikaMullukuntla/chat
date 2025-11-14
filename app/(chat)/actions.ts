@@ -1,6 +1,6 @@
 "use server";
 
-import { type UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { cookies } from "next/headers";
 import type { VisibilityType } from "@/components/visibility-selector";
 import {
@@ -19,23 +19,25 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
+  await Promise.resolve(); // Server actions must be async
+
   // Simple title generation - use first few characters of user input
-  const textParts = message.parts.filter(part => part.type === 'text');
-  const firstText = textParts[0]?.text || 'New Chat';
-  
+  const textParts = message.parts.filter((part) => part.type === "text");
+  const firstText = textParts[0]?.text || "New Chat";
+
   // Take first 50 characters and clean up
   let title = firstText.substring(0, 50).trim();
-  
+
   // Remove quotes and colons as requested
-  title = title.replace(/[\":]/g, '');
-  
+  title = title.replace(/[":]/g, "");
+
   // Add ellipsis if truncated
   if (firstText.length > 50) {
-    title += '...';
+    title += "...";
   }
-  
+
   // Fallback if empty
-  return title || 'New Chat';
+  return title || "New Chat";
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {

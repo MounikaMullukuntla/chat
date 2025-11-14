@@ -1,12 +1,12 @@
 import "server-only";
 
-import { streamObject } from "ai";
-import type { UIMessageStreamWriter } from "ai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { User } from "@supabase/supabase-js";
+import type { UIMessageStreamWriter } from "ai";
+import { streamObject } from "ai";
+import { z } from "zod";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
-import { z } from "zod";
 
 /**
  * Generate suggestions for a document using AI SDK's streamObject
@@ -23,11 +23,21 @@ export async function streamDocumentSuggestions(params: {
   modelId: string;
   apiKey?: string;
 }): Promise<{ documentId: string; suggestionCount: number }> {
-  const { documentId, instruction, systemPrompt, userPromptTemplate, dataStream, user, chatId, modelId, apiKey } = params;
+  const {
+    documentId,
+    instruction,
+    systemPrompt,
+    userPromptTemplate,
+    dataStream,
+    user,
+    chatId,
+    modelId,
+    apiKey,
+  } = params;
 
-  console.log('💡 [SUGGESTIONS] Starting suggestion generation');
-  console.log('💡 [SUGGESTIONS] Document ID:', documentId);
-  console.log('💡 [SUGGESTIONS] Model:', modelId);
+  console.log("💡 [SUGGESTIONS] Starting suggestion generation");
+  console.log("💡 [SUGGESTIONS] Document ID:", documentId);
+  console.log("💡 [SUGGESTIONS] Model:", modelId);
 
   // Fetch the existing document from database
   const document = await getDocumentById({ id: documentId });
@@ -36,12 +46,17 @@ export async function streamDocumentSuggestions(params: {
     throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  if (document.kind !== 'text') {
-    throw new Error(`Document ${documentId} is not a text document (kind: ${document.kind})`);
+  if (document.kind !== "text") {
+    throw new Error(
+      `Document ${documentId} is not a text document (kind: ${document.kind})`
+    );
   }
 
-  console.log('💡 [SUGGESTIONS] Document found:', document.title);
-  console.log('💡 [SUGGESTIONS] Content length:', document.content?.length || 0);
+  console.log("💡 [SUGGESTIONS] Document found:", document.title);
+  console.log(
+    "💡 [SUGGESTIONS] Content length:",
+    document.content?.length || 0
+  );
 
   // Get the Google model instance with proper API key handling
   let model;
@@ -56,17 +71,23 @@ export async function streamDocumentSuggestions(params: {
   const suggestionSchema = z.object({
     suggestions: z.array(
       z.object({
-        originalText: z.string().describe('The exact text from the document that needs improvement'),
-        suggestedText: z.string().describe('The improved replacement text'),
-        description: z.string().describe('Brief explanation of why this suggestion improves the text')
+        originalText: z
+          .string()
+          .describe("The exact text from the document that needs improvement"),
+        suggestedText: z.string().describe("The improved replacement text"),
+        description: z
+          .string()
+          .describe(
+            "Brief explanation of why this suggestion improves the text"
+          ),
       })
-    )
+    ),
   });
 
   // Build the prompt for suggestion generation using template from config
   const userPrompt = userPromptTemplate
-    .replace('{currentContent}', document.content || '')
-    .replace('{instruction}', instruction);
+    .replace("{currentContent}", document.content || "")
+    .replace("{instruction}", instruction);
 
   try {
     // Use streamObject to get structured suggestions
@@ -78,13 +99,16 @@ export async function streamDocumentSuggestions(params: {
       temperature: 0.7,
     });
 
-    console.log('💡 [SUGGESTIONS] Starting to stream suggestions');
+    console.log("💡 [SUGGESTIONS] Starting to stream suggestions");
 
     let suggestionCount = 0;
 
     // Stream suggestions as they are generated
     for await (const partialObject of partialObjectStream) {
-      if (partialObject.suggestions && Array.isArray(partialObject.suggestions)) {
+      if (
+        partialObject.suggestions &&
+        Array.isArray(partialObject.suggestions)
+      ) {
         // Check if we have new suggestions to stream
         const currentSuggestionCount = partialObject.suggestions.length;
 
@@ -94,7 +118,11 @@ export async function streamDocumentSuggestions(params: {
             const suggestion = partialObject.suggestions[i];
 
             // Only stream if the suggestion exists and is complete
-            if (suggestion && suggestion.originalText && suggestion.suggestedText && suggestion.description) {
+            if (
+              suggestion?.originalText &&
+              suggestion.suggestedText &&
+              suggestion.description
+            ) {
               console.log(`💡 [SUGGESTIONS] Streaming suggestion ${i + 1}:`, {
                 original: suggestion.originalText.substring(0, 50),
                 suggested: suggestion.suggestedText.substring(0, 50),
@@ -123,8 +151,11 @@ export async function streamDocumentSuggestions(params: {
       }
     }
 
-    console.log('💡 [SUGGESTIONS] Suggestion generation complete');
-    console.log('💡 [SUGGESTIONS] Total suggestions generated:', suggestionCount);
+    console.log("💡 [SUGGESTIONS] Suggestion generation complete");
+    console.log(
+      "💡 [SUGGESTIONS] Total suggestions generated:",
+      suggestionCount
+    );
 
     // Signal completion
     dataStream.write({
@@ -137,10 +168,10 @@ export async function streamDocumentSuggestions(params: {
       documentId,
       suggestionCount,
     };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('❌ [SUGGESTIONS] Generation failed:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("❌ [SUGGESTIONS] Generation failed:", errorMessage);
 
     // Write error to stream
     dataStream.write({

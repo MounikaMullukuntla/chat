@@ -11,7 +11,7 @@
     },
     {
       "idx": 1,
-      "version": "7", 
+      "version": "7",
       "when": 1730426137000,
       "tag": "0002_functions",
       "breakpoints": true
@@ -20,7 +20,7 @@
       "idx": 2,
       "version": "7",
       "when": 1730426137005,
-      "tag": "0003_indexes", 
+      "tag": "0003_indexes",
       "breakpoints": true
     },
     {

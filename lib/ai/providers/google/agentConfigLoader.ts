@@ -1,11 +1,11 @@
 import "server-only";
 
-import { GoogleProviderToolsAgent } from './provider-tools-agent';
-import { GoogleDocumentAgentStreaming } from './document-agent-streaming';
-import { GoogleMermaidAgentStreaming } from './mermaid-agent-streaming';
-import { GooglePythonAgentStreaming } from './python-agent-streaming';
-import { GoogleGitMcpAgent } from './git-mcp-agent';
-import { getAdminConfig } from '@/lib/db/queries/admin';
+import { getAdminConfig } from "@/lib/db/queries/admin";
+import { GoogleDocumentAgentStreaming } from "./document-agent-streaming";
+import { GoogleGitMcpAgent } from "./git-mcp-agent";
+import { GoogleMermaidAgentStreaming } from "./mermaid-agent-streaming";
+import { GoogleProviderToolsAgent } from "./provider-tools-agent";
+import { GooglePythonAgentStreaming } from "./python-agent-streaming";
 
 /**
  * Agent configuration loader
@@ -47,25 +47,34 @@ export class AgentConfigLoader {
   async loadProviderToolsConfig() {
     try {
       const config = await getAdminConfig({
-        configKey: 'provider_tools_agent_google'
+        configKey: "provider_tools_agent_google",
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Provider Tools Agent loaded and enabled');
+        console.log("✅ [AGENT-INIT] Provider Tools Agent loaded and enabled");
 
         this.providerToolsConfig = config.configData;
-        this.providerToolsAgent = new GoogleProviderToolsAgent(config.configData as any);
+        this.providerToolsAgent = new GoogleProviderToolsAgent(
+          config.configData as any
+        );
 
         if (this.apiKey) {
           this.providerToolsAgent.setApiKey(this.apiKey);
         } else {
-          console.log('⚠️  [AGENT-INIT] Provider Tools Agent: No API key available');
+          console.log(
+            "⚠️  [AGENT-INIT] Provider Tools Agent: No API key available"
+          );
         }
       } else {
-        console.log('❌ [AGENT-INIT] Provider Tools Agent: disabled or not found');
+        console.log(
+          "❌ [AGENT-INIT] Provider Tools Agent: disabled or not found"
+        );
       }
     } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Provider Tools Agent:', error);
+      console.error(
+        "❌ [AGENT-INIT] Failed to load Provider Tools Agent:",
+        error
+      );
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -76,25 +85,29 @@ export class AgentConfigLoader {
   async loadDocumentAgentConfig() {
     try {
       const config = await getAdminConfig({
-        configKey: 'document_agent_google'
+        configKey: "document_agent_google",
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Document Agent loaded and enabled (STREAMING VERSION)');
+        console.log(
+          "✅ [AGENT-INIT] Document Agent loaded and enabled (STREAMING VERSION)"
+        );
 
         this.documentAgentConfig = config.configData;
-        this.documentAgentStreaming = new GoogleDocumentAgentStreaming(config.configData as any);
+        this.documentAgentStreaming = new GoogleDocumentAgentStreaming(
+          config.configData as any
+        );
 
         if (this.apiKey) {
           this.documentAgentStreaming.setApiKey(this.apiKey);
         } else {
-          console.log('⚠️  [AGENT-INIT] Document Agent: No API key available');
+          console.log("⚠️  [AGENT-INIT] Document Agent: No API key available");
         }
       } else {
-        console.log('❌ [AGENT-INIT] Document Agent: disabled or not found');
+        console.log("❌ [AGENT-INIT] Document Agent: disabled or not found");
       }
     } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Document Agent:', error);
+      console.error("❌ [AGENT-INIT] Failed to load Document Agent:", error);
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -105,25 +118,29 @@ export class AgentConfigLoader {
   async loadMermaidAgentConfig() {
     try {
       const config = await getAdminConfig({
-        configKey: 'mermaid_agent_google'
+        configKey: "mermaid_agent_google",
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Mermaid Agent loaded and enabled (STREAMING VERSION)');
+        console.log(
+          "✅ [AGENT-INIT] Mermaid Agent loaded and enabled (STREAMING VERSION)"
+        );
 
         this.mermaidAgentConfig = config.configData;
-        this.mermaidAgentStreaming = new GoogleMermaidAgentStreaming(config.configData as any);
+        this.mermaidAgentStreaming = new GoogleMermaidAgentStreaming(
+          config.configData as any
+        );
 
         if (this.apiKey) {
           this.mermaidAgentStreaming.setApiKey(this.apiKey);
         } else {
-          console.log('⚠️  [AGENT-INIT] Mermaid Agent: No API key available');
+          console.log("⚠️  [AGENT-INIT] Mermaid Agent: No API key available");
         }
       } else {
-        console.log('❌ [AGENT-INIT] Mermaid Agent: disabled or not found');
+        console.log("❌ [AGENT-INIT] Mermaid Agent: disabled or not found");
       }
     } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Mermaid Agent:', error);
+      console.error("❌ [AGENT-INIT] Failed to load Mermaid Agent:", error);
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -134,25 +151,29 @@ export class AgentConfigLoader {
   async loadPythonAgentConfig() {
     try {
       const config = await getAdminConfig({
-        configKey: 'python_agent_google'
+        configKey: "python_agent_google",
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] Python Agent loaded and enabled (STREAMING VERSION)');
+        console.log(
+          "✅ [AGENT-INIT] Python Agent loaded and enabled (STREAMING VERSION)"
+        );
 
         this.pythonAgentConfig = config.configData;
-        this.pythonAgentStreaming = new GooglePythonAgentStreaming(config.configData as any);
+        this.pythonAgentStreaming = new GooglePythonAgentStreaming(
+          config.configData as any
+        );
 
         if (this.apiKey) {
           this.pythonAgentStreaming.setApiKey(this.apiKey);
         } else {
-          console.log('⚠️  [AGENT-INIT] Python Agent: No API key available');
+          console.log("⚠️  [AGENT-INIT] Python Agent: No API key available");
         }
       } else {
-        console.log('❌ [AGENT-INIT] Python Agent: disabled or not found');
+        console.log("❌ [AGENT-INIT] Python Agent: disabled or not found");
       }
     } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load Python Agent:', error);
+      console.error("❌ [AGENT-INIT] Failed to load Python Agent:", error);
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -163,11 +184,11 @@ export class AgentConfigLoader {
   async loadGitMcpAgentConfig() {
     try {
       const config = await getAdminConfig({
-        configKey: 'git_mcp_agent_google'
+        configKey: "git_mcp_agent_google",
       });
 
       if (config?.configData && (config.configData as any).enabled) {
-        console.log('✅ [AGENT-INIT] GitHub MCP Agent loaded and enabled');
+        console.log("✅ [AGENT-INIT] GitHub MCP Agent loaded and enabled");
 
         this.gitMcpAgentConfig = config.configData;
         this.gitMcpAgent = new GoogleGitMcpAgent(config.configData as any);
@@ -185,7 +206,7 @@ export class AgentConfigLoader {
         // Model will be set later via setGitMcpAgentModel() from chat agent
       }
     } catch (error) {
-      console.error('❌ [AGENT-INIT] Failed to load GitHub MCP Agent:', error);
+      console.error("❌ [AGENT-INIT] Failed to load GitHub MCP Agent:", error);
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }

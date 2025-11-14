@@ -26,11 +26,12 @@ export const login = async (
   formData: FormData
 ): Promise<LoginActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const _validatedData = authFormSchema.parse({
       email: formData.get("email"),
       password: formData.get("password"),
     });
 
+    await Promise.resolve(); // Placeholder for async Supabase auth call
     // TODO: Implement Supabase signInWithPassword
     // const { data, error } = await supabase.auth.signInWithPassword({
     //   email: validatedData.email,
@@ -64,11 +65,12 @@ export const register = async (
   formData: FormData
 ): Promise<RegisterActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const _validatedData = authFormSchema.parse({
       email: formData.get("email"),
       password: formData.get("password"),
     });
 
+    await Promise.resolve(); // Placeholder for async Supabase auth call
     // TODO: Implement Supabase signUp
     // const { data, error } = await supabase.auth.signUp({
     //   email: validatedData.email,

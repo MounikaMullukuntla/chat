@@ -22,6 +22,7 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import type { Vote } from "@/lib/db/drizzle-schema";
 import { ChatSDKError } from "@/lib/errors";
+import { storage } from "@/lib/storage";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
@@ -32,7 +33,6 @@ import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
 import type { VisibilityType } from "./visibility-selector";
-import { storage } from "@/lib/storage";
 
 export function Chat({
   id,
@@ -87,31 +87,33 @@ export function Chat({
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
         // Get Google API key from localStorage
-        const googleApiKey = storage.apiKeys.get('google');
+        const googleApiKey = storage.apiKeys.get("google");
 
         // Get GitHub PAT from localStorage (for GitHub MCP agent)
         const githubPAT = storage.github.getToken();
 
         // Extract thinking mode from the last message's experimental metadata
         const lastMessage = request.messages.at(-1);
-        const thinkingEnabled = (lastMessage as any)?.experimental_providerMetadata?.thinking || false;
+        const thinkingEnabled =
+          (lastMessage as any)?.experimental_providerMetadata?.thinking ||
+          false;
 
         const requestBody = {
           id: request.id,
           message: lastMessage,
           selectedChatModel: currentModelIdRef.current,
           selectedVisibilityType: visibilityType,
-          thinkingEnabled: thinkingEnabled,
+          thinkingEnabled,
           ...request.body,
         };
 
         // Send API keys in headers for security
         const headers: Record<string, string> = {};
         if (googleApiKey) {
-          headers['x-google-api-key'] = googleApiKey;
+          headers["x-google-api-key"] = googleApiKey;
         }
         if (githubPAT) {
-          headers['x-github-pat'] = githubPAT;
+          headers["x-github-pat"] = githubPAT;
         }
 
         return {
@@ -130,18 +132,18 @@ export function Chat({
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
     onError: (error) => {
-      console.error('💥 [DEBUG] Chat error occurred:', {
-        error: error,
+      console.error("💥 [DEBUG] Chat error occurred:", {
+        error,
         errorType: error.constructor.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
-      
+
       if (error instanceof ChatSDKError) {
-        console.log('🔍 [DEBUG] ChatSDKError details:', {
-          message: error.message
+        console.log("🔍 [DEBUG] ChatSDKError details:", {
+          message: error.message,
         });
-        
+
         // Check if it's a credit card error
         if (
           error.message?.includes("AI Gateway requires a valid credit card")
@@ -154,16 +156,17 @@ export function Chat({
           });
         }
       } else if (error instanceof Error) {
-        console.log('🔍 [DEBUG] Generic Error details:', {
+        console.log("🔍 [DEBUG] Generic Error details:", {
           name: error.name,
-          message: error.message
+          message: error.message,
         });
-        
+
         // Handle API key errors
         if (error.message?.includes("Google API key is required")) {
           toast({
             type: "error",
-            description: "Please configure your Google API key in Settings to use the chat.",
+            description:
+              "Please configure your Google API key in Settings to use the chat.",
           });
         } else {
           toast({
@@ -172,7 +175,7 @@ export function Chat({
           });
         }
       } else {
-        console.log('🔍 [DEBUG] Unknown error type:', typeof error, error);
+        console.log("🔍 [DEBUG] Unknown error type:", typeof error, error);
         toast({
           type: "error",
           description: "An unexpected error occurred",
@@ -239,6 +242,7 @@ export function Chat({
             <MultimodalInput
               attachments={attachments}
               chatId={id}
+              githubPAT={storage.github.getToken() || undefined}
               input={input}
               messages={messages}
               onModelChange={setCurrentModelId}
@@ -251,7 +255,6 @@ export function Chat({
               status={status}
               stop={stop}
               usage={usage}
-              githubPAT={storage.github.getToken() || undefined}
             />
           )}
         </div>

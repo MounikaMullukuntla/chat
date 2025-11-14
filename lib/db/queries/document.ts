@@ -1,20 +1,9 @@
 import "server-only";
 
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gt,
-  max,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gt, max } from "drizzle-orm";
 import type { ArtifactKind } from "@/components/artifact";
 import { ChatSDKError } from "../../errors";
-import {
-  document,
-  suggestion,
-  type Suggestion,
-} from "../drizzle-schema";
+import { document, type Suggestion, suggestion } from "../drizzle-schema";
 import { db } from "./base";
 
 export async function saveDocument({
@@ -42,7 +31,7 @@ export async function saveDocument({
       .select({ maxVersion: max(document.version_number) })
       .from(document)
       .where(eq(document.id, id));
-    
+
     const nextVersion = (versionResult[0]?.maxVersion || 0) + 1;
 
     return await db
@@ -101,7 +90,7 @@ export async function getDocumentById({ id }: { id: string }) {
 
 export async function getDocumentByIdAndVersion({
   id,
-  version
+  version,
 }: {
   id: string;
   version: number;
@@ -110,12 +99,7 @@ export async function getDocumentByIdAndVersion({
     const [selectedDocument] = await db
       .select()
       .from(document)
-      .where(
-        and(
-          eq(document.id, id),
-          eq(document.version_number, version)
-        )
-      );
+      .where(and(eq(document.id, id), eq(document.version_number, version)));
 
     return selectedDocument;
   } catch (_error) {
@@ -160,7 +144,11 @@ export async function getDocumentsByChat({ chatId }: { chatId: string }) {
   }
 }
 
-export async function getLatestDocumentVersionsByChat({ chatId }: { chatId: string }) {
+export async function getLatestDocumentVersionsByChat({
+  chatId,
+}: {
+  chatId: string;
+}) {
   try {
     // Get only the latest version of each document in the chat
     const documents = await db
@@ -179,15 +167,18 @@ export async function getLatestDocumentVersionsByChat({ chatId }: { chatId: stri
     // Group by document ID and keep only the latest version
     const latestVersionsMap = new Map();
     for (const doc of documents) {
-      if (!latestVersionsMap.has(doc.id) ||
-          (doc.version_number && latestVersionsMap.get(doc.id).version_number < doc.version_number)) {
+      if (
+        !latestVersionsMap.has(doc.id) ||
+        (doc.version_number &&
+          latestVersionsMap.get(doc.id).version_number < doc.version_number)
+      ) {
         latestVersionsMap.set(doc.id, doc);
       }
     }
 
     // Return as array sorted by creation date (most recent first)
-    return Array.from(latestVersionsMap.values()).sort((a, b) =>
-      b.createdAt.getTime() - a.createdAt.getTime()
+    return Array.from(latestVersionsMap.values()).sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     );
   } catch (_error) {
     throw new ChatSDKError(
