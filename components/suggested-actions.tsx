@@ -4,8 +4,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { memo } from "react";
 import { useLocalStorage } from "usehooks-ts";
-import { useModelCapabilities } from "@/hooks/use-model-capabilities";
-import type { ChatMessage } from "@/lib/types";
+import type { AdminConfigSummary, ChatMessage } from "@/lib/types";
 import { Suggestion } from "./elements/suggestion";
 import type { VisibilityType } from "./visibility-selector";
 
@@ -15,6 +14,7 @@ type SuggestedActionsProps = {
   selectedVisibilityType: VisibilityType;
   selectedModelId?: string;
   selectedProvider?: string;
+  adminConfig?: AdminConfigSummary | null;
 };
 
 function PureSuggestedActions({
@@ -22,12 +22,10 @@ function PureSuggestedActions({
   sendMessage,
   selectedModelId,
   selectedProvider,
+  adminConfig,
 }: SuggestedActionsProps) {
   // Get thinking mode from localStorage (same as multimodal-input)
   const [thinkingMode] = useLocalStorage("thinking-mode", false);
-
-  // Fetch adminConfig directly in this component
-  const { modelCapabilities: adminConfig } = useModelCapabilities();
 
   const suggestedActions = [
     "What are the advantages of using Next.js?",
@@ -107,6 +105,9 @@ export const SuggestedActions = memo(
       return false;
     }
     if (prevProps.selectedProvider !== nextProps.selectedProvider) {
+      return false;
+    }
+    if (prevProps.adminConfig !== nextProps.adminConfig) {
       return false;
     }
 

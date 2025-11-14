@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AdminConfigSummary } from "@/lib/types";
 
 type UseModelCapabilitiesResult = {
@@ -16,7 +16,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchModelCapabilities = async () => {
+  const fetchModelCapabilities = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -48,7 +48,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchModelCapabilities();
