@@ -88,7 +88,13 @@ export class GoogleProviderToolsAgent {
   }> {
     const { input, userId } = params;
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PROVIDER_TOOLS_AGENT,
+      operation_type: AgentOperationType.TOOL_INVOCATION,
+      operation_category: AgentOperationCategory.TOOL_USE,
+      user_id: userId,
+    });
 
     try {
       const model = this.getModel();
@@ -149,15 +155,9 @@ export class GoogleProviderToolsAgent {
       const thinkingMode = this.modelId?.includes("thinking") || false;
 
       // Log successful provider tools execution
-      await logAgentActivity({
-        agentType: AgentType.PROVIDER_TOOLS_AGENT,
-        operationType: AgentOperationType.TOOL_INVOCATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
-        userId,
+      await tracker.end({
         success: true,
-        duration: tracker.getDuration(),
-        metadata: {
+        operation_metadata: {
           query_length: input.length,
           tools_enabled: Object.keys(this.buildTools()).join(", "),
           thinking_mode: thinkingMode,
@@ -179,16 +179,10 @@ export class GoogleProviderToolsAgent {
       console.error("❌ [PROVIDER-TOOLS] Execution failed:", errorMessage);
 
       // Log provider tools execution failure
-      await logAgentActivity({
-        agentType: AgentType.PROVIDER_TOOLS_AGENT,
-        operationType: AgentOperationType.TOOL_INVOCATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
-        userId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: errorMessage,
-        metadata: {
+        error_message: errorMessage,
+        operation_metadata: {
           query_length: input.length,
           tools_enabled: Object.keys(this.buildTools()).join(", "),
           thinking_mode: this.modelId?.includes("thinking") || false,

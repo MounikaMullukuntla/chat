@@ -45,6 +45,7 @@ export async function POST(request: Request) {
   const requestStartTime = Date.now();
   let requestBody: PostRequestBody;
   let user: User | undefined;
+  let chat: Awaited<ReturnType<typeof getChatById>> | undefined;
 
   try {
     const json = await request.json();
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     user = authResult.user;
 
     // Chat management
-    const chat = await getChatById({ id });
+    chat = await getChatById({ id });
     if (chat) {
       if (chat.user_id !== user.id) {
         return new ChatSDKError("forbidden:chat").toResponse();

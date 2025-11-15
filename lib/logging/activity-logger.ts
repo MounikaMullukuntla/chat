@@ -363,6 +363,10 @@ export class PerformanceTracker {
     } as AgentActivityLog);
   }
 
+  getDuration(): number {
+    return Date.now() - this.startTime;
+  }
+
   getCorrelationId(): string {
     return this.log.correlation_id!;
   }

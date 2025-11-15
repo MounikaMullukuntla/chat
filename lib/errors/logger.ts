@@ -89,6 +89,7 @@ export type ClientErrorContext = {
   colno?: number;
   stack?: string;
   reason?: any;
+  [key: string]: any; // Allow additional metadata
 };
 
 // Interface for server-side error context

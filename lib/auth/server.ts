@@ -14,6 +14,9 @@ import {
   createCorrelationId,
   UserActivityType,
   ActivityCategory,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
 } from "@/lib/logging/activity-logger";
 
 // Types for server auth results
@@ -177,7 +180,12 @@ export async function getSession(): Promise<Session | null> {
  */
 export async function requireAuth(): Promise<ServerAuthResult> {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker();
+  const tracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.CHAT_MODEL_AGENT,
+    operation_type: AgentOperationType.AUTHENTICATION,
+    operation_category: AgentOperationCategory.AUTHENTICATION,
+  });
 
   const user = await getCurrentUser();
   const session = await getSession();
@@ -194,7 +202,7 @@ export async function requireAuth(): Promise<ServerAuthResult> {
         has_session: !!session,
       },
       correlationId,
-      duration: tracker.end(),
+      duration: await tracker.end(),
     });
 
     const error = new Error("Authentication required") as ServerAuthError;
@@ -214,7 +222,7 @@ export async function requireAuth(): Promise<ServerAuthResult> {
       session_expires_at: session.expires_at,
     },
     correlationId,
-    duration: tracker.end(),
+    duration: await tracker.end(),
   });
 
   return { user, session };
@@ -240,7 +248,12 @@ export async function requireAuth(): Promise<ServerAuthResult> {
  */
 export async function requireAdmin(): Promise<ServerAuthResult> {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker();
+  const tracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.CHAT_MODEL_AGENT,
+    operation_type: AgentOperationType.AUTHENTICATION,
+    operation_category: AgentOperationCategory.AUTHENTICATION,
+  });
 
   const { user, session } = await requireAuth();
 
@@ -258,7 +271,7 @@ export async function requireAdmin(): Promise<ServerAuthResult> {
         email: user.email,
       },
       correlationId,
-      duration: tracker.end(),
+      duration: await tracker.end(),
     });
 
     const error = new Error("Admin privileges required") as ServerAuthError;
@@ -278,7 +291,7 @@ export async function requireAdmin(): Promise<ServerAuthResult> {
       email: user.email,
     },
     correlationId,
-    duration: tracker.end(),
+    duration: await tracker.end(),
   });
 
   return { user, session };

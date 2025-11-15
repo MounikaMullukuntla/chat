@@ -81,7 +81,13 @@ export async function streamMermaidDiagramFix(params: {
   } = params;
 
   const correlationId = createCorrelationId();
-  const performanceTracker = new PerformanceTracker();
+  const performanceTracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.MERMAID_AGENT,
+    operation_type: AgentOperationType.DIAGRAM_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+  });
 
   console.log("🎨 [STREAM-FIX] Starting real-time diagram fix");
   console.log("🎨 [STREAM-FIX] Diagram ID:", diagramId);

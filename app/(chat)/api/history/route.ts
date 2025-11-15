@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
       activity_metadata: {
         limit,
         cursor: startingAfter || endingBefore || null,
-        result_count: chats.length,
+        result_count: chats.chats.length,
+        has_more: chats.hasMore,
       },
       request_path: request.url,
       request_method: "GET",
@@ -95,7 +96,7 @@ export async function DELETE(request: NextRequest) {
       activity_type: UserActivityType.HISTORY_DELETE,
       activity_category: ActivityCategory.HISTORY,
       activity_metadata: {
-        chats_deleted: result.length,
+        chats_deleted: result.deletedCount,
       },
       request_path: request.url,
       request_method: "DELETE",

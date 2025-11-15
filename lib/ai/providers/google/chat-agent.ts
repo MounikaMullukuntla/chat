@@ -164,7 +164,13 @@ export class GoogleChatAgent {
     }
   ) {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.STREAMING,
+      operation_category: AgentOperationCategory.STREAMING,
+      user_id: params.user?.id,
+    });
 
     try {
       const {
@@ -194,14 +200,13 @@ export class GoogleChatAgent {
 
       // Log chat operation start
       await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.STREAMING,
-        category: AgentOperationCategory.STREAMING,
-        correlationId,
-        userId: params.user?.id,
-        success: true,
-        duration: tracker.getDuration(),
-        metadata: {
+        agent_type: AgentType.CHAT_MODEL_AGENT,
+        operation_type: AgentOperationType.STREAMING,
+        operation_category: AgentOperationCategory.STREAMING,
+        correlation_id: correlationId,
+        user_id: params.user?.id,
+        duration_ms: tracker.getDuration(),
+        operation_metadata: {
           model_id: params.modelId,
           thinking_mode: shouldEnableThinking,
           message_count: params.messages.length,
@@ -319,16 +324,10 @@ export class GoogleChatAgent {
       console.error("Google Chat Agent error:", error);
 
       // Log chat operation failure
-      await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.STREAMING,
-        category: AgentOperationCategory.STREAMING,
-        correlationId,
-        userId: params.user?.id,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           model_id: params.modelId,
           thinking_mode: params.thinkingMode,
           message_count: params.messages.length,

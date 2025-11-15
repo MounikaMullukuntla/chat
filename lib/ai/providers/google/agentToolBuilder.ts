@@ -33,7 +33,13 @@ export class AgentToolBuilder {
     chatId?: string
   ): Record<string, any> | undefined {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.TOOL_INVOCATION,
+      operation_category: AgentOperationCategory.TOOL_USE,
+      user_id: user?.id,
+    });
     const tools: Record<string, any> = {};
     const enabledTools: string[] = [];
 
@@ -601,13 +607,14 @@ export class AgentToolBuilder {
 
       // Log successful tool building
       logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.TOOL_INVOCATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
+        agent_type: AgentType.CHAT_MODEL_AGENT,
+        operation_type: AgentOperationType.TOOL_INVOCATION,
+        operation_category: AgentOperationCategory.TOOL_USE,
+        correlation_id: correlationId,
+        user_id: user?.id,
         success: true,
-        duration: tracker.getDuration(),
-        metadata: {
+        duration_ms: tracker.getDuration(),
+        operation_metadata: {
           tools_built: enabledTools,
           enabled_agents: enabledTools.join(", "),
         },
@@ -622,13 +629,14 @@ export class AgentToolBuilder {
 
     // Log no tools enabled
     logAgentActivity({
-      agentType: AgentType.CHAT_MODEL_AGENT,
-      operationType: AgentOperationType.TOOL_INVOCATION,
-      category: AgentOperationCategory.TOOL_USE,
-      correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.TOOL_INVOCATION,
+      operation_category: AgentOperationCategory.TOOL_USE,
+      correlation_id: correlationId,
+      user_id: user?.id,
       success: false,
-      duration: tracker.getDuration(),
-      metadata: {
+      duration_ms: tracker.getDuration(),
+      operation_metadata: {
         tools_built: [],
         enabled_agents: "none",
         reason: "no tools enabled",

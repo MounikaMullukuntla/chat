@@ -54,7 +54,12 @@ export class AgentConfigLoader {
    */
   async loadProviderToolsConfig() {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PROVIDER_TOOLS_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const config = await getAdminConfig({
@@ -77,14 +82,9 @@ export class AgentConfigLoader {
           );
         }
 
-        await logAgentActivity({
-          agentType: AgentType.PROVIDER_TOOLS_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: true,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "provider_tools_agent_google",
             config_loaded: true,
             model_id: (config.configData as any).modelId,
@@ -95,14 +95,9 @@ export class AgentConfigLoader {
           "❌ [AGENT-INIT] Provider Tools Agent: disabled or not found"
         );
 
-        await logAgentActivity({
-          agentType: AgentType.PROVIDER_TOOLS_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: false,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "provider_tools_agent_google",
             config_loaded: false,
             reason: "disabled or not found",
@@ -115,15 +110,10 @@ export class AgentConfigLoader {
         error
       );
 
-      await logAgentActivity({
-        agentType: AgentType.PROVIDER_TOOLS_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        category: AgentOperationCategory.CONFIGURATION,
-        correlationId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           agent_name: "provider_tools_agent_google",
           config_loaded: false,
         },
@@ -138,7 +128,12 @@ export class AgentConfigLoader {
    */
   async loadDocumentAgentConfig() {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.DOCUMENT_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const config = await getAdminConfig({
@@ -161,14 +156,9 @@ export class AgentConfigLoader {
           console.log("⚠️  [AGENT-INIT] Document Agent: No API key available");
         }
 
-        await logAgentActivity({
-          agentType: AgentType.DOCUMENT_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: true,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "document_agent_google",
             config_loaded: true,
             model_id: (config.configData as any).modelId,
@@ -177,14 +167,9 @@ export class AgentConfigLoader {
       } else {
         console.log("❌ [AGENT-INIT] Document Agent: disabled or not found");
 
-        await logAgentActivity({
-          agentType: AgentType.DOCUMENT_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: false,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "document_agent_google",
             config_loaded: false,
             reason: "disabled or not found",
@@ -194,15 +179,10 @@ export class AgentConfigLoader {
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Document Agent:", error);
 
-      await logAgentActivity({
-        agentType: AgentType.DOCUMENT_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        category: AgentOperationCategory.CONFIGURATION,
-        correlationId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           agent_name: "document_agent_google",
           config_loaded: false,
         },
@@ -217,7 +197,12 @@ export class AgentConfigLoader {
    */
   async loadMermaidAgentConfig() {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.MERMAID_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const config = await getAdminConfig({
@@ -240,14 +225,9 @@ export class AgentConfigLoader {
           console.log("⚠️  [AGENT-INIT] Mermaid Agent: No API key available");
         }
 
-        await logAgentActivity({
-          agentType: AgentType.MERMAID_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: true,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "mermaid_agent_google",
             config_loaded: true,
             model_id: (config.configData as any).modelId,
@@ -256,14 +236,9 @@ export class AgentConfigLoader {
       } else {
         console.log("❌ [AGENT-INIT] Mermaid Agent: disabled or not found");
 
-        await logAgentActivity({
-          agentType: AgentType.MERMAID_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: false,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "mermaid_agent_google",
             config_loaded: false,
             reason: "disabled or not found",
@@ -273,15 +248,10 @@ export class AgentConfigLoader {
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Mermaid Agent:", error);
 
-      await logAgentActivity({
-        agentType: AgentType.MERMAID_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        category: AgentOperationCategory.CONFIGURATION,
-        correlationId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           agent_name: "mermaid_agent_google",
           config_loaded: false,
         },
@@ -296,7 +266,12 @@ export class AgentConfigLoader {
    */
   async loadPythonAgentConfig() {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const config = await getAdminConfig({
@@ -319,14 +294,9 @@ export class AgentConfigLoader {
           console.log("⚠️  [AGENT-INIT] Python Agent: No API key available");
         }
 
-        await logAgentActivity({
-          agentType: AgentType.PYTHON_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: true,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "python_agent_google",
             config_loaded: true,
             model_id: (config.configData as any).modelId,
@@ -335,14 +305,9 @@ export class AgentConfigLoader {
       } else {
         console.log("❌ [AGENT-INIT] Python Agent: disabled or not found");
 
-        await logAgentActivity({
-          agentType: AgentType.PYTHON_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: false,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "python_agent_google",
             config_loaded: false,
             reason: "disabled or not found",
@@ -352,15 +317,10 @@ export class AgentConfigLoader {
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Python Agent:", error);
 
-      await logAgentActivity({
-        agentType: AgentType.PYTHON_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        category: AgentOperationCategory.CONFIGURATION,
-        correlationId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           agent_name: "python_agent_google",
           config_loaded: false,
         },
@@ -375,7 +335,12 @@ export class AgentConfigLoader {
    */
   async loadGitMcpAgentConfig() {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.GIT_MCP_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const config = await getAdminConfig({
@@ -398,14 +363,9 @@ export class AgentConfigLoader {
           this.gitMcpAgent.setGoogleApiKey(this.apiKey);
         }
 
-        await logAgentActivity({
-          agentType: AgentType.GIT_MCP_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: true,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "git_mcp_agent_google",
             config_loaded: true,
             model_id: (config.configData as any).modelId,
@@ -414,14 +374,9 @@ export class AgentConfigLoader {
 
         // Model will be set later via setGitMcpAgentModel() from chat agent
       } else {
-        await logAgentActivity({
-          agentType: AgentType.GIT_MCP_AGENT,
-          operationType: AgentOperationType.INITIALIZATION,
-          category: AgentOperationCategory.CONFIGURATION,
-          correlationId,
+        await tracker.end({
           success: false,
-          duration: tracker.getDuration(),
-          metadata: {
+          operation_metadata: {
             agent_name: "git_mcp_agent_google",
             config_loaded: false,
             reason: "disabled or not found",
@@ -431,15 +386,10 @@ export class AgentConfigLoader {
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load GitHub MCP Agent:", error);
 
-      await logAgentActivity({
-        agentType: AgentType.GIT_MCP_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        category: AgentOperationCategory.CONFIGURATION,
-        correlationId,
+      await tracker.end({
         success: false,
-        duration: tracker.getDuration(),
-        error: error instanceof Error ? error.message : String(error),
-        metadata: {
+        error_message: error instanceof Error ? error.message : String(error),
+        operation_metadata: {
           agent_name: "git_mcp_agent_google",
           config_loaded: false,
         },
