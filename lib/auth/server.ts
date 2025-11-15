@@ -8,6 +8,13 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@/lib/db/supabase-client";
+import {
+  logUserActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging/activity-logger";
 
 // Types for server auth results
 export type ServerAuthResult = {
@@ -37,6 +44,8 @@ export interface ServerAuthError extends Error {
  * }
  */
 export async function getCurrentUser(): Promise<User | null> {
+  const correlationId = createCorrelationId();
+
   try {
     const supabase = await createServerComponentClient();
     const {
@@ -46,12 +55,39 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (error) {
       console.error("Error getting current user:", error);
+
+      // Log authentication error
+      await logUserActivity({
+        userId: "unknown",
+        type: UserActivityType.AUTH_ERROR,
+        category: ActivityCategory.AUTHENTICATION,
+        description: "Failed to get current user",
+        metadata: {
+          error_message: error.message,
+          error_code: error.status,
+        },
+        correlationId,
+      });
+
       return null;
     }
 
     return user;
   } catch (err) {
     console.error("Error in getCurrentUser:", err);
+
+    // Log unexpected error
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Unexpected error in getCurrentUser",
+      metadata: {
+        error: err instanceof Error ? err.message : "Unknown error",
+      },
+      correlationId,
+    });
+
     return null;
   }
 }
@@ -73,6 +109,8 @@ export async function getCurrentUser(): Promise<User | null> {
  * }
  */
 export async function getSession(): Promise<Session | null> {
+  const correlationId = createCorrelationId();
+
   try {
     const supabase = await createServerComponentClient();
     const {
@@ -82,12 +120,39 @@ export async function getSession(): Promise<Session | null> {
 
     if (error) {
       console.error("Error getting session:", error);
+
+      // Log session error
+      await logUserActivity({
+        userId: "unknown",
+        type: UserActivityType.AUTH_ERROR,
+        category: ActivityCategory.AUTHENTICATION,
+        description: "Failed to get session",
+        metadata: {
+          error_message: error.message,
+          error_code: error.status,
+        },
+        correlationId,
+      });
+
       return null;
     }
 
     return session;
   } catch (err) {
     console.error("Error in getSession:", err);
+
+    // Log unexpected error
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Unexpected error in getSession",
+      metadata: {
+        error: err instanceof Error ? err.message : "Unknown error",
+      },
+      correlationId,
+    });
+
     return null;
   }
 }
@@ -111,15 +176,46 @@ export async function getSession(): Promise<Session | null> {
  * }
  */
 export async function requireAuth(): Promise<ServerAuthResult> {
+  const correlationId = createCorrelationId();
+  const tracker = new PerformanceTracker();
+
   const user = await getCurrentUser();
   const session = await getSession();
 
   if (!user || !session) {
+    // Log authentication failure
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Authentication required but not provided",
+      metadata: {
+        has_user: !!user,
+        has_session: !!session,
+      },
+      correlationId,
+      duration: tracker.end(),
+    });
+
     const error = new Error("Authentication required") as ServerAuthError;
     error.code = "UNAUTHORIZED";
     error.statusCode = 401;
     throw error;
   }
+
+  // Log successful authentication
+  await logUserActivity({
+    userId: user.id,
+    type: UserActivityType.AUTH_LOGIN,
+    category: ActivityCategory.AUTHENTICATION,
+    description: "Authentication verified successfully",
+    metadata: {
+      email: user.email,
+      session_expires_at: session.expires_at,
+    },
+    correlationId,
+    duration: tracker.end(),
+  });
 
   return { user, session };
 }
@@ -143,16 +239,47 @@ export async function requireAuth(): Promise<ServerAuthResult> {
  * }
  */
 export async function requireAdmin(): Promise<ServerAuthResult> {
+  const correlationId = createCorrelationId();
+  const tracker = new PerformanceTracker();
+
   const { user, session } = await requireAuth();
 
   const userRole = await getUserRole(user);
 
   if (userRole !== "admin") {
+    // Log unauthorized admin access attempt
+    await logUserActivity({
+      userId: user.id,
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Admin privileges required but user is not admin",
+      metadata: {
+        user_role: userRole,
+        email: user.email,
+      },
+      correlationId,
+      duration: tracker.end(),
+    });
+
     const error = new Error("Admin privileges required") as ServerAuthError;
     error.code = "FORBIDDEN";
     error.statusCode = 403;
     throw error;
   }
+
+  // Log successful admin authentication
+  await logUserActivity({
+    userId: user.id,
+    type: UserActivityType.AUTH_LOGIN,
+    category: ActivityCategory.AUTHENTICATION,
+    description: "Admin authentication verified successfully",
+    metadata: {
+      user_role: userRole,
+      email: user.email,
+    },
+    correlationId,
+    duration: tracker.end(),
+  });
 
   return { user, session };
 }
@@ -239,6 +366,8 @@ export async function isAdmin(user?: User | null): Promise<boolean> {
 export async function validateSession(
   _request: Request
 ): Promise<Session | null> {
+  const correlationId = createCorrelationId();
+
   try {
     // For API routes, we need to create a server client with the request cookies
     const supabase = await createServerComponentClient();
@@ -249,12 +378,39 @@ export async function validateSession(
 
     if (error) {
       console.error("Error validating session:", error);
+
+      // Log session validation error
+      await logUserActivity({
+        userId: "unknown",
+        type: UserActivityType.AUTH_ERROR,
+        category: ActivityCategory.AUTHENTICATION,
+        description: "Session validation failed",
+        metadata: {
+          error_message: error.message,
+          error_code: error.status,
+        },
+        correlationId,
+      });
+
       return null;
     }
 
     return session;
   } catch (err) {
     console.error("Error in validateSession:", err);
+
+    // Log unexpected error
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Unexpected error in validateSession",
+      metadata: {
+        error: err instanceof Error ? err.message : "Unknown error",
+      },
+      correlationId,
+    });
+
     return null;
   }
 }
@@ -277,10 +433,26 @@ export async function validateSession(
 export async function requireAuthWithRedirect(
   redirectTo?: string
 ): Promise<ServerAuthResult> {
+  const correlationId = createCorrelationId();
+
   const user = await getCurrentUser();
   const session = await getSession();
 
   if (!user || !session) {
+    // Log redirect due to missing authentication
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Redirecting to login - authentication required",
+      metadata: {
+        redirect_to: redirectTo,
+        has_user: !!user,
+        has_session: !!session,
+      },
+      correlationId,
+    });
+
     const loginUrl = redirectTo
       ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
       : "/login";
@@ -308,10 +480,26 @@ export async function requireAuthWithRedirect(
 export async function requireAdminWithRedirect(
   redirectTo?: string
 ): Promise<ServerAuthResult> {
+  const correlationId = createCorrelationId();
+
   const user = await getCurrentUser();
   const session = await getSession();
 
   if (!user || !session) {
+    // Log redirect due to missing authentication
+    await logUserActivity({
+      userId: "unknown",
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Redirecting to login - admin authentication required",
+      metadata: {
+        redirect_to: redirectTo,
+        has_user: !!user,
+        has_session: !!session,
+      },
+      correlationId,
+    });
+
     const loginUrl = redirectTo
       ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
       : "/login";
@@ -321,6 +509,19 @@ export async function requireAdminWithRedirect(
   const userRole = await getUserRole(user);
 
   if (userRole !== "admin") {
+    // Log unauthorized admin access attempt with redirect
+    await logUserActivity({
+      userId: user.id,
+      type: UserActivityType.AUTH_ERROR,
+      category: ActivityCategory.AUTHENTICATION,
+      description: "Redirecting to home - user is not admin",
+      metadata: {
+        user_role: userRole,
+        email: user.email,
+      },
+      correlationId,
+    });
+
     redirect("/"); // Redirect to home page for non-admin users
   }
 
