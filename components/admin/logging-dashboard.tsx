@@ -65,15 +65,14 @@ export function LoggingDashboard() {
     const fetchSettings = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/admin/config");
+        const response = await fetch("/api/admin/config/logging_settings");
         if (response.ok) {
           const data = await response.json();
-          const loggingConfig = data.configs.find(
-            (c: any) => c.config_key === "logging_settings"
-          );
-          if (loggingConfig) {
-            setSettings(loggingConfig.config_data);
+          if (data.configData) {
+            setSettings(data.configData);
           }
+        } else {
+          throw new Error("Failed to fetch logging settings");
         }
       } catch (error) {
         console.error("Failed to fetch logging settings:", error);
@@ -91,8 +90,8 @@ export function LoggingDashboard() {
 
     try {
       setSaving(true);
-      const response = await fetch("/api/admin/logging/settings", {
-        method: "POST",
+      const response = await fetch("/api/admin/config/logging_settings", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
@@ -100,11 +99,12 @@ export function LoggingDashboard() {
       if (response.ok) {
         toast.success("Logging settings saved successfully");
       } else {
-        throw new Error("Failed to save settings");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save settings");
       }
     } catch (error) {
       console.error("Failed to save logging settings:", error);
-      toast.error("Failed to save logging settings");
+      toast.error(error instanceof Error ? error.message : "Failed to save logging settings");
     } finally {
       setSaving(false);
     }

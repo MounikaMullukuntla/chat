@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Brain, MessageSquare, Settings, Zap } from "lucide-react";
+import { ArrowLeft, Brain, MessageSquare, Settings, Zap, Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -153,6 +153,38 @@ export function AdminDashboard() {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* System Configuration */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>System Configuration</CardTitle>
+            <CardDescription>
+              Configure system-wide settings for logging, monitoring, and error tracking
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Database className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg dark:text-white">
+                        Logging Settings
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Configure error logging, user activity logging, and agent activity logging
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={() => router.push("/admin/logging")}>
+                    Configure
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </div>
