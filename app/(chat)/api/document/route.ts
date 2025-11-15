@@ -13,8 +13,15 @@ import {
   logApiError,
   logPermissionError,
 } from "@/lib/errors/logger";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 export async function GET(request: Request) {
+  const correlationId = createCorrelationId();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -101,6 +108,23 @@ export async function GET(request: Request) {
       return new ChatSDKError("forbidden:document").toResponse();
     }
 
+    // Log successful document view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.DOCUMENT_VIEW,
+      activity_category: ActivityCategory.DOCUMENT,
+      activity_metadata: {
+        document_kind: document.kind,
+        version_count: documents.length,
+      },
+      resource_id: id,
+      resource_type: "document",
+      request_path: request.url,
+      request_method: "GET",
+      success: true,
+    });
+
     return Response.json(documents, { status: 200 });
   } catch (error) {
     await logApiError(
@@ -116,11 +140,22 @@ export async function GET(request: Request) {
       ErrorSeverity.ERROR
     );
 
+    // Log failed document view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.DOCUMENT_VIEW,
+      activity_category: ActivityCategory.DOCUMENT,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     return new ChatSDKError("bad_request:database").toResponse();
   }
 }
 
 export async function POST(request: Request) {
+  const correlationId = createCorrelationId();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -140,35 +175,68 @@ export async function POST(request: Request) {
     return createAuthErrorResponse(error as Error);
   }
 
-  const {
-    content,
-    title,
-    kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
-    await request.json();
+  try {
+    const {
+      content,
+      title,
+      kind,
+    }: { content: string; title: string; kind: ArtifactKind } =
+      await request.json();
 
-  const documents = await getDocumentsById({ id });
+    const documents = await getDocumentsById({ id });
+    const isUpdate = documents.length > 0;
 
-  if (documents.length > 0) {
-    const [doc] = documents;
+    if (isUpdate) {
+      const [doc] = documents;
 
-    if (doc.user_id !== user.id) {
-      return new ChatSDKError("forbidden:document").toResponse();
+      if (doc.user_id !== user.id) {
+        return new ChatSDKError("forbidden:document").toResponse();
+      }
     }
+
+    const document = await saveDocument({
+      id,
+      content,
+      title,
+      kind,
+      userId: user.id,
+    });
+
+    // Log document creation or update
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: isUpdate ? UserActivityType.DOCUMENT_UPDATE : UserActivityType.DOCUMENT_CREATE,
+      activity_category: ActivityCategory.DOCUMENT,
+      activity_metadata: {
+        document_kind: kind,
+        title_length: title.length,
+        content_length: content.length,
+      },
+      resource_id: id,
+      resource_type: "document",
+      request_path: request.url,
+      request_method: "POST",
+      success: true,
+    });
+
+    return Response.json(document, { status: 200 });
+  } catch (error) {
+    // Log failed document save
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.DOCUMENT_CREATE,
+      activity_category: ActivityCategory.DOCUMENT,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
   }
-
-  const document = await saveDocument({
-    id,
-    content,
-    title,
-    kind,
-    userId: user.id,
-  });
-
-  return Response.json(document, { status: 200 });
 }
 
 export async function DELETE(request: Request) {
+  const correlationId = createCorrelationId();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   const timestamp = searchParams.get("timestamp");
@@ -196,18 +264,49 @@ export async function DELETE(request: Request) {
     return createAuthErrorResponse(error as Error);
   }
 
-  const documents = await getDocumentsById({ id });
+  try {
+    const documents = await getDocumentsById({ id });
 
-  const [document] = documents;
+    const [document] = documents;
 
-  if (document.user_id !== user.id) {
-    return new ChatSDKError("forbidden:document").toResponse();
+    if (document.user_id !== user.id) {
+      return new ChatSDKError("forbidden:document").toResponse();
+    }
+
+    const documentsDeleted = await deleteDocumentsByIdAfterTimestamp({
+      id,
+      timestamp: new Date(timestamp),
+    });
+
+    // Log successful document deletion
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.DOCUMENT_DELETE,
+      activity_category: ActivityCategory.DOCUMENT,
+      activity_metadata: {
+        document_kind: document.kind,
+        timestamp_filter: timestamp,
+        versions_deleted: documentsDeleted.length,
+      },
+      resource_id: id,
+      resource_type: "document",
+      request_path: request.url,
+      request_method: "DELETE",
+      success: true,
+    });
+
+    return Response.json(documentsDeleted, { status: 200 });
+  } catch (error) {
+    // Log failed document deletion
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.DOCUMENT_DELETE,
+      activity_category: ActivityCategory.DOCUMENT,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
   }
-
-  const documentsDeleted = await deleteDocumentsByIdAfterTimestamp({
-    id,
-    timestamp: new Date(timestamp),
-  });
-
-  return Response.json(documentsDeleted, { status: 200 });
 }

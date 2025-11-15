@@ -25,11 +25,26 @@ import {
 } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
+import {
+  logUserActivity,
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging";
 
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  // Create correlation ID for request tracking
+  const correlationId = createCorrelationId();
+  const requestStartTime = Date.now();
   let requestBody: PostRequestBody;
+  let user: User | undefined;
 
   try {
     const json = await request.json();
@@ -49,7 +64,7 @@ export async function POST(request: Request) {
 
     // Authenticate user
     const authResult = await requireAuth();
-    const user = authResult.user;
+    user = authResult.user;
 
     // Chat management
     const chat = await getChatById({ id });
@@ -134,6 +149,42 @@ export async function POST(request: Request) {
       ],
     });
 
+    // Log user activity - chat message sent
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: chat ? UserActivityType.CHAT_MESSAGE_SEND : UserActivityType.CHAT_CREATE,
+      activity_category: ActivityCategory.CHAT,
+      activity_metadata: {
+        chat_id: id,
+        model_selected: selectedChatModel,
+        thinking_enabled: thinkingEnabled,
+        file_count: fileParts.length,
+        message_length: message.parts
+          .filter((p: any) => p.type === "text")
+          .reduce((sum: number, p: any) => sum + (p.text?.length || 0), 0),
+        has_artifact_context: allArtifacts.length > 0,
+      },
+      resource_id: id,
+      resource_type: "chat",
+      request_path: request.url,
+      request_method: "POST",
+      success: true,
+    });
+
+    // Create performance tracker for AI operation
+    const aiTracker = new PerformanceTracker({
+      user_id: user.id,
+      correlation_id: correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.STREAMING,
+      operation_category: AgentOperationCategory.STREAMING,
+      model_id: selectedChatModel,
+      thinking_mode: thinkingEnabled,
+      resource_id: id,
+      resource_type: "chat",
+    });
+
     // Create chat agent using simple resolver
     const chatAgent = await ChatAgentResolver.createChatAgent();
     chatAgent.setApiKey(apiKey);
@@ -145,7 +196,7 @@ export async function POST(request: Request) {
     }
 
     // Use chat agent to generate streaming response with all provider-specific logic
-    return await chatAgent.chat({
+    const response = await chatAgent.chat({
       chatId: id,
       modelId: selectedChatModel,
       messages: uiMessages.map((msg) => ({
@@ -205,9 +256,32 @@ export async function POST(request: Request) {
             }),
           });
         }
+
+        // Log agent activity completion (Note: Token counts not available from chat agent interface)
+        await aiTracker.end({
+          success: true,
+          operation_metadata: {
+            message_count: assistantMessages.length,
+            parts_count: assistantMessages.reduce((sum, msg) => sum + msg.parts.length, 0),
+          },
+        });
       },
     });
+
+    return response;
   } catch (error) {
+    // Log failed user activity
+    if (user) {
+      await logUserActivity({
+        user_id: user.id,
+        correlation_id: correlationId,
+        activity_type: chat ? UserActivityType.CHAT_MESSAGE_SEND : UserActivityType.CHAT_CREATE,
+        activity_category: ActivityCategory.CHAT,
+        success: false,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
@@ -218,6 +292,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const correlationId = createCorrelationId();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -240,7 +315,33 @@ export async function DELETE(request: Request) {
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 
-  const deletedChat = await deleteChatById({ id });
+  try {
+    const deletedChat = await deleteChatById({ id });
 
-  return Response.json(deletedChat, { status: 200 });
+    // Log successful chat deletion
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.CHAT_DELETE,
+      activity_category: ActivityCategory.CHAT,
+      resource_id: id,
+      resource_type: "chat",
+      request_path: request.url,
+      request_method: "DELETE",
+      success: true,
+    });
+
+    return Response.json(deletedChat, { status: 200 });
+  } catch (error) {
+    // Log failed deletion
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.CHAT_DELETE,
+      activity_category: ActivityCategory.CHAT,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }
