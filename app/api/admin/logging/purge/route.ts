@@ -1,34 +1,62 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/server';
-import { createServerClient } from '@/lib/supabase/server';
+import type { User } from "@supabase/supabase-js";
+import { createAuthErrorResponse, requireAdmin } from "@/lib/auth/server";
+import { purgeOldActivityLogs } from "@/lib/db/queries/admin";
+import { ChatSDKError } from "@/lib/errors";
+import {
+  ErrorCategory,
+  ErrorSeverity,
+  logAdminError,
+  logApiError,
+} from "@/lib/errors/logger";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  // Authenticate and authorize admin user
+  let user: User;
   try {
-    // Authenticate admin user
-    await requireAdmin();
-
-    const supabase = await createServerClient();
-
-    const { data, error } = await supabase.rpc('purge_old_activity_logs');
-
-    if (error) {
-      console.error('Purge error:', error);
-      throw error;
-    }
-
-    // The function returns a single row with the counts
-    const result = Array.isArray(data) && data.length > 0 ? data[0] : data;
-
-    return NextResponse.json(result || {
-      user_logs_deleted: 0,
-      agent_logs_deleted: 0,
-      error_logs_deleted: 0
-    });
+    const authResult = await requireAdmin();
+    user = authResult.user;
   } catch (error) {
-    console.error('Failed to purge logs:', error);
-    return NextResponse.json(
-      { error: 'Failed to purge logs' },
-      { status: 500 }
+    await logApiError(
+      ErrorCategory.UNAUTHORIZED_ACCESS,
+      `Admin logging purge POST request authentication failed: ${error instanceof Error ? error.message : "Unknown auth error"}`,
+      {
+        request: {
+          method: "POST",
+          url: request.url,
+          headers: Object.fromEntries(request.headers.entries()),
+        },
+      },
+      ErrorSeverity.WARNING
     );
+
+    return createAuthErrorResponse(error as Error);
+  }
+
+  try {
+    const result = await purgeOldActivityLogs();
+
+    // Log successful admin action
+    await logAdminError(
+      ErrorCategory.CONFIG_UPDATE_FAILED, // This will be changed to success category when available
+      `Activity logs purged successfully by admin`,
+      {
+        action: "purge_logs",
+        result,
+      },
+      user.id,
+      ErrorSeverity.INFO
+    );
+
+    return Response.json(result, { status: 200 });
+  } catch (error) {
+    await logAdminError(
+      ErrorCategory.DATABASE_ERROR,
+      `Failed to purge activity logs: ${error instanceof Error ? error.message : "Unknown database error"}`,
+      {},
+      user.id,
+      ErrorSeverity.ERROR
+    );
+
+    return new ChatSDKError("bad_request:database").toResponse();
   }
 }
