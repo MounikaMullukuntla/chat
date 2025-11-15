@@ -2,6 +2,14 @@ import "server-only";
 
 import { tool } from "ai";
 import { z } from "zod";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 import { AgentError, ErrorCodes } from "../../core/errors";
 import type { ChatModelAgentConfig } from "../../core/types";
 import type { AgentConfigLoader } from "./agentConfigLoader";
@@ -24,6 +32,8 @@ export class AgentToolBuilder {
     user?: any,
     chatId?: string
   ): Record<string, any> | undefined {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
     const tools: Record<string, any> = {};
     const enabledTools: string[] = [];
 
@@ -75,6 +85,7 @@ export class AgentToolBuilder {
           // Execute provider tools agent
           const result = await providerToolsAgent.execute({
             input: params.input,
+            userId: user?.id,
           });
 
           // Return ONLY the output string - AI SDK will use this to continue generation
@@ -540,7 +551,10 @@ export class AgentToolBuilder {
           }
 
           // Execute GitHub MCP agent
-          const result = await gitMcpAgent.execute({ input: params.input });
+          const result = await gitMcpAgent.execute({
+            input: params.input,
+            userId: user?.id,
+          });
 
           console.log(`\n${"█".repeat(80)}`);
           console.log(
@@ -584,10 +598,45 @@ export class AgentToolBuilder {
 
     if (enabledTools.length > 0) {
       console.log("🔧 [TOOLS-READY] Enabled tools:", enabledTools.join(", "));
+
+      // Log successful tool building
+      logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.TOOL_INVOCATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        success: true,
+        duration: tracker.getDuration(),
+        metadata: {
+          tools_built: enabledTools,
+          enabled_agents: enabledTools.join(", "),
+        },
+      }).catch((error) => {
+        console.error("Failed to log tool building activity:", error);
+      });
+
       return tools;
     }
 
     console.log("⚠️  [TOOLS-READY] No tools enabled");
+
+    // Log no tools enabled
+    logAgentActivity({
+      agentType: AgentType.CHAT_MODEL_AGENT,
+      operationType: AgentOperationType.TOOL_INVOCATION,
+      category: AgentOperationCategory.TOOL_USE,
+      correlationId,
+      success: false,
+      duration: tracker.getDuration(),
+      metadata: {
+        tools_built: [],
+        enabled_agents: "none",
+        reason: "no tools enabled",
+      },
+    }).catch((error) => {
+      console.error("Failed to log tool building activity:", error);
+    });
+
     return;
   }
 }

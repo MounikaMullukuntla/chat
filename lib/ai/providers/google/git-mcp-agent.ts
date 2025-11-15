@@ -3,6 +3,14 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { streamText, tool } from "ai";
 import { z } from "zod";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 import type { AgentResult, GitMcpAgentConfig } from "@/lib/types";
 
 export class GoogleGitMcpAgent {
@@ -246,8 +254,10 @@ export class GoogleGitMcpAgent {
    * @param params Operation parameters
    * @returns Agent execution result
    */
-  async execute(params: { input: string }): Promise<AgentResult> {
-    const { input } = params;
+  async execute(params: { input: string; userId?: string }): Promise<AgentResult> {
+    const { input, userId } = params;
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
 
     console.log(`\n${"=".repeat(80)}`);
     console.log("🎯 [GIT-MCP-AGENT] EXECUTION START");
@@ -258,6 +268,23 @@ export class GoogleGitMcpAgent {
 
     if (!input || input.trim() === "") {
       console.log("❌ [GIT-MCP-AGENT] Empty input error");
+
+      await logAgentActivity({
+        agentType: AgentType.GIT_MCP_AGENT,
+        operationType: AgentOperationType.MCP_OPERATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        userId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: "Empty input",
+        metadata: {
+          query_length: 0,
+          tool_calls_count: 0,
+          mcp_connection_status: "not_attempted",
+        },
+      });
+
       return {
         output: "Error: Input query cannot be empty",
         success: false,
@@ -412,6 +439,24 @@ export class GoogleGitMcpAgent {
         finalOutput.substring(0, 200) + (finalOutput.length > 200 ? "..." : "")
       );
 
+      // Log successful MCP operation
+      await logAgentActivity({
+        agentType: AgentType.GIT_MCP_AGENT,
+        operationType: AgentOperationType.MCP_OPERATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        userId,
+        success: true,
+        duration: tracker.getDuration(),
+        metadata: {
+          query_length: input.length,
+          tool_calls_count: toolCalls.length,
+          mcp_connection_status: "connected",
+          output_length: finalOutput.length,
+          tools_used: toolCalls.map((tc) => tc.toolName).join(", "),
+        },
+      });
+
       return {
         output: finalOutput,
         success: true,
@@ -429,6 +474,24 @@ export class GoogleGitMcpAgent {
 
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+
+      // Log MCP operation failure
+      await logAgentActivity({
+        agentType: AgentType.GIT_MCP_AGENT,
+        operationType: AgentOperationType.MCP_OPERATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        userId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: errorMessage,
+        metadata: {
+          query_length: input.length,
+          tool_calls_count: 0,
+          mcp_connection_status: "error",
+        },
+      });
+
       return {
         output: `Error executing GitHub operation: ${errorMessage}`,
         success: false,
