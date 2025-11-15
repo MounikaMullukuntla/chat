@@ -89,48 +89,6 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_type_severity_admin
 ON error_logs(error_type, severity, created_at DESC);
 
 -- Add index for error logs by user for user-specific error tracking
-CREATE INDEX IF NOT EXISTS idx_error_logs_user_date
-ON error_logs(user_id, created_at DESC)
+CREATE INDEX IF NOT EXISTS idx_error_logs_user_date 
+ON error_logs(user_id, created_at DESC) 
 WHERE user_id IS NOT NULL;
-
--- =====================================================
--- Activity Logging Indexes
--- =====================================================
-
--- User Activity Logs Indexes
-CREATE INDEX IF NOT EXISTS idx_user_activity_user_id ON user_activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_activity_correlation ON user_activity_logs(correlation_id);
-CREATE INDEX IF NOT EXISTS idx_user_activity_type ON user_activity_logs(activity_type);
-CREATE INDEX IF NOT EXISTS idx_user_activity_category ON user_activity_logs(activity_category);
-CREATE INDEX IF NOT EXISTS idx_user_activity_created ON user_activity_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_user_activity_user_created ON user_activity_logs(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_user_activity_resource ON user_activity_logs(resource_type, resource_id);
-CREATE INDEX IF NOT EXISTS idx_user_activity_success ON user_activity_logs(success, created_at DESC);
-
--- Composite index for common queries
-CREATE INDEX IF NOT EXISTS idx_user_activity_user_type_date
-ON user_activity_logs(user_id, activity_type, created_at DESC);
-
--- Agent Activity Logs Indexes
-CREATE INDEX IF NOT EXISTS idx_agent_activity_user_id ON agent_activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_correlation ON agent_activity_logs(correlation_id);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_agent_type ON agent_activity_logs(agent_type);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_operation ON agent_activity_logs(operation_type);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_category ON agent_activity_logs(operation_category);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_created ON agent_activity_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_model ON agent_activity_logs(model_id, provider);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_success ON agent_activity_logs(success, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_agent_activity_resource ON agent_activity_logs(resource_type, resource_id);
-
--- Performance analysis indexes
-CREATE INDEX IF NOT EXISTS idx_agent_activity_duration
-ON agent_activity_logs(agent_type, duration_ms)
-WHERE duration_ms IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_agent_activity_cost
-ON agent_activity_logs(created_at DESC, total_cost)
-WHERE total_cost IS NOT NULL;
-
--- Composite index for common queries
-CREATE INDEX IF NOT EXISTS idx_agent_activity_agent_op_date
-ON agent_activity_logs(agent_type, operation_type, created_at DESC);
