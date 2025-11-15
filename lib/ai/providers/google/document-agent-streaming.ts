@@ -13,6 +13,14 @@ import type { DocumentAgentConfig } from "../../core/types";
 import { streamDocumentSuggestions } from "../../tools/document/streamDocumentSuggestions";
 import { streamTextDocument } from "../../tools/document/streamTextDocument";
 import { streamTextDocumentUpdate } from "../../tools/document/streamTextDocumentUpdate";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * GoogleDocumentAgentStreaming - Simplified streaming version of document agent
@@ -186,301 +194,486 @@ export class GoogleDocumentAgentStreaming {
       if (operation === "create") {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: CREATE");
 
-        if (!this.toolConfigs?.create?.enabled) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: create tool is not enabled"
-          );
-        }
+        const correlationId = createCorrelationId();
+        const perfTracker = new PerformanceTracker();
 
-        const toolConfig = this.toolConfigs.create;
-        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: create tool configuration incomplete"
-          );
-        }
+        try {
+          if (!this.toolConfigs?.create?.enabled) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: create tool is not enabled"
+            );
+          }
 
-        // Extract title from instruction (simple heuristic: first line or up to 100 chars)
-        const title = instruction.split("\n")[0].substring(0, 100).trim();
-        console.log("📄 [DOC-AGENT-STREAMING] Title:", title);
+          const toolConfig = this.toolConfigs.create;
+          if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: create tool configuration incomplete"
+            );
+          }
 
-        // Stream document creation in real-time
-        const documentId = await streamTextDocument({
-          title,
-          instruction,
-          systemPrompt: toolConfig.systemPrompt,
-          userPromptTemplate: toolConfig.userPromptTemplate,
-          dataStream,
-          user,
-          chatId,
-          modelId: this.modelId!,
-          apiKey: this.apiKey,
-        });
+          // Extract title from instruction (simple heuristic: first line or up to 100 chars)
+          const title = instruction.split("\n")[0].substring(0, 100).trim();
+          console.log("📄 [DOC-AGENT-STREAMING] Title:", title);
 
-        console.log("✅ [DOC-AGENT-STREAMING] Document created:", documentId);
-
-        // Return structured output for message part
-        return {
-          output: {
-            id: documentId,
+          // Stream document creation in real-time
+          const documentId = await streamTextDocument({
             title,
-            kind: "text",
-          },
-          success: true,
-        };
+            instruction,
+            systemPrompt: toolConfig.systemPrompt,
+            userPromptTemplate: toolConfig.userPromptTemplate,
+            dataStream,
+            user,
+            chatId,
+            modelId: this.modelId!,
+            apiKey: this.apiKey,
+          });
+
+          console.log("✅ [DOC-AGENT-STREAMING] Document created:", documentId);
+
+          // Get created document to track content length
+          const createdDoc = await getDocumentById({ id: documentId });
+          const contentLength = createdDoc?.content?.length || 0;
+
+          // Log successful activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "create",
+              document_id: documentId,
+              instruction_length: instruction.length,
+              content_length: contentLength,
+              streaming: true,
+              model_id: this.modelId,
+            },
+            duration_ms: perfTracker.end(),
+          });
+
+          // Return structured output for message part
+          return {
+            output: {
+              id: documentId,
+              title,
+              kind: "text",
+            },
+            success: true,
+          };
+        } catch (error) {
+          // Log failed activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "create",
+              instruction_length: instruction.length,
+              streaming: true,
+              model_id: this.modelId,
+              error_message:
+                error instanceof Error ? error.message : "Unknown error",
+            },
+            duration_ms: perfTracker.end(),
+            status: "error",
+          });
+          throw error;
+        }
       }
 
       if (operation === "update") {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: UPDATE");
 
-        // Document ID should be provided by chat agent
-        if (!documentId) {
-          throw new Error(
-            "Document ID is required for update operations. The chat agent should extract it from artifact context and pass it explicitly."
-          );
+        const correlationId = createCorrelationId();
+        const perfTracker = new PerformanceTracker();
+
+        try {
+          // Document ID should be provided by chat agent
+          if (!documentId) {
+            throw new Error(
+              "Document ID is required for update operations. The chat agent should extract it from artifact context and pass it explicitly."
+            );
+          }
+
+          console.log("📄 [DOC-AGENT-STREAMING] Document ID:", documentId);
+
+          if (!this.toolConfigs?.update?.enabled) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: update tool is not enabled"
+            );
+          }
+
+          const toolConfig = this.toolConfigs.update;
+          if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: update tool configuration incomplete"
+            );
+          }
+
+          // Stream document update in real-time
+          await streamTextDocumentUpdate({
+            documentId,
+            updateInstruction: instruction,
+            systemPrompt: toolConfig.systemPrompt,
+            userPromptTemplate: toolConfig.userPromptTemplate,
+            dataStream,
+            user,
+            chatId,
+            modelId: this.modelId!,
+            apiKey: this.apiKey,
+          });
+
+          console.log("✅ [DOC-AGENT-STREAMING] Document updated:", documentId);
+
+          // Get updated document to track content length
+          const updatedDoc = await getDocumentById({ id: documentId });
+          const contentLength = updatedDoc?.content?.length || 0;
+
+          // Log successful activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "update",
+              document_id: documentId,
+              instruction_length: instruction.length,
+              content_length: contentLength,
+              streaming: true,
+              model_id: this.modelId,
+            },
+            duration_ms: perfTracker.end(),
+          });
+
+          // Return structured output for message part
+          return {
+            output: {
+              id: documentId,
+              kind: "text",
+              isUpdate: true,
+            },
+            success: true,
+          };
+        } catch (error) {
+          // Log failed activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "update",
+              document_id: documentId,
+              instruction_length: instruction.length,
+              streaming: true,
+              model_id: this.modelId,
+              error_message:
+                error instanceof Error ? error.message : "Unknown error",
+            },
+            duration_ms: perfTracker.end(),
+            status: "error",
+          });
+          throw error;
         }
-
-        console.log("📄 [DOC-AGENT-STREAMING] Document ID:", documentId);
-
-        if (!this.toolConfigs?.update?.enabled) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: update tool is not enabled"
-          );
-        }
-
-        const toolConfig = this.toolConfigs.update;
-        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: update tool configuration incomplete"
-          );
-        }
-
-        // Stream document update in real-time
-        await streamTextDocumentUpdate({
-          documentId,
-          updateInstruction: instruction,
-          systemPrompt: toolConfig.systemPrompt,
-          userPromptTemplate: toolConfig.userPromptTemplate,
-          dataStream,
-          user,
-          chatId,
-          modelId: this.modelId!,
-          apiKey: this.apiKey,
-        });
-
-        console.log("✅ [DOC-AGENT-STREAMING] Document updated:", documentId);
-
-        // Return structured output for message part
-        return {
-          output: {
-            id: documentId,
-            kind: "text",
-            isUpdate: true,
-          },
-          success: true,
-        };
       }
 
       if (operation === "revert") {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: REVERT");
 
-        // Document ID is required for revert
-        if (!documentId) {
-          throw new Error(
-            "Document ID is required for revert operations. The chat agent should extract it from artifact context and pass it explicitly."
-          );
-        }
+        const correlationId = createCorrelationId();
+        const perfTracker = new PerformanceTracker();
 
-        // Get current document to determine target version
-        const currentDocument = await getDocumentById({ id: documentId });
-        if (!currentDocument) {
-          throw new Error(`Document with ID ${documentId} not found`);
-        }
+        try {
+          // Document ID is required for revert
+          if (!documentId) {
+            throw new Error(
+              "Document ID is required for revert operations. The chat agent should extract it from artifact context and pass it explicitly."
+            );
+          }
 
-        console.log(
-          "📄 [DOC-AGENT-STREAMING] Current document version:",
-          currentDocument.version_number
-        );
+          // Get current document to determine target version
+          const currentDocument = await getDocumentById({ id: documentId });
+          if (!currentDocument) {
+            throw new Error(`Document with ID ${documentId} not found`);
+          }
 
-        // Determine target version
-        let versionToRevert = targetVersion;
-        if (!versionToRevert) {
-          // Default to previous version if not specified
-          versionToRevert = currentDocument.version_number - 1;
           console.log(
-            "📄 [DOC-AGENT-STREAMING] No target version specified, reverting to previous:",
+            "📄 [DOC-AGENT-STREAMING] Current document version:",
+            currentDocument.version_number
+          );
+
+          // Determine target version
+          let versionToRevert = targetVersion;
+          if (!versionToRevert) {
+            // Default to previous version if not specified
+            versionToRevert = currentDocument.version_number - 1;
+            console.log(
+              "📄 [DOC-AGENT-STREAMING] No target version specified, reverting to previous:",
+              versionToRevert
+            );
+          }
+
+          if (versionToRevert < 1) {
+            throw new Error("Cannot revert: No previous version exists");
+          }
+
+          if (versionToRevert >= currentDocument.version_number) {
+            throw new Error(
+              `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
+            );
+          }
+
+          // Fetch the target version
+          const targetDocument = await getDocumentByIdAndVersion({
+            id: documentId,
+            version: versionToRevert,
+          });
+
+          if (!targetDocument) {
+            throw new Error(
+              `Version ${versionToRevert} of document ${documentId} not found`
+            );
+          }
+
+          console.log(
+            "📄 [DOC-AGENT-STREAMING] Reverting to version:",
             versionToRevert
           );
-        }
-
-        if (versionToRevert < 1) {
-          throw new Error("Cannot revert: No previous version exists");
-        }
-
-        if (versionToRevert >= currentDocument.version_number) {
-          throw new Error(
-            `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
+          console.log(
+            "📄 [DOC-AGENT-STREAMING] Target content length:",
+            targetDocument.content?.length || 0
           );
-        }
 
-        // Fetch the target version
-        const targetDocument = await getDocumentByIdAndVersion({
-          id: documentId,
-          version: versionToRevert,
-        });
-
-        if (!targetDocument) {
-          throw new Error(
-            `Version ${versionToRevert} of document ${documentId} not found`
-          );
-        }
-
-        console.log(
-          "📄 [DOC-AGENT-STREAMING] Reverting to version:",
-          versionToRevert
-        );
-        console.log(
-          "📄 [DOC-AGENT-STREAMING] Target content length:",
-          targetDocument.content?.length || 0
-        );
-
-        // Write artifact metadata to inform UI
-        dataStream.write({
-          type: "data-kind",
-          data: targetDocument.kind as any,
-          transient: true,
-        });
-
-        dataStream.write({
-          type: "data-id",
-          data: documentId,
-          transient: true,
-        });
-
-        dataStream.write({
-          type: "data-title",
-          data: targetDocument.title,
-          transient: true,
-        });
-
-        // Clear the artifact panel
-        dataStream.write({
-          type: "data-clear",
-          data: null,
-          transient: true,
-        });
-
-        // Stream the reverted content to the UI
-        const revertedContent = targetDocument.content || "";
-        const chunkSize = 100;
-
-        for (let i = 0; i < revertedContent.length; i += chunkSize) {
-          const chunk = revertedContent.substring(i, i + chunkSize);
+          // Write artifact metadata to inform UI
           dataStream.write({
-            type: "data-textDelta",
-            data: chunk,
+            type: "data-kind",
+            data: targetDocument.kind as any,
             transient: true,
           });
-        }
 
-        // Save as new version (non-destructive revert)
-        if (user?.id) {
-          await saveDocument({
-            id: documentId,
-            title: targetDocument.title,
-            content: revertedContent,
-            kind: targetDocument.kind as any,
-            userId: user.id,
-            chatId: chatId || currentDocument.chat_id || undefined,
-            parentVersionId: `${documentId}`,
+          dataStream.write({
+            type: "data-id",
+            data: documentId,
+            transient: true,
+          });
+
+          dataStream.write({
+            type: "data-title",
+            data: targetDocument.title,
+            transient: true,
+          });
+
+          // Clear the artifact panel
+          dataStream.write({
+            type: "data-clear",
+            data: null,
+            transient: true,
+          });
+
+          // Stream the reverted content to the UI
+          const revertedContent = targetDocument.content || "";
+          const chunkSize = 100;
+
+          for (let i = 0; i < revertedContent.length; i += chunkSize) {
+            const chunk = revertedContent.substring(i, i + chunkSize);
+            dataStream.write({
+              type: "data-textDelta",
+              data: chunk,
+              transient: true,
+            });
+          }
+
+          // Save as new version (non-destructive revert)
+          if (user?.id) {
+            await saveDocument({
+              id: documentId,
+              title: targetDocument.title,
+              content: revertedContent,
+              kind: targetDocument.kind as any,
+              userId: user.id,
+              chatId: chatId || currentDocument.chat_id || undefined,
+              parentVersionId: `${documentId}`,
+              metadata: {
+                updateType: "revert",
+                agentInfo: "document-agent-streaming",
+                revertedFrom: currentDocument.version_number,
+                revertedTo: versionToRevert,
+                revertedAt: new Date().toISOString(),
+                modelUsed: this.modelId,
+              },
+            });
+            console.log(
+              "✅ [DOC-AGENT-STREAMING] Document reverted and saved as new version"
+            );
+          }
+
+          // Signal streaming complete
+          dataStream.write({
+            type: "data-finish",
+            data: null,
+            transient: true,
+          });
+
+          console.log("✅ [DOC-AGENT-STREAMING] Document reverted:", documentId);
+
+          const contentLength = revertedContent.length;
+
+          // Log successful activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
             metadata: {
-              updateType: "revert",
-              agentInfo: "document-agent-streaming",
+              operation_type: "revert",
+              document_id: documentId,
+              target_version: versionToRevert,
+              content_length: contentLength,
+              streaming: true,
+              model_id: this.modelId,
+            },
+            duration_ms: perfTracker.end(),
+          });
+
+          // Return structured output for message part
+          return {
+            output: {
+              id: documentId,
+              kind: targetDocument.kind,
+              isRevert: true,
               revertedFrom: currentDocument.version_number,
               revertedTo: versionToRevert,
-              revertedAt: new Date().toISOString(),
-              modelUsed: this.modelId,
             },
+            success: true,
+          };
+        } catch (error) {
+          // Log failed activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "revert",
+              document_id: documentId,
+              target_version: targetVersion,
+              streaming: true,
+              model_id: this.modelId,
+              error_message:
+                error instanceof Error ? error.message : "Unknown error",
+            },
+            duration_ms: perfTracker.end(),
+            status: "error",
           });
-          console.log(
-            "✅ [DOC-AGENT-STREAMING] Document reverted and saved as new version"
-          );
+          throw error;
         }
-
-        // Signal streaming complete
-        dataStream.write({
-          type: "data-finish",
-          data: null,
-          transient: true,
-        });
-
-        console.log("✅ [DOC-AGENT-STREAMING] Document reverted:", documentId);
-
-        // Return structured output for message part
-        return {
-          output: {
-            id: documentId,
-            kind: targetDocument.kind,
-            isRevert: true,
-            revertedFrom: currentDocument.version_number,
-            revertedTo: versionToRevert,
-          },
-          success: true,
-        };
       }
 
       if (operation === "suggestion") {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: SUGGESTION");
 
-        // Document ID is required for suggestions
-        if (!documentId) {
-          throw new Error(
-            "Document ID is required for suggestion operations. The chat agent should extract it from artifact context and pass it explicitly."
+        const correlationId = createCorrelationId();
+        const perfTracker = new PerformanceTracker();
+
+        try {
+          // Document ID is required for suggestions
+          if (!documentId) {
+            throw new Error(
+              "Document ID is required for suggestion operations. The chat agent should extract it from artifact context and pass it explicitly."
+            );
+          }
+
+          console.log("📄 [DOC-AGENT-STREAMING] Document ID:", documentId);
+
+          if (!this.toolConfigs?.suggestion?.enabled) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: suggestion tool is not enabled"
+            );
+          }
+
+          const toolConfig = this.toolConfigs.suggestion;
+          if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+            throw new Error(
+              "GoogleDocumentAgentStreaming: suggestion tool configuration incomplete"
+            );
+          }
+
+          // Generate and stream suggestions in real-time
+          const result = await streamDocumentSuggestions({
+            documentId,
+            instruction,
+            systemPrompt: toolConfig.systemPrompt,
+            userPromptTemplate: toolConfig.userPromptTemplate,
+            dataStream,
+            user,
+            chatId,
+            modelId: this.modelId!,
+            apiKey: this.apiKey,
+          });
+
+          console.log(
+            "✅ [DOC-AGENT-STREAMING] Suggestions generated:",
+            result.suggestionCount
           );
+
+          // Log successful activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "generateSuggestions",
+              document_id: documentId,
+              instruction_length: instruction.length,
+              suggestion_count: result.suggestionCount,
+              streaming: true,
+              model_id: this.modelId,
+            },
+            duration_ms: perfTracker.end(),
+          });
+
+          // Return structured output for message part
+          return {
+            output: {
+              id: documentId,
+              kind: "text",
+              isSuggestion: true,
+              suggestionCount: result.suggestionCount,
+            },
+            success: true,
+          };
+        } catch (error) {
+          // Log failed activity
+          await logAgentActivity({
+            agent_type: AgentType.DOCUMENT_AGENT,
+            operation_type: AgentOperationType.DOCUMENT_GENERATION,
+            operation_category: AgentOperationCategory.GENERATION,
+            user_id: user?.id,
+            correlation_id: correlationId,
+            metadata: {
+              operation_type: "generateSuggestions",
+              document_id: documentId,
+              instruction_length: instruction.length,
+              streaming: true,
+              model_id: this.modelId,
+              error_message:
+                error instanceof Error ? error.message : "Unknown error",
+            },
+            duration_ms: perfTracker.end(),
+            status: "error",
+          });
+          throw error;
         }
-
-        console.log("📄 [DOC-AGENT-STREAMING] Document ID:", documentId);
-
-        if (!this.toolConfigs?.suggestion?.enabled) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: suggestion tool is not enabled"
-          );
-        }
-
-        const toolConfig = this.toolConfigs.suggestion;
-        if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-          throw new Error(
-            "GoogleDocumentAgentStreaming: suggestion tool configuration incomplete"
-          );
-        }
-
-        // Generate and stream suggestions in real-time
-        const result = await streamDocumentSuggestions({
-          documentId,
-          instruction,
-          systemPrompt: toolConfig.systemPrompt,
-          userPromptTemplate: toolConfig.userPromptTemplate,
-          dataStream,
-          user,
-          chatId,
-          modelId: this.modelId!,
-          apiKey: this.apiKey,
-        });
-
-        console.log(
-          "✅ [DOC-AGENT-STREAMING] Suggestions generated:",
-          result.suggestionCount
-        );
-
-        // Return structured output for message part
-        return {
-          output: {
-            id: documentId,
-            kind: "text",
-            isSuggestion: true,
-            suggestionCount: result.suggestionCount,
-          },
-          success: true,
-        };
       }
 
       throw new Error(`Unknown operation: ${operation}`);

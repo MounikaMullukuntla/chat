@@ -14,6 +14,12 @@ import {
   logAdminError,
   logApiError,
 } from "@/lib/errors/logger";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 // Validation schema for model creation
 const CreateModelSchema = z.object({
@@ -33,6 +39,7 @@ const CreateModelSchema = z.object({
 
 // GET /api/admin/models - Get all models or models by provider
 export async function GET(request: NextRequest) {
+  const correlationId = createCorrelationId();
   let user: User;
 
   try {
@@ -65,8 +72,33 @@ export async function GET(request: NextRequest) {
       models = await getAllModels();
     }
 
+    // Log successful admin dashboard view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_DASHBOARD_VIEW,
+      activity_category: ActivityCategory.ADMIN,
+      activity_metadata: {
+        provider_filter: provider || null,
+        model_count: models.length,
+      },
+      request_path: request.url,
+      request_method: "GET",
+      success: true,
+    });
+
     return Response.json(models, { status: 200 });
   } catch (error) {
+    // Log failed admin dashboard view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_DASHBOARD_VIEW,
+      activity_category: ActivityCategory.ADMIN,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     await logApiError(
       ErrorCategory.DATABASE_ERROR,
       `Failed to retrieve models: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -82,6 +114,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin/models - Create a new model
 export async function POST(request: NextRequest) {
+  const correlationId = createCorrelationId();
   let user: User;
 
   try {
@@ -118,6 +151,22 @@ export async function POST(request: NextRequest) {
   try {
     const createdModel = await createModel(modelData);
 
+    // Log successful admin config update
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+      activity_category: ActivityCategory.ADMIN,
+      activity_metadata: {
+        model_id: modelData.modelId,
+        provider: modelData.provider,
+        action: "create_model",
+      },
+      request_path: request.url,
+      request_method: "POST",
+      success: true,
+    });
+
     await logAdminError(
       ErrorCategory.CONFIG_UPDATE_FAILED, // Will be changed to success category when available
       `Model created: ${modelData.modelId}`,
@@ -128,6 +177,16 @@ export async function POST(request: NextRequest) {
 
     return Response.json(createdModel, { status: 201 });
   } catch (error) {
+    // Log failed admin config update
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+      activity_category: ActivityCategory.ADMIN,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     await logAdminError(
       ErrorCategory.CONFIG_UPDATE_FAILED,
       `Failed to create model: ${error instanceof Error ? error.message : "Unknown error"}`,

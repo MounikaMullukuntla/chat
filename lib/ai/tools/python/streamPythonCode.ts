@@ -8,6 +8,14 @@ import { z } from "zod";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * Validate Python code (basic validation)
@@ -62,12 +70,35 @@ export async function streamPythonCode(params: {
     streamToUI = true,
   } = params;
   const documentId = generateUUID();
+  const correlationId = createCorrelationId();
+  const performanceTracker = new PerformanceTracker();
 
   console.log("🐍 [STREAM-CREATE] Starting real-time code creation");
   console.log("🐍 [STREAM-CREATE] Document ID:", documentId);
   console.log("🐍 [STREAM-CREATE] Title:", title);
   console.log("🐍 [STREAM-CREATE] Model:", modelId);
   console.log("🐍 [STREAM-CREATE] Stream to UI:", streamToUI);
+  console.log("🐍 [STREAM-CREATE] Correlation ID:", correlationId);
+
+  // Log agent activity start
+  logAgentActivity({
+    agent_type: AgentType.PYTHON_AGENT,
+    operation_type: AgentOperationType.CODE_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+    correlation_id: correlationId,
+    status: "started",
+    metadata: {
+      operation_type: "create",
+      resource_id: documentId,
+      instruction_length: instruction.length,
+      streaming: true,
+      tool_name: "streamPythonCode",
+      model_id: modelId,
+      chat_id: chatId,
+      stream_to_ui: streamToUI,
+    },
+  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Write artifact metadata only if streaming to UI
   if (streamToUI) {
@@ -194,11 +225,57 @@ export async function streamPythonCode(params: {
     }
 
     console.log("✅ [STREAM-CREATE] Code creation completed successfully");
+
+    // Log success
+    logAgentActivity({
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "completed",
+      duration_ms: performanceTracker.end(),
+      metadata: {
+        operation_type: "create",
+        resource_id: documentId,
+        instruction_length: instruction.length,
+        streaming: true,
+        tool_name: "streamPythonCode",
+        model_id: modelId,
+        chat_id: chatId,
+        stream_to_ui: streamToUI,
+        output_length: generatedCode.length,
+        chunk_count: chunkCount,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
+
     return { documentId, content: generatedCode };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
+
+    // Log failure
+    logAgentActivity({
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "failed",
+      duration_ms: performanceTracker.end(),
+      error_message: errorMessage,
+      metadata: {
+        operation_type: "create",
+        resource_id: documentId,
+        instruction_length: instruction.length,
+        streaming: true,
+        tool_name: "streamPythonCode",
+        model_id: modelId,
+        chat_id: chatId,
+        stream_to_ui: streamToUI,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
 
     // Write error to stream
     if (streamToUI) {

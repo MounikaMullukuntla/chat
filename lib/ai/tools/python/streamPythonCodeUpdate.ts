@@ -7,6 +7,14 @@ import { streamObject } from "ai";
 import { z } from "zod";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * Validate Python code (basic validation)
@@ -61,9 +69,32 @@ export async function streamPythonCodeUpdate(params: {
     metadata = {},
   } = params;
 
+  const correlationId = createCorrelationId();
+  const performanceTracker = new PerformanceTracker();
+
   console.log("🐍 [STREAM-UPDATE] Starting real-time code update");
   console.log("🐍 [STREAM-UPDATE] Code ID:", codeId);
   console.log("🐍 [STREAM-UPDATE] Model:", modelId);
+  console.log("🐍 [STREAM-UPDATE] Correlation ID:", correlationId);
+
+  // Log agent activity start
+  logAgentActivity({
+    agent_type: AgentType.PYTHON_AGENT,
+    operation_type: AgentOperationType.CODE_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+    correlation_id: correlationId,
+    status: "started",
+    metadata: {
+      operation_type: "update",
+      resource_id: codeId,
+      instruction_length: updateInstruction.length,
+      streaming: true,
+      tool_name: "streamPythonCodeUpdate",
+      model_id: modelId,
+      chat_id: chatId,
+    },
+  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Get the current code document
   const currentDocument = await getDocumentById({ id: codeId });
@@ -204,10 +235,53 @@ export async function streamPythonCodeUpdate(params: {
     });
 
     console.log("✅ [STREAM-UPDATE] Code update completed successfully");
+
+    // Log success
+    logAgentActivity({
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "completed",
+      duration_ms: performanceTracker.end(),
+      metadata: {
+        operation_type: "update",
+        resource_id: codeId,
+        instruction_length: updateInstruction.length,
+        streaming: true,
+        tool_name: "streamPythonCodeUpdate",
+        model_id: modelId,
+        chat_id: chatId,
+        output_length: updatedContent.length,
+        chunk_count: chunkCount,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-UPDATE] Update failed:", errorMessage);
+
+    // Log failure
+    logAgentActivity({
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "failed",
+      duration_ms: performanceTracker.end(),
+      error_message: errorMessage,
+      metadata: {
+        operation_type: "update",
+        resource_id: codeId,
+        instruction_length: updateInstruction.length,
+        streaming: true,
+        tool_name: "streamPythonCodeUpdate",
+        model_id: modelId,
+        chat_id: chatId,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
 
     // Write error to stream
     dataStream.write({

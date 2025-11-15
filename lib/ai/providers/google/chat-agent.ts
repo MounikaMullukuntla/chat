@@ -2,6 +2,14 @@ import "server-only";
 
 import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { LanguageModel } from "ai";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 import { AgentError, ErrorCodes } from "../../core/errors";
 import type { ChatModelAgentConfig, ChatParams } from "../../core/types";
 import { AgentConfigLoader } from "./agentConfigLoader";
@@ -155,6 +163,9 @@ export class GoogleChatAgent {
       generateId?: () => string;
     }
   ) {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const {
         streamText,
@@ -180,6 +191,24 @@ export class GoogleChatAgent {
       // Check if thinking mode is supported by the selected model
       const modelSupportsThinking = this.supportsThinking(params.modelId);
       const shouldEnableThinking = params.thinkingMode && modelSupportsThinking;
+
+      // Log chat operation start
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.STREAMING,
+        category: AgentOperationCategory.STREAMING,
+        correlationId,
+        userId: params.user?.id,
+        success: true,
+        duration: tracker.getDuration(),
+        metadata: {
+          model_id: params.modelId,
+          thinking_mode: shouldEnableThinking,
+          message_count: params.messages.length,
+          tools_enabled: true,
+          chat_id: params.chatId,
+        },
+      });
 
       // Create proper UI message stream using AI SDK
       const stream = createUIMessageStream({
@@ -288,6 +317,25 @@ export class GoogleChatAgent {
       });
     } catch (error) {
       console.error("Google Chat Agent error:", error);
+
+      // Log chat operation failure
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.STREAMING,
+        category: AgentOperationCategory.STREAMING,
+        correlationId,
+        userId: params.user?.id,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          model_id: params.modelId,
+          thinking_mode: params.thinkingMode,
+          message_count: params.messages.length,
+          chat_id: params.chatId,
+        },
+      });
+
       throw error;
     }
   }

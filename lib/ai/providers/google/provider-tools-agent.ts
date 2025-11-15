@@ -2,6 +2,14 @@ import "server-only";
 
 import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import { streamText } from "ai";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 import type { ProviderToolsAgentConfig } from "../../core/types";
 
 /**
@@ -72,13 +80,15 @@ export class GoogleProviderToolsAgent {
    * This is the main method called by Chat Agent
    * Uses generateText for proper tool integration with AI SDK v5
    */
-  async execute(params: { input: string }): Promise<{
+  async execute(params: { input: string; userId?: string }): Promise<{
     output: string;
     success: boolean;
     toolCalls?: any[];
     reasoning?: string;
   }> {
-    const { input } = params;
+    const { input, userId } = params;
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
 
     try {
       const model = this.getModel();
@@ -135,6 +145,27 @@ export class GoogleProviderToolsAgent {
         toolCalls?.length || 0
       );
 
+      // Determine thinking mode from modelId
+      const thinkingMode = this.modelId?.includes("thinking") || false;
+
+      // Log successful provider tools execution
+      await logAgentActivity({
+        agentType: AgentType.PROVIDER_TOOLS_AGENT,
+        operationType: AgentOperationType.TOOL_INVOCATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        userId,
+        success: true,
+        duration: tracker.getDuration(),
+        metadata: {
+          query_length: input.length,
+          tools_enabled: Object.keys(this.buildTools()).join(", "),
+          thinking_mode: thinkingMode,
+          output_length: fullOutput.length,
+          tool_calls_count: toolCalls?.length || 0,
+        },
+      });
+
       return {
         output: fullOutput,
         success: true,
@@ -146,6 +177,23 @@ export class GoogleProviderToolsAgent {
         error instanceof Error ? error.message : "Unknown error occurred";
 
       console.error("❌ [PROVIDER-TOOLS] Execution failed:", errorMessage);
+
+      // Log provider tools execution failure
+      await logAgentActivity({
+        agentType: AgentType.PROVIDER_TOOLS_AGENT,
+        operationType: AgentOperationType.TOOL_INVOCATION,
+        category: AgentOperationCategory.TOOL_USE,
+        correlationId,
+        userId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: errorMessage,
+        metadata: {
+          query_length: input.length,
+          tools_enabled: Object.keys(this.buildTools()).join(", "),
+          thinking_mode: this.modelId?.includes("thinking") || false,
+        },
+      });
 
       return {
         output: `Error: ${errorMessage}`,

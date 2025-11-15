@@ -7,6 +7,14 @@ import { streamObject } from "ai";
 import { z } from "zod";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * Validate Mermaid syntax (basic validation)
@@ -72,9 +80,32 @@ export async function streamMermaidDiagramFix(params: {
     metadata = {},
   } = params;
 
+  const correlationId = createCorrelationId();
+  const performanceTracker = new PerformanceTracker();
+
   console.log("🎨 [STREAM-FIX] Starting real-time diagram fix");
   console.log("🎨 [STREAM-FIX] Diagram ID:", diagramId);
   console.log("🎨 [STREAM-FIX] Model:", modelId);
+  console.log("🎨 [STREAM-FIX] Correlation ID:", correlationId);
+
+  // Log agent activity start
+  logAgentActivity({
+    agent_type: AgentType.MERMAID_AGENT,
+    operation_type: AgentOperationType.DIAGRAM_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+    correlation_id: correlationId,
+    status: "started",
+    metadata: {
+      operation_type: "fix",
+      resource_id: diagramId,
+      instruction_length: errorInfo.length,
+      streaming: true,
+      tool_name: "streamMermaidDiagramFix",
+      model_id: modelId,
+      chat_id: chatId,
+    },
+  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Get the current diagram document
   const currentDocument = await getDocumentById({ id: diagramId });
@@ -211,10 +242,53 @@ export async function streamMermaidDiagramFix(params: {
     });
 
     console.log("✅ [STREAM-FIX] Diagram fix completed successfully");
+
+    // Log success
+    logAgentActivity({
+      agent_type: AgentType.MERMAID_AGENT,
+      operation_type: AgentOperationType.DIAGRAM_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "completed",
+      duration_ms: performanceTracker.end(),
+      metadata: {
+        operation_type: "fix",
+        resource_id: diagramId,
+        instruction_length: errorInfo.length,
+        streaming: true,
+        tool_name: "streamMermaidDiagramFix",
+        model_id: modelId,
+        chat_id: chatId,
+        output_length: fixedContent.length,
+        chunk_count: chunkCount,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-FIX] Fix failed:", errorMessage);
+
+    // Log failure
+    logAgentActivity({
+      agent_type: AgentType.MERMAID_AGENT,
+      operation_type: AgentOperationType.DIAGRAM_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "failed",
+      duration_ms: performanceTracker.end(),
+      error_message: errorMessage,
+      metadata: {
+        operation_type: "fix",
+        resource_id: diagramId,
+        instruction_length: errorInfo.length,
+        streaming: true,
+        tool_name: "streamMermaidDiagramFix",
+        model_id: modelId,
+        chat_id: chatId,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
 
     // Write error to stream
     dataStream.write({

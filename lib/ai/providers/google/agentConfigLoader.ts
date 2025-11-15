@@ -1,6 +1,14 @@
 import "server-only";
 
 import { getAdminConfig } from "@/lib/db/queries/admin";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 import { GoogleDocumentAgentStreaming } from "./document-agent-streaming";
 import { GoogleGitMcpAgent } from "./git-mcp-agent";
 import { GoogleMermaidAgentStreaming } from "./mermaid-agent-streaming";
@@ -45,6 +53,9 @@ export class AgentConfigLoader {
    * Load provider tools agent configuration
    */
   async loadProviderToolsConfig() {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const config = await getAdminConfig({
         configKey: "provider_tools_agent_google",
@@ -65,16 +76,59 @@ export class AgentConfigLoader {
             "⚠️  [AGENT-INIT] Provider Tools Agent: No API key available"
           );
         }
+
+        await logAgentActivity({
+          agentType: AgentType.PROVIDER_TOOLS_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: true,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "provider_tools_agent_google",
+            config_loaded: true,
+            model_id: (config.configData as any).modelId,
+          },
+        });
       } else {
         console.log(
           "❌ [AGENT-INIT] Provider Tools Agent: disabled or not found"
         );
+
+        await logAgentActivity({
+          agentType: AgentType.PROVIDER_TOOLS_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: false,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "provider_tools_agent_google",
+            config_loaded: false,
+            reason: "disabled or not found",
+          },
+        });
       }
     } catch (error) {
       console.error(
         "❌ [AGENT-INIT] Failed to load Provider Tools Agent:",
         error
       );
+
+      await logAgentActivity({
+        agentType: AgentType.PROVIDER_TOOLS_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        category: AgentOperationCategory.CONFIGURATION,
+        correlationId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          agent_name: "provider_tools_agent_google",
+          config_loaded: false,
+        },
+      });
+
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -83,6 +137,9 @@ export class AgentConfigLoader {
    * Load document agent configuration
    */
   async loadDocumentAgentConfig() {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const config = await getAdminConfig({
         configKey: "document_agent_google",
@@ -103,11 +160,54 @@ export class AgentConfigLoader {
         } else {
           console.log("⚠️  [AGENT-INIT] Document Agent: No API key available");
         }
+
+        await logAgentActivity({
+          agentType: AgentType.DOCUMENT_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: true,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "document_agent_google",
+            config_loaded: true,
+            model_id: (config.configData as any).modelId,
+          },
+        });
       } else {
         console.log("❌ [AGENT-INIT] Document Agent: disabled or not found");
+
+        await logAgentActivity({
+          agentType: AgentType.DOCUMENT_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: false,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "document_agent_google",
+            config_loaded: false,
+            reason: "disabled or not found",
+          },
+        });
       }
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Document Agent:", error);
+
+      await logAgentActivity({
+        agentType: AgentType.DOCUMENT_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        category: AgentOperationCategory.CONFIGURATION,
+        correlationId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          agent_name: "document_agent_google",
+          config_loaded: false,
+        },
+      });
+
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -116,6 +216,9 @@ export class AgentConfigLoader {
    * Load mermaid agent configuration
    */
   async loadMermaidAgentConfig() {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const config = await getAdminConfig({
         configKey: "mermaid_agent_google",
@@ -136,11 +239,54 @@ export class AgentConfigLoader {
         } else {
           console.log("⚠️  [AGENT-INIT] Mermaid Agent: No API key available");
         }
+
+        await logAgentActivity({
+          agentType: AgentType.MERMAID_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: true,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "mermaid_agent_google",
+            config_loaded: true,
+            model_id: (config.configData as any).modelId,
+          },
+        });
       } else {
         console.log("❌ [AGENT-INIT] Mermaid Agent: disabled or not found");
+
+        await logAgentActivity({
+          agentType: AgentType.MERMAID_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: false,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "mermaid_agent_google",
+            config_loaded: false,
+            reason: "disabled or not found",
+          },
+        });
       }
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Mermaid Agent:", error);
+
+      await logAgentActivity({
+        agentType: AgentType.MERMAID_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        category: AgentOperationCategory.CONFIGURATION,
+        correlationId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          agent_name: "mermaid_agent_google",
+          config_loaded: false,
+        },
+      });
+
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -149,6 +295,9 @@ export class AgentConfigLoader {
    * Load python agent configuration
    */
   async loadPythonAgentConfig() {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const config = await getAdminConfig({
         configKey: "python_agent_google",
@@ -169,11 +318,54 @@ export class AgentConfigLoader {
         } else {
           console.log("⚠️  [AGENT-INIT] Python Agent: No API key available");
         }
+
+        await logAgentActivity({
+          agentType: AgentType.PYTHON_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: true,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "python_agent_google",
+            config_loaded: true,
+            model_id: (config.configData as any).modelId,
+          },
+        });
       } else {
         console.log("❌ [AGENT-INIT] Python Agent: disabled or not found");
+
+        await logAgentActivity({
+          agentType: AgentType.PYTHON_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: false,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "python_agent_google",
+            config_loaded: false,
+            reason: "disabled or not found",
+          },
+        });
       }
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load Python Agent:", error);
+
+      await logAgentActivity({
+        agentType: AgentType.PYTHON_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        category: AgentOperationCategory.CONFIGURATION,
+        correlationId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          agent_name: "python_agent_google",
+          config_loaded: false,
+        },
+      });
+
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }
@@ -182,6 +374,9 @@ export class AgentConfigLoader {
    * Load GitHub MCP agent configuration
    */
   async loadGitMcpAgentConfig() {
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
+
     try {
       const config = await getAdminConfig({
         configKey: "git_mcp_agent_google",
@@ -203,10 +398,53 @@ export class AgentConfigLoader {
           this.gitMcpAgent.setGoogleApiKey(this.apiKey);
         }
 
+        await logAgentActivity({
+          agentType: AgentType.GIT_MCP_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: true,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "git_mcp_agent_google",
+            config_loaded: true,
+            model_id: (config.configData as any).modelId,
+          },
+        });
+
         // Model will be set later via setGitMcpAgentModel() from chat agent
+      } else {
+        await logAgentActivity({
+          agentType: AgentType.GIT_MCP_AGENT,
+          operationType: AgentOperationType.INITIALIZATION,
+          category: AgentOperationCategory.CONFIGURATION,
+          correlationId,
+          success: false,
+          duration: tracker.getDuration(),
+          metadata: {
+            agent_name: "git_mcp_agent_google",
+            config_loaded: false,
+            reason: "disabled or not found",
+          },
+        });
       }
     } catch (error) {
       console.error("❌ [AGENT-INIT] Failed to load GitHub MCP Agent:", error);
+
+      await logAgentActivity({
+        agentType: AgentType.GIT_MCP_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        category: AgentOperationCategory.CONFIGURATION,
+        correlationId,
+        success: false,
+        duration: tracker.getDuration(),
+        error: error instanceof Error ? error.message : String(error),
+        metadata: {
+          agent_name: "git_mcp_agent_google",
+          config_loaded: false,
+        },
+      });
+
       throw error; // Re-throw to ensure errors are not silently ignored
     }
   }

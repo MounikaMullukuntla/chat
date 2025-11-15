@@ -9,12 +9,19 @@ import {
   logAdminError,
   logApiError,
 } from "@/lib/errors/logger";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 // POST /api/admin/models/[modelId]/set-default - Set a model as default for its provider
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ modelId: string }> }
 ) {
+  const correlationId = createCorrelationId();
   let user: User;
 
   try {
@@ -35,6 +42,21 @@ export async function POST(
   try {
     const updatedModel = await setModelAsDefault(modelId);
 
+    // Log successful admin config update
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+      activity_category: ActivityCategory.ADMIN,
+      activity_metadata: {
+        model_id: modelId,
+        action: "set_default_model",
+      },
+      request_path: request.url,
+      request_method: "POST",
+      success: true,
+    });
+
     await logAdminError(
       ErrorCategory.CONFIG_UPDATE_FAILED, // Will be changed to success category when available
       `Model set as default: ${modelId}`,
@@ -45,6 +67,16 @@ export async function POST(
 
     return Response.json(updatedModel, { status: 200 });
   } catch (error) {
+    // Log failed admin config update
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+      activity_category: ActivityCategory.ADMIN,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     await logAdminError(
       ErrorCategory.CONFIG_UPDATE_FAILED,
       `Failed to set model as default ${modelId}: ${error instanceof Error ? error.message : "Unknown error"}`,

@@ -13,6 +13,14 @@ import type { ChatMessage } from "@/lib/types";
 import { streamMermaidDiagram } from "../../tools/mermaid/streamMermaidDiagram";
 import { streamMermaidDiagramFix } from "../../tools/mermaid/streamMermaidDiagramFix";
 import { streamMermaidDiagramUpdate } from "../../tools/mermaid/streamMermaidDiagramUpdate";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 // Agent config interface
 type MermaidAgentConfig = {
@@ -259,46 +267,86 @@ export class GoogleMermaidAgentStreaming {
 
     console.log("🎨 [MERMAID-AGENT-STREAMING] Operation: GENERATE");
 
-    if (!this.toolConfigs?.generate?.enabled) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: generate tool is not enabled"
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.generate?.enabled) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: generate tool is not enabled"
+        );
+      }
+
+      const toolConfig = this.toolConfigs.generate;
+      if (!toolConfig.systemPrompt) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: generate tool configuration incomplete"
+        );
+      }
+
+      const systemPrompt = toolConfig.systemPrompt;
+      const title =
+        instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
+
+      // Use streamMermaidDiagram tool with streamToUI=false
+      const result = await streamMermaidDiagram({
+        title,
+        instruction,
+        systemPrompt,
+        dataStream: {} as any, // Not used in generate mode
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+        streamToUI: false, // Key difference: don't stream to UI
+      });
+
+      console.log(
+        "✅ [MERMAID-AGENT-STREAMING] Diagram generated (non-streaming)"
       );
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "generate",
+          instruction_length: instruction.length,
+          content_length: result.content.length,
+          streaming: false,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      // Return code to chat agent
+      return {
+        output: {
+          code: result.content,
+          generated: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "generate",
+          instruction_length: instruction.length,
+          streaming: false,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.generate;
-    if (!toolConfig.systemPrompt) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: generate tool configuration incomplete"
-      );
-    }
-
-    const systemPrompt = toolConfig.systemPrompt;
-    const title =
-      instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
-
-    // Use streamMermaidDiagram tool with streamToUI=false
-    const result = await streamMermaidDiagram({
-      title,
-      instruction,
-      systemPrompt,
-      dataStream: {} as any, // Not used in generate mode
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-      streamToUI: false, // Key difference: don't stream to UI
-    });
-
-    console.log(
-      "✅ [MERMAID-AGENT-STREAMING] Diagram generated (non-streaming)"
-    );
-
-    // Return code to chat agent
-    return {
-      output: {
-        code: result.content,
-        generated: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -314,50 +362,93 @@ export class GoogleMermaidAgentStreaming {
 
     console.log("🎨 [MERMAID-AGENT-STREAMING] Operation: CREATE");
 
-    if (!this.toolConfigs?.create?.enabled) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: create tool is not enabled"
-      );
-    }
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
 
-    const toolConfig = this.toolConfigs.create;
-    if (!toolConfig.systemPrompt) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: create tool configuration incomplete"
-      );
-    }
+    try {
+      if (!this.toolConfigs?.create?.enabled) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: create tool is not enabled"
+        );
+      }
 
-    // Extract title from instruction
-    const title =
-      instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
-    const systemPrompt = toolConfig.systemPrompt;
+      const toolConfig = this.toolConfigs.create;
+      if (!toolConfig.systemPrompt) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: create tool configuration incomplete"
+        );
+      }
 
-    // Use streamMermaidDiagram tool
-    const result = await streamMermaidDiagram({
-      title,
-      instruction,
-      systemPrompt,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-      streamToUI: true,
-    });
+      // Extract title from instruction
+      const title =
+        instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
+      const systemPrompt = toolConfig.systemPrompt;
 
-    console.log(
-      "✅ [MERMAID-AGENT-STREAMING] Diagram created:",
-      result.documentId
-    );
-
-    return {
-      output: {
-        id: result.documentId,
+      // Use streamMermaidDiagram tool
+      const result = await streamMermaidDiagram({
         title,
-        kind: "mermaid code",
-      },
-      success: true,
-    };
+        instruction,
+        systemPrompt,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+        streamToUI: true,
+      });
+
+      console.log(
+        "✅ [MERMAID-AGENT-STREAMING] Diagram created:",
+        result.documentId
+      );
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "create",
+          diagram_id: result.documentId,
+          instruction_length: instruction.length,
+          content_length: result.content.length,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: result.documentId,
+          title,
+          kind: "mermaid code",
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "create",
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
+    }
   }
 
   /**
@@ -375,42 +466,90 @@ export class GoogleMermaidAgentStreaming {
     console.log("🎨 [MERMAID-AGENT-STREAMING] Operation: UPDATE");
     console.log("🎨 [MERMAID-AGENT-STREAMING] Diagram ID:", diagramId);
 
-    if (!this.toolConfigs?.update?.enabled) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: update tool is not enabled"
-      );
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.update?.enabled) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: update tool is not enabled"
+        );
+      }
+
+      const toolConfig = this.toolConfigs.update;
+      if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: update tool configuration incomplete"
+        );
+      }
+
+      // Use streamMermaidDiagramUpdate tool
+      await streamMermaidDiagramUpdate({
+        diagramId,
+        updateInstruction: instruction,
+        systemPrompt: toolConfig.systemPrompt,
+        userPromptTemplate: toolConfig.userPromptTemplate,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+      });
+
+      console.log("✅ [MERMAID-AGENT-STREAMING] Diagram updated:", diagramId);
+
+      // Get updated diagram to track content length
+      const updatedDoc = await getDocumentById({ id: diagramId });
+      const contentLength = updatedDoc?.content?.length || 0;
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "update",
+          diagram_id: diagramId,
+          instruction_length: instruction.length,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: diagramId,
+          kind: "mermaid code",
+          isUpdate: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "update",
+          diagram_id: diagramId,
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.update;
-    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: update tool configuration incomplete"
-      );
-    }
-
-    // Use streamMermaidDiagramUpdate tool
-    await streamMermaidDiagramUpdate({
-      diagramId,
-      updateInstruction: instruction,
-      systemPrompt: toolConfig.systemPrompt,
-      userPromptTemplate: toolConfig.userPromptTemplate,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-    });
-
-    console.log("✅ [MERMAID-AGENT-STREAMING] Diagram updated:", diagramId);
-
-    return {
-      output: {
-        id: diagramId,
-        kind: "mermaid code",
-        isUpdate: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -428,40 +567,88 @@ export class GoogleMermaidAgentStreaming {
     console.log("🎨 [MERMAID-AGENT-STREAMING] Operation: FIX");
     console.log("🎨 [MERMAID-AGENT-STREAMING] Diagram ID:", diagramId);
 
-    if (!this.toolConfigs?.fix?.enabled) {
-      throw new Error("GoogleMermaidAgentStreaming: fix tool is not enabled");
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.fix?.enabled) {
+        throw new Error("GoogleMermaidAgentStreaming: fix tool is not enabled");
+      }
+
+      const toolConfig = this.toolConfigs.fix;
+      if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+        throw new Error(
+          "GoogleMermaidAgentStreaming: fix tool configuration incomplete"
+        );
+      }
+
+      // Use streamMermaidDiagramFix tool
+      await streamMermaidDiagramFix({
+        diagramId,
+        errorInfo: instruction,
+        systemPrompt: toolConfig.systemPrompt,
+        userPromptTemplate: toolConfig.userPromptTemplate,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+      });
+
+      console.log("✅ [MERMAID-AGENT-STREAMING] Diagram fixed:", diagramId);
+
+      // Get fixed diagram to track content length
+      const fixedDoc = await getDocumentById({ id: diagramId });
+      const contentLength = fixedDoc?.content?.length || 0;
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "fix",
+          diagram_id: diagramId,
+          instruction_length: instruction.length,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: diagramId,
+          kind: "mermaid code",
+          isFix: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "fix",
+          diagram_id: diagramId,
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.fix;
-    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-      throw new Error(
-        "GoogleMermaidAgentStreaming: fix tool configuration incomplete"
-      );
-    }
-
-    // Use streamMermaidDiagramFix tool
-    await streamMermaidDiagramFix({
-      diagramId,
-      errorInfo: instruction,
-      systemPrompt: toolConfig.systemPrompt,
-      userPromptTemplate: toolConfig.userPromptTemplate,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-    });
-
-    console.log("✅ [MERMAID-AGENT-STREAMING] Diagram fixed:", diagramId);
-
-    return {
-      output: {
-        id: diagramId,
-        kind: "mermaid code",
-        isFix: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -479,127 +666,173 @@ export class GoogleMermaidAgentStreaming {
     console.log("🎨 [MERMAID-AGENT-STREAMING] Operation: REVERT");
     console.log("🎨 [MERMAID-AGENT-STREAMING] Diagram ID:", diagramId);
 
-    // Get current diagram to determine target version
-    const currentDocument = await getDocumentById({ id: diagramId });
-    if (!currentDocument) {
-      throw new Error(`Diagram with ID ${diagramId} not found`);
-    }
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
 
-    console.log(
-      "🎨 [MERMAID-AGENT-STREAMING] Current version:",
-      currentDocument.version_number
-    );
+    try {
+      // Get current diagram to determine target version
+      const currentDocument = await getDocumentById({ id: diagramId });
+      if (!currentDocument) {
+        throw new Error(`Diagram with ID ${diagramId} not found`);
+      }
 
-    // Determine target version
-    let versionToRevert = targetVersion;
-    if (!versionToRevert) {
-      // Default to previous version if not specified
-      versionToRevert = currentDocument.version_number - 1;
       console.log(
-        "🎨 [MERMAID-AGENT-STREAMING] No target version specified, reverting to previous:",
+        "🎨 [MERMAID-AGENT-STREAMING] Current version:",
+        currentDocument.version_number
+      );
+
+      // Determine target version
+      let versionToRevert = targetVersion;
+      if (!versionToRevert) {
+        // Default to previous version if not specified
+        versionToRevert = currentDocument.version_number - 1;
+        console.log(
+          "🎨 [MERMAID-AGENT-STREAMING] No target version specified, reverting to previous:",
+          versionToRevert
+        );
+      }
+
+      if (versionToRevert < 1) {
+        throw new Error("Cannot revert: No previous version exists");
+      }
+
+      if (versionToRevert >= currentDocument.version_number) {
+        throw new Error(
+          `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
+        );
+      }
+
+      // Fetch the target version
+      const targetDocument = await getDocumentByIdAndVersion({
+        id: diagramId,
+        version: versionToRevert,
+      });
+
+      if (!targetDocument) {
+        throw new Error(
+          `Version ${versionToRevert} of diagram ${diagramId} not found`
+        );
+      }
+
+      console.log(
+        "🎨 [MERMAID-AGENT-STREAMING] Reverting to version:",
         versionToRevert
       );
-    }
 
-    if (versionToRevert < 1) {
-      throw new Error("Cannot revert: No previous version exists");
-    }
+      // Write artifact metadata to inform UI
+      dataStream.write({
+        type: "data-kind",
+        data: "mermaid code",
+      });
 
-    if (versionToRevert >= currentDocument.version_number) {
-      throw new Error(
-        `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
-      );
-    }
+      dataStream.write({
+        type: "data-id",
+        data: diagramId,
+      });
 
-    // Fetch the target version
-    const targetDocument = await getDocumentByIdAndVersion({
-      id: diagramId,
-      version: versionToRevert,
-    });
+      dataStream.write({
+        type: "data-title",
+        data: targetDocument.title,
+      });
 
-    if (!targetDocument) {
-      throw new Error(
-        `Version ${versionToRevert} of diagram ${diagramId} not found`
-      );
-    }
+      // Clear the artifact panel
+      dataStream.write({
+        type: "data-clear",
+        data: null,
+      });
 
-    console.log(
-      "🎨 [MERMAID-AGENT-STREAMING] Reverting to version:",
-      versionToRevert
-    );
+      // Stream the reverted content to the UI
+      const revertedContent = targetDocument.content || "";
 
-    // Write artifact metadata to inform UI
-    dataStream.write({
-      type: "data-kind",
-      data: "mermaid code",
-    });
+      // Send entire content at once for code
+      dataStream.write({
+        type: "data-codeDelta",
+        data: revertedContent,
+      });
 
-    dataStream.write({
-      type: "data-id",
-      data: diagramId,
-    });
+      // Save as new version (non-destructive revert)
+      if (user?.id) {
+        await saveDocument({
+          id: diagramId,
+          title: targetDocument.title,
+          content: revertedContent,
+          kind: "mermaid code",
+          userId: user.id,
+          chatId: chatId || currentDocument.chat_id || undefined,
+          parentVersionId: `${diagramId}`,
+          metadata: {
+            updateType: "revert",
+            agent: "GoogleMermaidAgentStreaming",
+            revertedFrom: currentDocument.version_number,
+            revertedTo: versionToRevert,
+            revertedAt: new Date().toISOString(),
+            modelUsed: this.modelId,
+          },
+        });
+        console.log(
+          "✅ [MERMAID-AGENT-STREAMING] Diagram reverted and saved as new version"
+        );
+      }
 
-    dataStream.write({
-      type: "data-title",
-      data: targetDocument.title,
-    });
+      // Signal streaming complete
+      dataStream.write({
+        type: "data-finish",
+        data: null,
+      });
 
-    // Clear the artifact panel
-    dataStream.write({
-      type: "data-clear",
-      data: null,
-    });
+      console.log("✅ [MERMAID-AGENT-STREAMING] Diagram reverted:", diagramId);
 
-    // Stream the reverted content to the UI
-    const revertedContent = targetDocument.content || "";
+      const contentLength = revertedContent.length;
 
-    // Send entire content at once for code
-    dataStream.write({
-      type: "data-codeDelta",
-      data: revertedContent,
-    });
-
-    // Save as new version (non-destructive revert)
-    if (user?.id) {
-      await saveDocument({
-        id: diagramId,
-        title: targetDocument.title,
-        content: revertedContent,
-        kind: "mermaid code",
-        userId: user.id,
-        chatId: chatId || currentDocument.chat_id || undefined,
-        parentVersionId: `${diagramId}`,
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
         metadata: {
-          updateType: "revert",
-          agent: "GoogleMermaidAgentStreaming",
+          operation_type: "revert",
+          diagram_id: diagramId,
+          target_version: versionToRevert,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: diagramId,
+          kind: "mermaid code",
+          isRevert: true,
           revertedFrom: currentDocument.version_number,
           revertedTo: versionToRevert,
-          revertedAt: new Date().toISOString(),
-          modelUsed: this.modelId,
         },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.MERMAID_AGENT,
+        operation_type: AgentOperationType.DIAGRAM_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "revert",
+          diagram_id: diagramId,
+          target_version: targetVersion,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
       });
-      console.log(
-        "✅ [MERMAID-AGENT-STREAMING] Diagram reverted and saved as new version"
-      );
+      throw error;
     }
-
-    // Signal streaming complete
-    dataStream.write({
-      type: "data-finish",
-      data: null,
-    });
-
-    console.log("✅ [MERMAID-AGENT-STREAMING] Diagram reverted:", diagramId);
-
-    return {
-      output: {
-        id: diagramId,
-        kind: "mermaid code",
-        isRevert: true,
-        revertedFrom: currentDocument.version_number,
-        revertedTo: versionToRevert,
-      },
-      success: true,
-    };
   }
 }

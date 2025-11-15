@@ -3,6 +3,14 @@ import "server-only";
 import { getAdminConfig } from "../db/queries/admin";
 import { getActiveModelsByProvider } from "../db/queries/model-config";
 import { GoogleChatAgent } from "./providers/google/chat-agent";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 // Simple agent config interface
 type AgentConfig = {
@@ -49,30 +57,76 @@ export class ChatAgentResolver {
    * Create a chat agent for the specified provider
    */
   static async createChatAgent(provider?: Provider): Promise<GoogleChatAgent> {
-    const activeProvider =
-      provider || (await ChatAgentResolver.getActiveProvider());
+    const correlationId = createCorrelationId();
+    const tracker = new PerformanceTracker();
 
-    switch (activeProvider) {
-      case "google":
-        return await ChatAgentResolver.createGoogleChatAgent();
+    try {
+      const activeProvider =
+        provider || (await ChatAgentResolver.getActiveProvider());
 
-      case "openai":
-        // TODO: Implement when needed
-        throw new Error("OpenAI chat agent not implemented yet");
+      let agent: GoogleChatAgent;
 
-      case "anthropic":
-        // TODO: Implement when needed
-        throw new Error("Anthropic chat agent not implemented yet");
+      switch (activeProvider) {
+        case "google":
+          agent = await ChatAgentResolver.createGoogleChatAgent(correlationId);
+          break;
 
-      default:
-        throw new Error(`Unknown provider: ${activeProvider}`);
+        case "openai":
+          // TODO: Implement when needed
+          throw new Error("OpenAI chat agent not implemented yet");
+
+        case "anthropic":
+          // TODO: Implement when needed
+          throw new Error("Anthropic chat agent not implemented yet");
+
+        default:
+          throw new Error(`Unknown provider: ${activeProvider}`);
+      }
+
+      // Log successful agent initialization
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        operationCategory: AgentOperationCategory.CONFIGURATION,
+        status: "success",
+        duration: tracker.end(),
+        metadata: {
+          provider: activeProvider,
+          initialization_result: "success",
+        },
+        correlationId,
+      });
+
+      return agent;
+    } catch (error) {
+      // Log failed agent initialization
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        operationCategory: AgentOperationCategory.CONFIGURATION,
+        status: "error",
+        duration: tracker.end(),
+        metadata: {
+          provider: provider || "unknown",
+          initialization_result: "error",
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        correlationId,
+      });
+
+      throw error;
     }
   }
 
   /**
    * Create Google chat agent with configuration
    */
-  private static async createGoogleChatAgent(): Promise<GoogleChatAgent> {
+  private static async createGoogleChatAgent(
+    correlationId: string
+  ): Promise<GoogleChatAgent> {
+    const tracker = new PerformanceTracker();
+
     try {
       // Load Google chat agent config from database
       const adminConfig = await getAdminConfig({
@@ -101,6 +155,9 @@ export class ChatAgentResolver {
         allowedFileTypes: [],
       }));
 
+      // Find default model
+      const defaultModel = availableModels.find((m) => m.isDefault);
+
       // Parse configuration
       const config: any = {
         systemPrompt:
@@ -121,8 +178,43 @@ export class ChatAgentResolver {
         throw new Error("Google chat agent is disabled");
       }
 
-      return new GoogleChatAgent(config);
+      const agent = new GoogleChatAgent(config);
+
+      // Log detailed Google agent creation
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        operationCategory: AgentOperationCategory.CONFIGURATION,
+        status: "success",
+        duration: tracker.end(),
+        metadata: {
+          provider: "google",
+          model_count: availableModels.length,
+          default_model: defaultModel?.id || "none",
+          enabled_models: availableModels.filter((m) => m.enabled).length,
+          config_loaded: true,
+        },
+        correlationId,
+      });
+
+      return agent;
     } catch (error) {
+      // Log detailed Google agent creation failure
+      await logAgentActivity({
+        agentType: AgentType.CHAT_MODEL_AGENT,
+        operationType: AgentOperationType.INITIALIZATION,
+        operationCategory: AgentOperationCategory.CONFIGURATION,
+        status: "error",
+        duration: tracker.end(),
+        metadata: {
+          provider: "google",
+          config_loaded: false,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        correlationId,
+      });
+
       console.error("Failed to create Google chat agent:", error);
       throw error;
     }
