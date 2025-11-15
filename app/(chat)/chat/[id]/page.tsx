@@ -10,6 +10,11 @@ const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";
 import { getCurrentUser } from "@/lib/auth/server";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
+import {
+  logUserActivity,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging/activity-logger";
 
 // Force dynamic rendering for authenticated pages
 export const dynamic = "force-dynamic";
@@ -40,6 +45,22 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     if (user.id !== chat.user_id) {
       return notFound();
     }
+  }
+
+  // Log chat view activity (async, non-blocking)
+  if (user) {
+    logUserActivity({
+      user_id: user.id,
+      activity_type: UserActivityType.CHAT_VIEW,
+      activity_category: ActivityCategory.CHAT,
+      resource_id: id,
+      resource_type: "chat",
+      request_path: `/chat/${id}`,
+      request_method: "GET",
+      success: true,
+    }).catch((err) => {
+      console.error("Failed to log chat view:", err);
+    });
   }
 
   const messagesFromDb = await getMessagesByChatId({

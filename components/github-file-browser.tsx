@@ -20,6 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { GitHubFile, GitHubFolder, GitHubRepo } from "@/lib/types";
+import {
+  logAppError,
+  ErrorCategory,
+  ErrorSeverity,
+} from "@/lib/errors/logger";
 import { Checkbox } from "./ui/checkbox";
 
 type GitHubFileBrowserProps = {
@@ -162,6 +167,38 @@ export function GitHubFileBrowser({
         console.error("Failed to load directory:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Failed to load directory";
+
+        // Categorize error based on type
+        let errorCategory = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+        let severity = ErrorSeverity.ERROR;
+
+        if (errorMessage.includes("not found")) {
+          errorCategory = ErrorCategory.API_REQUEST_FAILED;
+          severity = ErrorSeverity.WARNING;
+        } else if (errorMessage.includes("rate limit") || errorMessage.includes("403")) {
+          errorCategory = ErrorCategory.API_RATE_LIMIT;
+          severity = ErrorSeverity.WARNING;
+        } else if (errorMessage.includes("401") || errorMessage.includes("permissions")) {
+          errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
+          severity = ErrorSeverity.WARNING;
+        }
+
+        // Log the GitHub API error
+        logAppError(
+          errorCategory,
+          `Failed to load GitHub directory: ${errorMessage}`,
+          {
+            repo: repo.full_name,
+            path: path,
+            isRoot: isRoot,
+            error: errorMessage,
+            errorType: error instanceof Error ? error.constructor.name : "Unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+          },
+          undefined, // No user_id available in this component
+          severity
+        );
 
         if (isRoot) {
           setError(errorMessage);
