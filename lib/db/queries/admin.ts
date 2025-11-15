@@ -145,7 +145,7 @@ const VALID_AGENT_TYPES = [
 ];
 
 const VALID_PROVIDERS = ["google", "openai", "anthropic"];
-const SPECIAL_CONFIG_KEYS = ["app_settings"];
+const SPECIAL_CONFIG_KEYS = ["app_settings", "logging_settings"];
 
 // Validation schemas for different agent types
 const BaseAgentConfigSchema = z.object({
