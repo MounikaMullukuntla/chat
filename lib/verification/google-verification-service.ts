@@ -10,6 +10,8 @@ export class GoogleVerificationService extends BaseVerificationService {
   private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   async verify(apiKey: string): Promise<VerificationResult> {
+    const startTime = Date.now();
+
     try {
       // Validate key format
       if (!this.validateKeyFormat(apiKey)) {
@@ -36,6 +38,33 @@ export class GoogleVerificationService extends BaseVerificationService {
 
         // Verify we got a valid response with models
         if (data.models && Array.isArray(data.models)) {
+          // Log successful verification
+          try {
+            const {
+              logUserActivity,
+              UserActivityType,
+              ActivityCategory,
+            } = await import("@/lib/logging");
+
+            const verificationTime = Date.now() - startTime;
+
+            void logUserActivity({
+              user_id: "", // Will be populated from session
+              activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+              activity_category: ActivityCategory.ADMIN,
+              activity_metadata: {
+                verification_type: "google_ai_api_key",
+                verification_time_ms: verificationTime,
+                models_count: data.models.length,
+                primary_model: data.models.length > 0 ? data.models[0].name : undefined,
+              },
+              resource_type: "google_verification",
+              success: true,
+            });
+          } catch (logError) {
+            console.error("Failed to log Google verification:", logError);
+          }
+
           return {
             success: true,
             details: {
@@ -102,6 +131,47 @@ export class GoogleVerificationService extends BaseVerificationService {
         response.status
       );
     } catch (error) {
+      // Log verification failure
+      try {
+        const {
+          logSystemError,
+          ErrorCategory,
+          ErrorSeverity,
+        } = await import("@/lib/errors/logger");
+
+        const verificationTime = Date.now() - startTime;
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Determine severity based on error type
+        let severity = ErrorSeverity.WARNING;
+        let category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+
+        if (errorMessage.includes("Invalid") || errorMessage.includes("format")) {
+          severity = ErrorSeverity.WARNING;
+          category = ErrorCategory.VALIDATION_ERROR;
+        } else if (errorMessage.includes("Rate limit") || errorMessage.includes("quota")) {
+          severity = ErrorSeverity.WARNING;
+          category = ErrorCategory.API_RATE_LIMIT;
+        } else if (errorMessage.includes("service unavailable")) {
+          severity = ErrorSeverity.ERROR;
+          category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+        }
+
+        void logSystemError(
+          category,
+          `Google AI API key verification failed: ${errorMessage}`,
+          {
+            verification_type: "google_ai_api_key",
+            verification_time_ms: verificationTime,
+            error_details: error instanceof Error ? error.stack : undefined,
+          },
+          severity
+        );
+      } catch (logError) {
+        console.error("Failed to log Google verification error:", logError);
+      }
+
       return this.handleError(error);
     }
   }

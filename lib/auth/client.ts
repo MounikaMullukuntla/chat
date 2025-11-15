@@ -77,6 +77,30 @@ export async function signUp(
       },
     });
 
+    // Log successful registration
+    if (!error && data.user) {
+      try {
+        const { logUserActivity, UserActivityType, ActivityCategory } =
+          await import("@/lib/logging");
+
+        // Fire and forget - don't block auth flow
+        void logUserActivity({
+          user_id: data.user.id,
+          activity_type: UserActivityType.AUTH_REGISTER,
+          activity_category: ActivityCategory.AUTHENTICATION,
+          activity_metadata: {
+            method: "password",
+            role: defaultMetadata.role,
+            email_confirmed: data.user.email_confirmed_at !== null,
+          },
+          success: true,
+        });
+      } catch (logError) {
+        // Don't fail registration if logging fails
+        console.error("Failed to log registration:", logError);
+      }
+    }
+
     return {
       user: data.user,
       session: data.session,
@@ -118,6 +142,29 @@ export async function signIn(
       password,
     });
 
+    // Log successful login
+    if (!error && data.user) {
+      try {
+        const { logUserActivity, UserActivityType, ActivityCategory } =
+          await import("@/lib/logging");
+
+        // Fire and forget - don't block auth flow
+        void logUserActivity({
+          user_id: data.user.id,
+          activity_type: UserActivityType.AUTH_LOGIN,
+          activity_category: ActivityCategory.AUTHENTICATION,
+          activity_metadata: {
+            method: "password",
+            last_sign_in: data.user.last_sign_in_at,
+          },
+          success: true,
+        });
+      } catch (logError) {
+        // Don't fail login if logging fails
+        console.error("Failed to log login:", logError);
+      }
+    }
+
     return {
       user: data.user,
       session: data.session,
@@ -145,7 +192,35 @@ export async function signIn(
 export async function signOut(): Promise<{ error: AuthError | null }> {
   try {
     const supabase = createClient();
+
+    // Get current user before signing out for logging
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { error } = await supabase.auth.signOut();
+
+    // Log successful logout
+    if (!error && user) {
+      try {
+        const { logUserActivity, UserActivityType, ActivityCategory } =
+          await import("@/lib/logging");
+
+        // Fire and forget - don't block auth flow
+        void logUserActivity({
+          user_id: user.id,
+          activity_type: UserActivityType.AUTH_LOGOUT,
+          activity_category: ActivityCategory.AUTHENTICATION,
+          activity_metadata: {
+            method: "manual",
+          },
+          success: true,
+        });
+      } catch (logError) {
+        // Don't fail logout if logging fails
+        console.error("Failed to log logout:", logError);
+      }
+    }
 
     return { error };
   } catch (err) {

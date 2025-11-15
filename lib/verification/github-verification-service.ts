@@ -10,6 +10,8 @@ export class GitHubVerificationService extends BaseVerificationService {
   private readonly baseUrl = "https://api.github.com";
 
   async verify(token: string): Promise<GitHubVerificationResult> {
+    const startTime = Date.now();
+
     try {
       // Validate token format
       if (!this.validateTokenFormat(token)) {
@@ -43,6 +45,36 @@ export class GitHubVerificationService extends BaseVerificationService {
 
         // Check token expiration if available
         const expiresAt = await this.getTokenExpiration(token);
+
+        // Log successful verification
+        try {
+          const {
+            logUserActivity,
+            UserActivityType,
+            ActivityCategory,
+          } = await import("@/lib/logging");
+
+          const verificationTime = Date.now() - startTime;
+
+          void logUserActivity({
+            user_id: "", // Will be populated from session
+            activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+            activity_category: ActivityCategory.ADMIN,
+            activity_metadata: {
+              verification_type: "github_pat",
+              verification_time_ms: verificationTime,
+              user_login: userData.login,
+              scopes_count: scopes.length,
+              repositories_count: repositories?.length || 0,
+              has_expiration: !!expiresAt,
+              rate_limit_remaining: rateLimitInfo?.remaining,
+            },
+            resource_type: "github_verification",
+            success: true,
+          });
+        } catch (logError) {
+          console.error("Failed to log GitHub verification:", logError);
+        }
 
         return {
           success: true,
@@ -109,6 +141,47 @@ export class GitHubVerificationService extends BaseVerificationService {
         userResponse.status
       );
     } catch (error) {
+      // Log verification failure
+      try {
+        const {
+          logSystemError,
+          ErrorCategory,
+          ErrorSeverity,
+        } = await import("@/lib/errors/logger");
+
+        const verificationTime = Date.now() - startTime;
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Determine severity based on error type
+        let severity = ErrorSeverity.WARNING;
+        let category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+
+        if (errorMessage.includes("Invalid") || errorMessage.includes("format")) {
+          severity = ErrorSeverity.WARNING;
+          category = ErrorCategory.VALIDATION_ERROR;
+        } else if (errorMessage.includes("rate limit")) {
+          severity = ErrorSeverity.WARNING;
+          category = ErrorCategory.API_RATE_LIMIT;
+        } else if (errorMessage.includes("service unavailable")) {
+          severity = ErrorSeverity.ERROR;
+          category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+        }
+
+        void logSystemError(
+          category,
+          `GitHub PAT verification failed: ${errorMessage}`,
+          {
+            verification_type: "github_pat",
+            verification_time_ms: verificationTime,
+            error_details: error instanceof Error ? error.stack : undefined,
+          },
+          severity
+        );
+      } catch (logError) {
+        console.error("Failed to log GitHub verification error:", logError);
+      }
+
       // Convert to GitHubVerificationResult format
       const baseResult = this.handleError(error);
       return {

@@ -90,6 +90,7 @@ export const pythonArtifact = new Artifact<
 
     const handleExecute = async () => {
       setMetadata({ ...metadata, isExecuting: true });
+      const startTime = Date.now();
 
       try {
         // Dynamically import Pyodide functions
@@ -97,6 +98,7 @@ export const pythonArtifact = new Artifact<
         const codeToExecute = draftContent || content;
 
         const result = await executePython(codeToExecute);
+        const executionTime = Date.now() - startTime;
 
         setMetadata({
           ...metadata,
@@ -105,13 +107,65 @@ export const pythonArtifact = new Artifact<
           hasExecutionError: !!result.error,
         });
 
+        // Log artifact execution
+        try {
+          const {
+            logUserActivity,
+            UserActivityType,
+            ActivityCategory,
+          } = await import("@/lib/logging");
+
+          // Fire and forget
+          void logUserActivity({
+            user_id: "", // Will be populated from session
+            activity_type: UserActivityType.ARTIFACT_EXECUTE,
+            activity_category: ActivityCategory.ARTIFACT,
+            activity_metadata: {
+              artifact_type: "python",
+              code_length: codeToExecute.length,
+              execution_time_ms: executionTime,
+              has_output: !!(result.stdout || result.result),
+              has_plots: !!(result.plots && result.plots.length > 0),
+            },
+            success: !result.error,
+            error_message: result.error || undefined,
+          });
+        } catch (logError) {
+          console.error("Failed to log artifact execution:", logError);
+        }
+
         if (result.error) {
           toast.error("Execution error - check console");
+
+          // Log execution error
+          try {
+            const {
+              logAppError,
+              ErrorCategory,
+              ErrorSeverity,
+            } = await import("@/lib/errors/logger");
+
+            void logAppError(
+              ErrorCategory.COMPONENT_ERROR,
+              `Python artifact execution error: ${result.error}`,
+              {
+                artifact_type: "python",
+                code_length: codeToExecute.length,
+                execution_time_ms: executionTime,
+              },
+              undefined,
+              ErrorSeverity.WARNING
+            );
+          } catch (logError) {
+            console.error("Failed to log execution error:", logError);
+          }
         } else {
           toast.success("Code executed successfully!");
         }
       } catch (error) {
         console.error("Execution error:", error);
+        const executionTime = Date.now() - startTime;
+
         setMetadata({
           ...metadata,
           isExecuting: false,
@@ -123,6 +177,32 @@ export const pythonArtifact = new Artifact<
           hasExecutionError: true,
         });
         toast.error("Failed to execute code");
+
+        // Log critical execution failure
+        try {
+          const {
+            logAppError,
+            ErrorCategory,
+            ErrorSeverity,
+          } = await import("@/lib/errors/logger");
+
+          void logAppError(
+            ErrorCategory.COMPONENT_ERROR,
+            `Python artifact execution failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+            {
+              artifact_type: "python",
+              code_length: (draftContent || content).length,
+              execution_time_ms: executionTime,
+              stack: error instanceof Error ? error.stack : undefined,
+            },
+            undefined,
+            ErrorSeverity.ERROR
+          );
+        } catch (logError) {
+          console.error("Failed to log execution error:", logError);
+        }
       }
     };
 

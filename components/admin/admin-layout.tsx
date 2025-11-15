@@ -153,13 +153,43 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save configuration");
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to save configuration: ${response.status} ${errorText}`
+        );
       }
 
       // Update local state
       setConfigs((prev) => ({ ...prev, [configKey]: configData }));
     } catch (error) {
       console.error("Save error:", error);
+
+      // Log API save error (separate from child component logging)
+      try {
+        const {
+          logAdminError,
+          ErrorCategory,
+          ErrorSeverity,
+        } = await import("@/lib/errors/logger");
+
+        void logAdminError(
+          ErrorCategory.CONFIG_UPDATE_FAILED,
+          `API call failed to save config: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          {
+            config_key: configKey,
+            provider,
+            api_endpoint: `/api/admin/config/${configKey}`,
+            error_details: error instanceof Error ? error.stack : undefined,
+          },
+          undefined,
+          ErrorSeverity.ERROR
+        );
+      } catch (logError) {
+        console.error("Failed to log API save error:", logError);
+      }
+
       throw error;
     }
   };
