@@ -7,6 +7,14 @@ import { streamText } from "ai";
 import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID, stripMarkdownCodeFences } from "@/lib/utils";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * Stream document creation in real-time using AI SDK's streamText
@@ -37,11 +45,33 @@ export async function streamTextDocument(params: {
     metadata = {},
   } = params;
   const documentId = generateUUID();
+  const correlationId = createCorrelationId();
+  const performanceTracker = new PerformanceTracker();
 
   console.log("📄 [STREAM-CREATE] Starting real-time document creation");
   console.log("📄 [STREAM-CREATE] Document ID:", documentId);
   console.log("📄 [STREAM-CREATE] Title:", title);
   console.log("📄 [STREAM-CREATE] Model:", modelId);
+  console.log("📄 [STREAM-CREATE] Correlation ID:", correlationId);
+
+  // Log agent activity start
+  logAgentActivity({
+    agent_type: AgentType.DOCUMENT_AGENT,
+    operation_type: AgentOperationType.DOCUMENT_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+    correlation_id: correlationId,
+    status: "started",
+    metadata: {
+      operation_type: "create",
+      resource_id: documentId,
+      instruction_length: instruction.length,
+      streaming: true,
+      tool_name: "streamTextDocument",
+      model_id: modelId,
+      chat_id: chatId,
+    },
+  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Write artifact metadata to open side panel
   dataStream.write({
@@ -168,11 +198,55 @@ export async function streamTextDocument(params: {
     });
 
     console.log("✅ [STREAM-CREATE] Document creation completed successfully");
+
+    // Log success
+    logAgentActivity({
+      agent_type: AgentType.DOCUMENT_AGENT,
+      operation_type: AgentOperationType.DOCUMENT_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "completed",
+      duration_ms: performanceTracker.end(),
+      metadata: {
+        operation_type: "create",
+        resource_id: documentId,
+        instruction_length: instruction.length,
+        streaming: true,
+        tool_name: "streamTextDocument",
+        model_id: modelId,
+        chat_id: chatId,
+        output_length: cleanedContent.length,
+        chunk_count: chunkCount,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
+
     return documentId;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
+
+    // Log failure
+    logAgentActivity({
+      agent_type: AgentType.DOCUMENT_AGENT,
+      operation_type: AgentOperationType.DOCUMENT_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "failed",
+      duration_ms: performanceTracker.end(),
+      error_message: errorMessage,
+      metadata: {
+        operation_type: "create",
+        resource_id: documentId,
+        instruction_length: instruction.length,
+        streaming: true,
+        tool_name: "streamTextDocument",
+        model_id: modelId,
+        chat_id: chatId,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
 
     // Write error to stream
     dataStream.write({

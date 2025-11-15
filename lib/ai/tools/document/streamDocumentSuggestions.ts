@@ -7,6 +7,14 @@ import { streamObject } from "ai";
 import { z } from "zod";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 /**
  * Generate suggestions for a document using AI SDK's streamObject
@@ -35,9 +43,32 @@ export async function streamDocumentSuggestions(params: {
     apiKey,
   } = params;
 
+  const correlationId = createCorrelationId();
+  const performanceTracker = new PerformanceTracker();
+
   console.log("💡 [SUGGESTIONS] Starting suggestion generation");
   console.log("💡 [SUGGESTIONS] Document ID:", documentId);
   console.log("💡 [SUGGESTIONS] Model:", modelId);
+  console.log("💡 [SUGGESTIONS] Correlation ID:", correlationId);
+
+  // Log agent activity start
+  logAgentActivity({
+    agent_type: AgentType.DOCUMENT_AGENT,
+    operation_type: AgentOperationType.DOCUMENT_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+    correlation_id: correlationId,
+    status: "started",
+    metadata: {
+      operation_type: "suggestions",
+      resource_id: documentId,
+      query_length: instruction.length,
+      streaming: true,
+      tool_name: "streamDocumentSuggestions",
+      model_id: modelId,
+      chat_id: chatId,
+    },
+  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Fetch the existing document from database
   const document = await getDocumentById({ id: documentId });
@@ -164,6 +195,27 @@ export async function streamDocumentSuggestions(params: {
       transient: true,
     });
 
+    // Log success
+    logAgentActivity({
+      agent_type: AgentType.DOCUMENT_AGENT,
+      operation_type: AgentOperationType.DOCUMENT_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "completed",
+      duration_ms: performanceTracker.end(),
+      metadata: {
+        operation_type: "suggestions",
+        resource_id: documentId,
+        query_length: instruction.length,
+        streaming: true,
+        tool_name: "streamDocumentSuggestions",
+        model_id: modelId,
+        chat_id: chatId,
+        suggestion_count: suggestionCount,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
+
     return {
       documentId,
       suggestionCount,
@@ -172,6 +224,27 @@ export async function streamDocumentSuggestions(params: {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [SUGGESTIONS] Generation failed:", errorMessage);
+
+    // Log failure
+    logAgentActivity({
+      agent_type: AgentType.DOCUMENT_AGENT,
+      operation_type: AgentOperationType.DOCUMENT_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+      correlation_id: correlationId,
+      status: "failed",
+      duration_ms: performanceTracker.end(),
+      error_message: errorMessage,
+      metadata: {
+        operation_type: "suggestions",
+        resource_id: documentId,
+        query_length: instruction.length,
+        streaming: true,
+        tool_name: "streamDocumentSuggestions",
+        model_id: modelId,
+        chat_id: chatId,
+      },
+    }).catch((err) => console.error("Failed to log agent activity:", err));
 
     // Write error to stream
     dataStream.write({
