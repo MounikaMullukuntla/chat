@@ -3,6 +3,7 @@
 import { ArrowLeft, Database, Save, Trash2, AlertCircle, Activity, Bot } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +15,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 
 interface LoggingSettings {
   error_logging_enabled: boolean;
@@ -55,7 +55,6 @@ interface LoggingSettings {
 
 export function LoggingDashboard() {
   const router = useRouter();
-  const { toast } = useToast();
   const [settings, setSettings] = useState<LoggingSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,18 +77,14 @@ export function LoggingDashboard() {
         }
       } catch (error) {
         console.error("Failed to fetch logging settings:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load logging settings",
-          variant: "destructive",
-        });
+        toast.error("Failed to load logging settings");
       } finally {
         setLoading(false);
       }
     };
 
     fetchSettings();
-  }, [toast]);
+  }, []);
 
   const handleSave = async () => {
     if (!settings) return;
@@ -103,20 +98,13 @@ export function LoggingDashboard() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Logging settings saved successfully",
-        });
+        toast.success("Logging settings saved successfully");
       } else {
         throw new Error("Failed to save settings");
       }
     } catch (error) {
       console.error("Failed to save logging settings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save logging settings",
-        variant: "destructive",
-      });
+      toast.error("Failed to save logging settings");
     } finally {
       setSaving(false);
     }
@@ -135,20 +123,13 @@ export function LoggingDashboard() {
 
       if (response.ok) {
         const result = await response.json();
-        toast({
-          title: "Success",
-          description: `Purged ${result.user_logs_deleted} user logs, ${result.agent_logs_deleted} agent logs, and ${result.error_logs_deleted} error logs`,
-        });
+        toast.success(`Purged ${result.user_logs_deleted} user logs, ${result.agent_logs_deleted} agent logs, and ${result.error_logs_deleted} error logs`);
       } else {
         throw new Error("Failed to purge logs");
       }
     } catch (error) {
       console.error("Failed to purge logs:", error);
-      toast({
-        title: "Error",
-        description: "Failed to purge old logs",
-        variant: "destructive",
-      });
+      toast.error("Failed to purge old logs");
     } finally {
       setPurging(false);
     }
