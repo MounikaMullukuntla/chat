@@ -143,9 +143,64 @@ export function ChatModelAgentConfig({
     try {
       await onSave(config);
       toast.success("Chat model agent configuration saved successfully");
+
+      // Log successful configuration update
+      try {
+        const {
+          logUserActivity,
+          UserActivityType,
+          ActivityCategory,
+        } = await import("@/lib/logging");
+
+        void logUserActivity({
+          user_id: "", // Will be populated from session
+          activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+          activity_category: ActivityCategory.ADMIN,
+          activity_metadata: {
+            config_type: "chat_model_agent",
+            provider,
+            agent_enabled: config.enabled,
+            file_input_enabled: config.capabilities.fileInput,
+            tools_count: Object.keys(config.tools).length,
+            enabled_tools: Object.entries(config.tools)
+              .filter(([_, toolConfig]) => toolConfig?.enabled)
+              .map(([toolName]) => toolName),
+          },
+          resource_type: "agent_config",
+          resource_id: `${provider}_chat_model`,
+          success: true,
+        });
+      } catch (logError) {
+        console.error("Failed to log config update:", logError);
+      }
     } catch (error) {
       toast.error("Failed to save configuration");
       console.error(error);
+
+      // Log configuration save error
+      try {
+        const {
+          logAdminError,
+          ErrorCategory,
+          ErrorSeverity,
+        } = await import("@/lib/errors/logger");
+
+        void logAdminError(
+          ErrorCategory.CONFIG_UPDATE_FAILED,
+          `Failed to save chat model agent config: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          {
+            config_type: "chat_model_agent",
+            provider,
+            error_details: error instanceof Error ? error.stack : undefined,
+          },
+          undefined,
+          ErrorSeverity.ERROR
+        );
+      } catch (logError) {
+        console.error("Failed to log config error:", logError);
+      }
     } finally {
       setSaving(false);
     }

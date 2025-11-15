@@ -93,9 +93,63 @@ export function MermaidAgentConfig({
     try {
       await onSave(config);
       toast.success("Mermaid agent configuration saved successfully");
+
+      // Log successful configuration update
+      try {
+        const {
+          logUserActivity,
+          UserActivityType,
+          ActivityCategory,
+        } = await import("@/lib/logging");
+
+        void logUserActivity({
+          user_id: "", // Will be populated from session
+          activity_type: UserActivityType.ADMIN_CONFIG_UPDATE,
+          activity_category: ActivityCategory.ADMIN,
+          activity_metadata: {
+            config_type: "mermaid_agent",
+            provider,
+            agent_enabled: config.enabled,
+            tools_count: Object.keys(config.tools).length,
+            enabled_tools: Object.entries(config.tools)
+              .filter(([_, toolConfig]) => toolConfig?.enabled)
+              .map(([toolName]) => toolName),
+          },
+          resource_type: "agent_config",
+          resource_id: `${provider}_mermaid`,
+          success: true,
+        });
+      } catch (logError) {
+        console.error("Failed to log config update:", logError);
+      }
     } catch (error) {
       toast.error("Failed to save configuration");
       console.error(error);
+
+      // Log configuration save error
+      try {
+        const {
+          logAdminError,
+          ErrorCategory,
+          ErrorSeverity,
+        } = await import("@/lib/errors/logger");
+
+        void logAdminError(
+          ErrorCategory.CONFIG_UPDATE_FAILED,
+          `Failed to save mermaid agent config: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          {
+            config_type: "mermaid_agent",
+            provider,
+            error_details: error instanceof Error ? error.stack : undefined,
+          },
+          undefined,
+          ErrorSeverity.ERROR
+        );
+      } catch (logError) {
+        console.error("Failed to log config error:", logError);
+      }
     } finally {
       setSaving(false);
     }
