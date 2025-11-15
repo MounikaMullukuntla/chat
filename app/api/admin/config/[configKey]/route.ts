@@ -37,6 +37,7 @@ const VALID_CONFIG_TYPES = [
   ...VALID_AGENT_TYPES,
   "model_config",
   "app_settings",
+  "logging_settings",
 ];
 
 const VALID_PROVIDERS = ["google", "openai", "anthropic"];

@@ -145,7 +145,7 @@ const VALID_AGENT_TYPES = [
 ];
 
 const VALID_PROVIDERS = ["google", "openai", "anthropic"];
-const SPECIAL_CONFIG_KEYS = ["app_settings"];
+const SPECIAL_CONFIG_KEYS = ["app_settings", "logging_settings"];
 
 // Validation schemas for different agent types
 const BaseAgentConfigSchema = z.object({
@@ -794,5 +794,45 @@ function _getPartialSchemaForAgentType(configKey: string): z.ZodSchema {
       return GitMCPAgentConfigSchema.partial().deepPartial();
     default:
       throw new Error(`Unknown agent type: ${agentType}`);
+  }
+}
+
+// Function to purge old activity logs
+export async function purgeOldActivityLogs(): Promise<{
+  user_logs_deleted: number;
+  agent_logs_deleted: number;
+  error_logs_deleted: number;
+}> {
+  try {
+    const { createAdminClient } = await import("../supabase-client");
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase.rpc("purge_old_activity_logs");
+
+    if (error) {
+      throw new ChatSDKError(
+        "bad_request:database",
+        `Failed to purge old activity logs: ${error.message}`
+      );
+    }
+
+    // The function returns a single row with the counts
+    const result = Array.isArray(data) && data.length > 0 ? data[0] : data;
+
+    return (
+      result || {
+        user_logs_deleted: 0,
+        agent_logs_deleted: 0,
+        error_logs_deleted: 0,
+      }
+    );
+  } catch (error) {
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to purge old activity logs"
+    );
   }
 }
