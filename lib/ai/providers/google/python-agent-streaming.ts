@@ -13,6 +13,14 @@ import type { ChatMessage } from "@/lib/types";
 import { streamPythonCode } from "../../tools/python/streamPythonCode";
 import { streamPythonCodeFix } from "../../tools/python/streamPythonCodeFix";
 import { streamPythonCodeUpdate } from "../../tools/python/streamPythonCodeUpdate";
+import {
+  logAgentActivity,
+  PerformanceTracker,
+  createCorrelationId,
+  AgentType,
+  AgentOperationType,
+  AgentOperationCategory,
+} from "@/lib/logging/activity-logger";
 
 // Agent config interface
 type PythonAgentConfig = {
@@ -283,44 +291,84 @@ export class GooglePythonAgentStreaming {
 
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: GENERATE");
 
-    if (!this.toolConfigs?.generate?.enabled) {
-      throw new Error(
-        "GooglePythonAgentStreaming: generate tool is not enabled"
-      );
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.generate?.enabled) {
+        throw new Error(
+          "GooglePythonAgentStreaming: generate tool is not enabled"
+        );
+      }
+
+      const toolConfig = this.toolConfigs.generate;
+      if (!toolConfig.systemPrompt) {
+        throw new Error(
+          "GooglePythonAgentStreaming: generate tool configuration incomplete"
+        );
+      }
+
+      const systemPrompt = toolConfig.systemPrompt;
+      const title =
+        instruction.split("\n")[0].substring(0, 100).trim() || "Python Code";
+
+      // Use streamPythonCode tool with streamToUI=false
+      const result = await streamPythonCode({
+        title,
+        instruction,
+        systemPrompt,
+        dataStream: {} as any, // Not used in generate mode
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+        streamToUI: false, // Key difference: don't stream to UI
+      });
+
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code generated (non-streaming)");
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "generate",
+          instruction_length: instruction.length,
+          content_length: result.content.length,
+          streaming: false,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      // Return code to chat agent
+      return {
+        output: {
+          code: result.content,
+          generated: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "generate",
+          instruction_length: instruction.length,
+          streaming: false,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.generate;
-    if (!toolConfig.systemPrompt) {
-      throw new Error(
-        "GooglePythonAgentStreaming: generate tool configuration incomplete"
-      );
-    }
-
-    const systemPrompt = toolConfig.systemPrompt;
-    const title =
-      instruction.split("\n")[0].substring(0, 100).trim() || "Python Code";
-
-    // Use streamPythonCode tool with streamToUI=false
-    const result = await streamPythonCode({
-      title,
-      instruction,
-      systemPrompt,
-      dataStream: {} as any, // Not used in generate mode
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-      streamToUI: false, // Key difference: don't stream to UI
-    });
-
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code generated (non-streaming)");
-
-    // Return code to chat agent
-    return {
-      output: {
-        code: result.content,
-        generated: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -336,45 +384,88 @@ export class GooglePythonAgentStreaming {
 
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: CREATE");
 
-    if (!this.toolConfigs?.create?.enabled) {
-      throw new Error("GooglePythonAgentStreaming: create tool is not enabled");
-    }
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
 
-    const toolConfig = this.toolConfigs.create;
-    if (!toolConfig.systemPrompt) {
-      throw new Error(
-        "GooglePythonAgentStreaming: create tool configuration incomplete"
-      );
-    }
+    try {
+      if (!this.toolConfigs?.create?.enabled) {
+        throw new Error("GooglePythonAgentStreaming: create tool is not enabled");
+      }
 
-    // Extract title from instruction
-    const title =
-      instruction.split("\n")[0].substring(0, 100).trim() || "Python Code";
-    const systemPrompt = toolConfig.systemPrompt;
+      const toolConfig = this.toolConfigs.create;
+      if (!toolConfig.systemPrompt) {
+        throw new Error(
+          "GooglePythonAgentStreaming: create tool configuration incomplete"
+        );
+      }
 
-    // Use streamPythonCode tool
-    const result = await streamPythonCode({
-      title,
-      instruction,
-      systemPrompt,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-      streamToUI: true,
-    });
+      // Extract title from instruction
+      const title =
+        instruction.split("\n")[0].substring(0, 100).trim() || "Python Code";
+      const systemPrompt = toolConfig.systemPrompt;
 
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code created:", result.documentId);
-
-    return {
-      output: {
-        id: result.documentId,
+      // Use streamPythonCode tool
+      const result = await streamPythonCode({
         title,
-        kind: "python code",
-      },
-      success: true,
-    };
+        instruction,
+        systemPrompt,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+        streamToUI: true,
+      });
+
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code created:", result.documentId);
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "create",
+          code_id: result.documentId,
+          instruction_length: instruction.length,
+          content_length: result.content.length,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: result.documentId,
+          title,
+          kind: "python code",
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "create",
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
+    }
   }
 
   /**
@@ -392,40 +483,88 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: UPDATE");
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
-    if (!this.toolConfigs?.update?.enabled) {
-      throw new Error("GooglePythonAgentStreaming: update tool is not enabled");
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.update?.enabled) {
+        throw new Error("GooglePythonAgentStreaming: update tool is not enabled");
+      }
+
+      const toolConfig = this.toolConfigs.update;
+      if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+        throw new Error(
+          "GooglePythonAgentStreaming: update tool configuration incomplete"
+        );
+      }
+
+      // Use streamPythonCodeUpdate tool
+      await streamPythonCodeUpdate({
+        codeId,
+        updateInstruction: instruction,
+        systemPrompt: toolConfig.systemPrompt,
+        userPromptTemplate: toolConfig.userPromptTemplate,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+      });
+
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code updated:", codeId);
+
+      // Get updated code to track content length
+      const updatedDoc = await getDocumentById({ id: codeId });
+      const contentLength = updatedDoc?.content?.length || 0;
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "update",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: codeId,
+          kind: "python code",
+          isUpdate: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "update",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.update;
-    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-      throw new Error(
-        "GooglePythonAgentStreaming: update tool configuration incomplete"
-      );
-    }
-
-    // Use streamPythonCodeUpdate tool
-    await streamPythonCodeUpdate({
-      codeId,
-      updateInstruction: instruction,
-      systemPrompt: toolConfig.systemPrompt,
-      userPromptTemplate: toolConfig.userPromptTemplate,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-    });
-
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code updated:", codeId);
-
-    return {
-      output: {
-        id: codeId,
-        kind: "python code",
-        isUpdate: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -443,40 +582,88 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: FIX");
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
-    if (!this.toolConfigs?.fix?.enabled) {
-      throw new Error("GooglePythonAgentStreaming: fix tool is not enabled");
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.fix?.enabled) {
+        throw new Error("GooglePythonAgentStreaming: fix tool is not enabled");
+      }
+
+      const toolConfig = this.toolConfigs.fix;
+      if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+        throw new Error(
+          "GooglePythonAgentStreaming: fix tool configuration incomplete"
+        );
+      }
+
+      // Use streamPythonCodeFix tool
+      await streamPythonCodeFix({
+        codeId,
+        errorInfo: instruction,
+        systemPrompt: toolConfig.systemPrompt,
+        userPromptTemplate: toolConfig.userPromptTemplate,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+      });
+
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code fixed:", codeId);
+
+      // Get fixed code to track content length
+      const fixedDoc = await getDocumentById({ id: codeId });
+      const contentLength = fixedDoc?.content?.length || 0;
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "fix",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: codeId,
+          kind: "python code",
+          isFix: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "fix",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.fix;
-    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-      throw new Error(
-        "GooglePythonAgentStreaming: fix tool configuration incomplete"
-      );
-    }
-
-    // Use streamPythonCodeFix tool
-    await streamPythonCodeFix({
-      codeId,
-      errorInfo: instruction,
-      systemPrompt: toolConfig.systemPrompt,
-      userPromptTemplate: toolConfig.userPromptTemplate,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-    });
-
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code fixed:", codeId);
-
-    return {
-      output: {
-        id: codeId,
-        kind: "python code",
-        isFix: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -494,47 +681,95 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: EXPLAIN");
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
-    if (!this.toolConfigs?.explain?.enabled) {
-      throw new Error(
-        "GooglePythonAgentStreaming: explain tool is not enabled"
-      );
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
+
+    try {
+      if (!this.toolConfigs?.explain?.enabled) {
+        throw new Error(
+          "GooglePythonAgentStreaming: explain tool is not enabled"
+        );
+      }
+
+      const toolConfig = this.toolConfigs.explain;
+      if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
+        throw new Error(
+          "GooglePythonAgentStreaming: explain tool configuration incomplete"
+        );
+      }
+
+      // Use streamPythonCodeUpdate with explain-specific system prompt
+      await streamPythonCodeUpdate({
+        codeId,
+        updateInstruction:
+          instruction ||
+          "Add detailed comments to explain what this code does, including function purposes, complex logic, and key implementation details.",
+        systemPrompt: toolConfig.systemPrompt,
+        userPromptTemplate: toolConfig.userPromptTemplate,
+        dataStream,
+        user,
+        chatId,
+        modelId: this.modelId!,
+        apiKey: this.apiKey,
+        metadata: {
+          updateType: "explain",
+        },
+      });
+
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code explained:", codeId);
+
+      // Get explained code to track content length
+      const explainedDoc = await getDocumentById({ id: codeId });
+      const contentLength = explainedDoc?.content?.length || 0;
+
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "explain",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: codeId,
+          kind: "python code",
+          isExplain: true,
+        },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "explain",
+          code_id: codeId,
+          instruction_length: instruction.length,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
+      });
+      throw error;
     }
-
-    const toolConfig = this.toolConfigs.explain;
-    if (!toolConfig.systemPrompt || !toolConfig.userPromptTemplate) {
-      throw new Error(
-        "GooglePythonAgentStreaming: explain tool configuration incomplete"
-      );
-    }
-
-    // Use streamPythonCodeUpdate with explain-specific system prompt
-    await streamPythonCodeUpdate({
-      codeId,
-      updateInstruction:
-        instruction ||
-        "Add detailed comments to explain what this code does, including function purposes, complex logic, and key implementation details.",
-      systemPrompt: toolConfig.systemPrompt,
-      userPromptTemplate: toolConfig.userPromptTemplate,
-      dataStream,
-      user,
-      chatId,
-      modelId: this.modelId!,
-      apiKey: this.apiKey,
-      metadata: {
-        updateType: "explain",
-      },
-    });
-
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code explained:", codeId);
-
-    return {
-      output: {
-        id: codeId,
-        kind: "python code",
-        isExplain: true,
-      },
-      success: true,
-    };
   }
 
   /**
@@ -552,125 +787,171 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: REVERT");
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
-    // Get current document to determine target version
-    const currentDocument = await getDocumentById({ id: codeId });
-    if (!currentDocument) {
-      throw new Error(`Code with ID ${codeId} not found`);
-    }
+    const correlationId = createCorrelationId();
+    const perfTracker = new PerformanceTracker();
 
-    console.log(
-      "🐍 [PYTHON-AGENT-STREAMING] Current version:",
-      currentDocument.version_number
-    );
+    try {
+      // Get current document to determine target version
+      const currentDocument = await getDocumentById({ id: codeId });
+      if (!currentDocument) {
+        throw new Error(`Code with ID ${codeId} not found`);
+      }
 
-    // Determine target version
-    let versionToRevert = targetVersion;
-    if (!versionToRevert) {
-      // Default to previous version if not specified
-      versionToRevert = currentDocument.version_number - 1;
       console.log(
-        "🐍 [PYTHON-AGENT-STREAMING] No target version specified, reverting to previous:",
+        "🐍 [PYTHON-AGENT-STREAMING] Current version:",
+        currentDocument.version_number
+      );
+
+      // Determine target version
+      let versionToRevert = targetVersion;
+      if (!versionToRevert) {
+        // Default to previous version if not specified
+        versionToRevert = currentDocument.version_number - 1;
+        console.log(
+          "🐍 [PYTHON-AGENT-STREAMING] No target version specified, reverting to previous:",
+          versionToRevert
+        );
+      }
+
+      if (versionToRevert < 1) {
+        throw new Error("Cannot revert: No previous version exists");
+      }
+
+      if (versionToRevert >= currentDocument.version_number) {
+        throw new Error(
+          `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
+        );
+      }
+
+      // Fetch the target version
+      const targetDocument = await getDocumentByIdAndVersion({
+        id: codeId,
+        version: versionToRevert,
+      });
+
+      if (!targetDocument) {
+        throw new Error(`Version ${versionToRevert} of code ${codeId} not found`);
+      }
+
+      console.log(
+        "🐍 [PYTHON-AGENT-STREAMING] Reverting to version:",
         versionToRevert
       );
-    }
 
-    if (versionToRevert < 1) {
-      throw new Error("Cannot revert: No previous version exists");
-    }
+      // Write artifact metadata to inform UI
+      dataStream.write({
+        type: "data-kind",
+        data: "python code",
+      });
 
-    if (versionToRevert >= currentDocument.version_number) {
-      throw new Error(
-        `Cannot revert to version ${versionToRevert}: Current version is ${currentDocument.version_number}`
-      );
-    }
+      dataStream.write({
+        type: "data-id",
+        data: codeId,
+      });
 
-    // Fetch the target version
-    const targetDocument = await getDocumentByIdAndVersion({
-      id: codeId,
-      version: versionToRevert,
-    });
+      dataStream.write({
+        type: "data-title",
+        data: targetDocument.title,
+      });
 
-    if (!targetDocument) {
-      throw new Error(`Version ${versionToRevert} of code ${codeId} not found`);
-    }
+      // Clear the artifact panel
+      dataStream.write({
+        type: "data-clear",
+        data: null,
+      });
 
-    console.log(
-      "🐍 [PYTHON-AGENT-STREAMING] Reverting to version:",
-      versionToRevert
-    );
+      // Stream the reverted content to the UI
+      const revertedContent = targetDocument.content || "";
 
-    // Write artifact metadata to inform UI
-    dataStream.write({
-      type: "data-kind",
-      data: "python code",
-    });
+      // Send entire content at once for code
+      dataStream.write({
+        type: "data-codeDelta",
+        data: revertedContent,
+      });
 
-    dataStream.write({
-      type: "data-id",
-      data: codeId,
-    });
+      // Save as new version (non-destructive revert)
+      if (user?.id) {
+        await saveDocument({
+          id: codeId,
+          title: targetDocument.title,
+          content: revertedContent,
+          kind: "python code",
+          userId: user.id,
+          chatId: chatId || currentDocument.chat_id || undefined,
+          parentVersionId: `${codeId}`,
+          metadata: {
+            updateType: "revert",
+            agent: "GooglePythonAgentStreaming",
+            revertedFrom: currentDocument.version_number,
+            revertedTo: versionToRevert,
+            revertedAt: new Date().toISOString(),
+            modelUsed: this.modelId,
+          },
+        });
+        console.log(
+          "✅ [PYTHON-AGENT-STREAMING] Code reverted and saved as new version"
+        );
+      }
 
-    dataStream.write({
-      type: "data-title",
-      data: targetDocument.title,
-    });
+      // Signal streaming complete
+      dataStream.write({
+        type: "data-finish",
+        data: null,
+      });
 
-    // Clear the artifact panel
-    dataStream.write({
-      type: "data-clear",
-      data: null,
-    });
+      console.log("✅ [PYTHON-AGENT-STREAMING] Code reverted:", codeId);
 
-    // Stream the reverted content to the UI
-    const revertedContent = targetDocument.content || "";
+      const contentLength = revertedContent.length;
 
-    // Send entire content at once for code
-    dataStream.write({
-      type: "data-codeDelta",
-      data: revertedContent,
-    });
-
-    // Save as new version (non-destructive revert)
-    if (user?.id) {
-      await saveDocument({
-        id: codeId,
-        title: targetDocument.title,
-        content: revertedContent,
-        kind: "python code",
-        userId: user.id,
-        chatId: chatId || currentDocument.chat_id || undefined,
-        parentVersionId: `${codeId}`,
+      // Log successful activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
         metadata: {
-          updateType: "revert",
-          agent: "GooglePythonAgentStreaming",
+          operation_type: "revert",
+          code_id: codeId,
+          target_version: versionToRevert,
+          content_length: contentLength,
+          streaming: true,
+          model_id: this.modelId,
+        },
+        duration_ms: perfTracker.end(),
+      });
+
+      return {
+        output: {
+          id: codeId,
+          kind: "python code",
+          isRevert: true,
           revertedFrom: currentDocument.version_number,
           revertedTo: versionToRevert,
-          revertedAt: new Date().toISOString(),
-          modelUsed: this.modelId,
         },
+        success: true,
+      };
+    } catch (error) {
+      // Log failed activity
+      await logAgentActivity({
+        agent_type: AgentType.PYTHON_AGENT,
+        operation_type: AgentOperationType.CODE_GENERATION,
+        operation_category: AgentOperationCategory.GENERATION,
+        user_id: user?.id,
+        correlation_id: correlationId,
+        metadata: {
+          operation_type: "revert",
+          code_id: codeId,
+          target_version: targetVersion,
+          streaming: true,
+          model_id: this.modelId,
+          error_message:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        duration_ms: perfTracker.end(),
+        status: "error",
       });
-      console.log(
-        "✅ [PYTHON-AGENT-STREAMING] Code reverted and saved as new version"
-      );
+      throw error;
     }
-
-    // Signal streaming complete
-    dataStream.write({
-      type: "data-finish",
-      data: null,
-    });
-
-    console.log("✅ [PYTHON-AGENT-STREAMING] Code reverted:", codeId);
-
-    return {
-      output: {
-        id: codeId,
-        kind: "python code",
-        isRevert: true,
-        revertedFrom: currentDocument.version_number,
-        revertedTo: versionToRevert,
-      },
-      success: true,
-    };
   }
 }
