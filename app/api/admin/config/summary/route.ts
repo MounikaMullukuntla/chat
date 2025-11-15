@@ -6,6 +6,12 @@ import {
 } from "@/lib/db/queries/admin";
 import { ChatSDKError } from "@/lib/errors";
 import { ErrorCategory, ErrorSeverity, logApiError } from "@/lib/errors/logger";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 // Valid agent types and providers
 const VALID_AGENT_TYPES = [
@@ -20,6 +26,7 @@ const VALID_AGENT_TYPES = [
 const VALID_PROVIDERS = ["google", "openai", "anthropic"];
 
 export async function GET(request: Request) {
+  const correlationId = createCorrelationId();
   // Authenticate and authorize admin user
   let user: User;
   try {
@@ -153,6 +160,22 @@ export async function GET(request: Request) {
       capabilities: enhancedSummary,
     };
 
+    // Log successful admin dashboard view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_DASHBOARD_VIEW,
+      activity_category: ActivityCategory.ADMIN,
+      activity_metadata: {
+        config_count: allConfigs.length,
+        enabled_agents: allConfigs.filter((c) => (c.configData as any)?.enabled)
+          .length,
+      },
+      request_path: request.url,
+      request_method: "GET",
+      success: true,
+    });
+
     return Response.json(summary, {
       status: 200,
       headers: {
@@ -161,6 +184,16 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    // Log failed admin dashboard view
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.ADMIN_DASHBOARD_VIEW,
+      activity_category: ActivityCategory.ADMIN,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     await logApiError(
       ErrorCategory.DATABASE_ERROR,
       `Failed to retrieve config summary from database: ${error instanceof Error ? error.message : "Unknown database error"}`,
