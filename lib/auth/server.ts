@@ -10,13 +10,9 @@ import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@/lib/db/supabase-client";
 import {
   logUserActivity,
-  PerformanceTracker,
   createCorrelationId,
   UserActivityType,
   ActivityCategory,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
 } from "@/lib/logging/activity-logger";
 
 // Types for server auth results
@@ -61,15 +57,16 @@ export async function getCurrentUser(): Promise<User | null> {
 
       // Log authentication error
       await logUserActivity({
-        userId: "unknown",
-        type: UserActivityType.AUTH_ERROR,
-        category: ActivityCategory.AUTHENTICATION,
-        description: "Failed to get current user",
-        metadata: {
+        user_id: "unknown",
+        activity_type: UserActivityType.AUTH_LOGIN,
+        activity_category: ActivityCategory.AUTHENTICATION,
+        activity_metadata: {
+          description: "Failed to get current user",
           error_message: error.message,
           error_code: error.status,
         },
-        correlationId,
+        correlation_id: correlationId,
+        success: false,
       });
 
       return null;
@@ -81,14 +78,15 @@ export async function getCurrentUser(): Promise<User | null> {
 
     // Log unexpected error
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Unexpected error in getCurrentUser",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Unexpected error in getCurrentUser",
         error: err instanceof Error ? err.message : "Unknown error",
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     return null;
@@ -126,15 +124,16 @@ export async function getSession(): Promise<Session | null> {
 
       // Log session error
       await logUserActivity({
-        userId: "unknown",
-        type: UserActivityType.AUTH_ERROR,
-        category: ActivityCategory.AUTHENTICATION,
-        description: "Failed to get session",
-        metadata: {
+        user_id: "unknown",
+        activity_type: UserActivityType.AUTH_LOGIN,
+        activity_category: ActivityCategory.AUTHENTICATION,
+        activity_metadata: {
+          description: "Failed to get session",
           error_message: error.message,
           error_code: error.status,
         },
-        correlationId,
+        correlation_id: correlationId,
+        success: false,
       });
 
       return null;
@@ -146,14 +145,15 @@ export async function getSession(): Promise<Session | null> {
 
     // Log unexpected error
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Unexpected error in getSession",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Unexpected error in getSession",
         error: err instanceof Error ? err.message : "Unknown error",
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     return null;
@@ -180,12 +180,6 @@ export async function getSession(): Promise<Session | null> {
  */
 export async function requireAuth(): Promise<ServerAuthResult> {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker({
-    correlation_id: correlationId,
-    agent_type: AgentType.CHAT_MODEL_AGENT,
-    operation_type: AgentOperationType.AUTHENTICATION,
-    operation_category: AgentOperationCategory.AUTHENTICATION,
-  });
 
   const user = await getCurrentUser();
   const session = await getSession();
@@ -193,16 +187,16 @@ export async function requireAuth(): Promise<ServerAuthResult> {
   if (!user || !session) {
     // Log authentication failure
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Authentication required but not provided",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Authentication required but not provided",
         has_user: !!user,
         has_session: !!session,
       },
-      correlationId,
-      duration: await tracker.end(),
+      correlation_id: correlationId,
+      success: false,
     });
 
     const error = new Error("Authentication required") as ServerAuthError;
@@ -213,16 +207,16 @@ export async function requireAuth(): Promise<ServerAuthResult> {
 
   // Log successful authentication
   await logUserActivity({
-    userId: user.id,
-    type: UserActivityType.AUTH_LOGIN,
-    category: ActivityCategory.AUTHENTICATION,
-    description: "Authentication verified successfully",
-    metadata: {
+    user_id: user.id,
+    activity_type: UserActivityType.AUTH_LOGIN,
+    activity_category: ActivityCategory.AUTHENTICATION,
+    activity_metadata: {
+      description: "Authentication verified successfully",
       email: user.email,
       session_expires_at: session.expires_at,
     },
-    correlationId,
-    duration: await tracker.end(),
+    correlation_id: correlationId,
+    success: true,
   });
 
   return { user, session };
@@ -248,12 +242,6 @@ export async function requireAuth(): Promise<ServerAuthResult> {
  */
 export async function requireAdmin(): Promise<ServerAuthResult> {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker({
-    correlation_id: correlationId,
-    agent_type: AgentType.CHAT_MODEL_AGENT,
-    operation_type: AgentOperationType.AUTHENTICATION,
-    operation_category: AgentOperationCategory.AUTHENTICATION,
-  });
 
   const { user, session } = await requireAuth();
 
@@ -262,16 +250,16 @@ export async function requireAdmin(): Promise<ServerAuthResult> {
   if (userRole !== "admin") {
     // Log unauthorized admin access attempt
     await logUserActivity({
-      userId: user.id,
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Admin privileges required but user is not admin",
-      metadata: {
+      user_id: user.id,
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Admin privileges required but user is not admin",
         user_role: userRole,
         email: user.email,
       },
-      correlationId,
-      duration: await tracker.end(),
+      correlation_id: correlationId,
+      success: false,
     });
 
     const error = new Error("Admin privileges required") as ServerAuthError;
@@ -282,16 +270,16 @@ export async function requireAdmin(): Promise<ServerAuthResult> {
 
   // Log successful admin authentication
   await logUserActivity({
-    userId: user.id,
-    type: UserActivityType.AUTH_LOGIN,
-    category: ActivityCategory.AUTHENTICATION,
-    description: "Admin authentication verified successfully",
-    metadata: {
+    user_id: user.id,
+    activity_type: UserActivityType.AUTH_LOGIN,
+    activity_category: ActivityCategory.AUTHENTICATION,
+    activity_metadata: {
+      description: "Admin authentication verified successfully",
       user_role: userRole,
       email: user.email,
     },
-    correlationId,
-    duration: await tracker.end(),
+    correlation_id: correlationId,
+    success: true,
   });
 
   return { user, session };
@@ -394,15 +382,16 @@ export async function validateSession(
 
       // Log session validation error
       await logUserActivity({
-        userId: "unknown",
-        type: UserActivityType.AUTH_ERROR,
-        category: ActivityCategory.AUTHENTICATION,
-        description: "Session validation failed",
-        metadata: {
+        user_id: "unknown",
+        activity_type: UserActivityType.AUTH_LOGIN,
+        activity_category: ActivityCategory.AUTHENTICATION,
+        activity_metadata: {
+          description: "Session validation failed",
           error_message: error.message,
           error_code: error.status,
         },
-        correlationId,
+        correlation_id: correlationId,
+        success: false,
       });
 
       return null;
@@ -414,14 +403,15 @@ export async function validateSession(
 
     // Log unexpected error
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Unexpected error in validateSession",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Unexpected error in validateSession",
         error: err instanceof Error ? err.message : "Unknown error",
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     return null;
@@ -454,16 +444,17 @@ export async function requireAuthWithRedirect(
   if (!user || !session) {
     // Log redirect due to missing authentication
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Redirecting to login - authentication required",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Redirecting to login - authentication required",
         redirect_to: redirectTo,
         has_user: !!user,
         has_session: !!session,
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     const loginUrl = redirectTo
@@ -501,16 +492,17 @@ export async function requireAdminWithRedirect(
   if (!user || !session) {
     // Log redirect due to missing authentication
     await logUserActivity({
-      userId: "unknown",
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Redirecting to login - admin authentication required",
-      metadata: {
+      user_id: "unknown",
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Redirecting to login - admin authentication required",
         redirect_to: redirectTo,
         has_user: !!user,
         has_session: !!session,
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     const loginUrl = redirectTo
@@ -524,15 +516,16 @@ export async function requireAdminWithRedirect(
   if (userRole !== "admin") {
     // Log unauthorized admin access attempt with redirect
     await logUserActivity({
-      userId: user.id,
-      type: UserActivityType.AUTH_ERROR,
-      category: ActivityCategory.AUTHENTICATION,
-      description: "Redirecting to home - user is not admin",
-      metadata: {
+      user_id: user.id,
+      activity_type: UserActivityType.AUTH_LOGIN,
+      activity_category: ActivityCategory.AUTHENTICATION,
+      activity_metadata: {
+        description: "Redirecting to home - user is not admin",
         user_role: userRole,
         email: user.email,
       },
-      correlationId,
+      correlation_id: correlationId,
+      success: false,
     });
 
     redirect("/"); // Redirect to home page for non-admin users
