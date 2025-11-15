@@ -8,7 +8,6 @@ import { z } from "zod";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import {
-  logAgentActivity,
   PerformanceTracker,
   createCorrelationId,
   AgentType,
@@ -82,25 +81,6 @@ export async function streamPythonCodeFix(params: {
   console.log("🐍 [STREAM-FIX] Code ID:", codeId);
   console.log("🐍 [STREAM-FIX] Model:", modelId);
   console.log("🐍 [STREAM-FIX] Correlation ID:", correlationId);
-
-  // Log agent activity start
-  logAgentActivity({
-    agent_type: AgentType.PYTHON_AGENT,
-    operation_type: AgentOperationType.CODE_GENERATION,
-    operation_category: AgentOperationCategory.GENERATION,
-    user_id: user?.id,
-    correlation_id: correlationId,
-    status: "started",
-    metadata: {
-      operation_type: "fix",
-      resource_id: codeId,
-      instruction_length: errorInfo.length,
-      streaming: true,
-      tool_name: "streamPythonCodeFix",
-      model_id: modelId,
-      chat_id: chatId,
-    },
-  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Get the current code document
   const currentDocument = await getDocumentById({ id: codeId });
@@ -241,51 +221,42 @@ export async function streamPythonCodeFix(params: {
     console.log("✅ [STREAM-FIX] Code fix completed successfully");
 
     // Log success
-    logAgentActivity({
-      agent_type: AgentType.PYTHON_AGENT,
-      operation_type: AgentOperationType.CODE_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "completed",
-      duration_ms: performanceTracker.end(),
-      metadata: {
+    await performanceTracker.end({
+      success: true,
+      model_id: modelId,
+      resource_id: codeId,
+      resource_type: "code",
+      operation_metadata: {
         operation_type: "fix",
-        resource_id: codeId,
         instruction_length: errorInfo.length,
         streaming: true,
         tool_name: "streamPythonCodeFix",
-        model_id: modelId,
         chat_id: chatId,
         output_length: fixedContent.length,
         chunk_count: chunkCount,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-FIX] Fix failed:", errorMessage);
 
     // Log failure
-    logAgentActivity({
-      agent_type: AgentType.PYTHON_AGENT,
-      operation_type: AgentOperationType.CODE_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "failed",
-      duration_ms: performanceTracker.end(),
+    await performanceTracker.end({
+      success: false,
       error_message: errorMessage,
-      metadata: {
+      error_type: error instanceof Error ? error.name : "UnknownError",
+      model_id: modelId,
+      resource_id: codeId,
+      resource_type: "code",
+      operation_metadata: {
         operation_type: "fix",
-        resource_id: codeId,
         instruction_length: errorInfo.length,
         streaming: true,
         tool_name: "streamPythonCodeFix",
-        model_id: modelId,
         chat_id: chatId,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
 
     // Write error to stream
     dataStream.write({

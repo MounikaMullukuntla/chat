@@ -9,7 +9,6 @@ import { saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 import {
-  logAgentActivity,
   PerformanceTracker,
   createCorrelationId,
   AgentType,
@@ -96,26 +95,6 @@ export async function streamMermaidDiagram(params: {
   console.log("🎨 [STREAM-CREATE] Model:", modelId);
   console.log("🎨 [STREAM-CREATE] Stream to UI:", streamToUI);
   console.log("🎨 [STREAM-CREATE] Correlation ID:", correlationId);
-
-  // Log agent activity start
-  logAgentActivity({
-    agent_type: AgentType.MERMAID_AGENT,
-    operation_type: AgentOperationType.DIAGRAM_GENERATION,
-    operation_category: AgentOperationCategory.GENERATION,
-    user_id: user?.id,
-    correlation_id: correlationId,
-    status: "started",
-    metadata: {
-      operation_type: "create",
-      resource_id: documentId,
-      instruction_length: instruction.length,
-      streaming: true,
-      tool_name: "streamMermaidDiagram",
-      model_id: modelId,
-      chat_id: chatId,
-      stream_to_ui: streamToUI,
-    },
-  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Write artifact metadata only if streaming to UI
   if (streamToUI) {
@@ -244,27 +223,22 @@ export async function streamMermaidDiagram(params: {
     console.log("✅ [STREAM-CREATE] Diagram creation completed successfully");
 
     // Log success
-    logAgentActivity({
-      agent_type: AgentType.MERMAID_AGENT,
-      operation_type: AgentOperationType.DIAGRAM_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "completed",
-      duration_ms: performanceTracker.end(),
-      metadata: {
+    await performanceTracker.end({
+      success: true,
+      model_id: modelId,
+      resource_id: documentId,
+      resource_type: "diagram",
+      operation_metadata: {
         operation_type: "create",
-        resource_id: documentId,
         instruction_length: instruction.length,
         streaming: true,
         tool_name: "streamMermaidDiagram",
-        model_id: modelId,
         chat_id: chatId,
         stream_to_ui: streamToUI,
         output_length: generatedDiagram.length,
         chunk_count: chunkCount,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
 
     return { documentId, content: generatedDiagram };
   } catch (error) {
@@ -273,26 +247,22 @@ export async function streamMermaidDiagram(params: {
     console.error("❌ [STREAM-CREATE] Generation failed:", errorMessage);
 
     // Log failure
-    logAgentActivity({
-      agent_type: AgentType.MERMAID_AGENT,
-      operation_type: AgentOperationType.DIAGRAM_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "failed",
-      duration_ms: performanceTracker.end(),
+    await performanceTracker.end({
+      success: false,
       error_message: errorMessage,
-      metadata: {
+      error_type: error instanceof Error ? error.name : "UnknownError",
+      model_id: modelId,
+      resource_id: documentId,
+      resource_type: "diagram",
+      operation_metadata: {
         operation_type: "create",
-        resource_id: documentId,
         instruction_length: instruction.length,
         streaming: true,
         tool_name: "streamMermaidDiagram",
-        model_id: modelId,
         chat_id: chatId,
         stream_to_ui: streamToUI,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
 
     // Write error to stream
     if (streamToUI) {

@@ -8,7 +8,6 @@ import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { stripMarkdownCodeFences } from "@/lib/utils";
 import {
-  logAgentActivity,
   PerformanceTracker,
   createCorrelationId,
   AgentType,
@@ -62,25 +61,6 @@ export async function streamTextDocumentUpdate(params: {
     updateInstruction.substring(0, 100)
   );
   console.log("📝 [STREAM-UPDATE] Correlation ID:", correlationId);
-
-  // Log agent activity start
-  logAgentActivity({
-    agent_type: AgentType.DOCUMENT_AGENT,
-    operation_type: AgentOperationType.DOCUMENT_GENERATION,
-    operation_category: AgentOperationCategory.GENERATION,
-    user_id: user?.id,
-    correlation_id: correlationId,
-    status: "started",
-    metadata: {
-      operation_type: "update",
-      resource_id: documentId,
-      instruction_length: updateInstruction.length,
-      streaming: true,
-      tool_name: "streamTextDocumentUpdate",
-      model_id: modelId,
-      chat_id: chatId,
-    },
-  }).catch((err) => console.error("Failed to log agent activity:", err));
 
   // Fetch the existing document from database
   const document = await getDocumentById({ id: documentId });
@@ -233,27 +213,22 @@ export async function streamTextDocumentUpdate(params: {
 
     console.log("✅ [STREAM-UPDATE] Document update completed successfully");
 
-    // Log success
-    logAgentActivity({
-      agent_type: AgentType.DOCUMENT_AGENT,
-      operation_type: AgentOperationType.DOCUMENT_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "completed",
-      duration_ms: performanceTracker.end(),
-      metadata: {
+    // Log success via PerformanceTracker
+    await performanceTracker.end({
+      success: true,
+      model_id: modelId,
+      resource_id: documentId,
+      resource_type: "document",
+      operation_metadata: {
         operation_type: "update",
-        resource_id: documentId,
         instruction_length: updateInstruction.length,
         streaming: true,
         tool_name: "streamTextDocumentUpdate",
-        model_id: modelId,
         chat_id: chatId,
         output_length: cleanedContent.length,
         chunk_count: chunkCount,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
 
     return documentId;
   } catch (error) {
@@ -261,26 +236,22 @@ export async function streamTextDocumentUpdate(params: {
       error instanceof Error ? error.message : "Unknown error occurred";
     console.error("❌ [STREAM-UPDATE] Update failed:", errorMessage);
 
-    // Log failure
-    logAgentActivity({
-      agent_type: AgentType.DOCUMENT_AGENT,
-      operation_type: AgentOperationType.DOCUMENT_GENERATION,
-      operation_category: AgentOperationCategory.GENERATION,
-      user_id: user?.id,
-      correlation_id: correlationId,
-      status: "failed",
-      duration_ms: performanceTracker.end(),
+    // Log failure via PerformanceTracker
+    await performanceTracker.end({
+      success: false,
       error_message: errorMessage,
-      metadata: {
+      error_type: error instanceof Error ? error.name : "UnknownError",
+      model_id: modelId,
+      resource_id: documentId,
+      resource_type: "document",
+      operation_metadata: {
         operation_type: "update",
-        resource_id: documentId,
         instruction_length: updateInstruction.length,
         streaming: true,
         tool_name: "streamTextDocumentUpdate",
-        model_id: modelId,
         chat_id: chatId,
       },
-    }).catch((err) => console.error("Failed to log agent activity:", err));
+    });
 
     // Write error to stream
     dataStream.write({
