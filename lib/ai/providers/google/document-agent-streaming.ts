@@ -195,7 +195,13 @@ export class GoogleDocumentAgentStreaming {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: CREATE");
 
         const correlationId = createCorrelationId();
-        const perfTracker = new PerformanceTracker();
+        const perfTracker = new PerformanceTracker({
+          correlation_id: correlationId,
+          agent_type: AgentType.DOCUMENT_AGENT,
+          operation_type: AgentOperationType.DOCUMENT_GENERATION,
+          operation_category: AgentOperationCategory.GENERATION,
+          user_id: user?.id,
+        });
 
         try {
           if (!this.toolConfigs?.create?.enabled) {
@@ -241,7 +247,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "create",
               document_id: documentId,
               instruction_length: instruction.length,
@@ -249,7 +255,7 @@ export class GoogleDocumentAgentStreaming {
               streaming: true,
               model_id: this.modelId,
             },
-            duration_ms: perfTracker.end(),
+            duration_ms: perfTracker.getDuration(),
           });
 
           // Return structured output for message part
@@ -269,7 +275,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "create",
               instruction_length: instruction.length,
               streaming: true,
@@ -277,8 +283,8 @@ export class GoogleDocumentAgentStreaming {
               error_message:
                 error instanceof Error ? error.message : "Unknown error",
             },
-            duration_ms: perfTracker.end(),
-            status: "error",
+            duration_ms: perfTracker.getDuration(),
+            success: false,
           });
           throw error;
         }
@@ -288,7 +294,13 @@ export class GoogleDocumentAgentStreaming {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: UPDATE");
 
         const correlationId = createCorrelationId();
-        const perfTracker = new PerformanceTracker();
+        const perfTracker = new PerformanceTracker({
+          correlation_id: correlationId,
+          agent_type: AgentType.DOCUMENT_AGENT,
+          operation_type: AgentOperationType.DOCUMENT_GENERATION,
+          operation_category: AgentOperationCategory.GENERATION,
+          user_id: user?.id,
+        });
 
         try {
           // Document ID should be provided by chat agent
@@ -339,7 +351,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "update",
               document_id: documentId,
               instruction_length: instruction.length,
@@ -347,7 +359,7 @@ export class GoogleDocumentAgentStreaming {
               streaming: true,
               model_id: this.modelId,
             },
-            duration_ms: perfTracker.end(),
+            duration_ms: perfTracker.getDuration(),
           });
 
           // Return structured output for message part
@@ -367,7 +379,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "update",
               document_id: documentId,
               instruction_length: instruction.length,
@@ -376,8 +388,8 @@ export class GoogleDocumentAgentStreaming {
               error_message:
                 error instanceof Error ? error.message : "Unknown error",
             },
-            duration_ms: perfTracker.end(),
-            status: "error",
+            duration_ms: perfTracker.getDuration(),
+            success: false,
           });
           throw error;
         }
@@ -387,7 +399,13 @@ export class GoogleDocumentAgentStreaming {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: REVERT");
 
         const correlationId = createCorrelationId();
-        const perfTracker = new PerformanceTracker();
+        const perfTracker = new PerformanceTracker({
+          correlation_id: correlationId,
+          agent_type: AgentType.DOCUMENT_AGENT,
+          operation_type: AgentOperationType.DOCUMENT_GENERATION,
+          operation_category: AgentOperationCategory.GENERATION,
+          user_id: user?.id,
+        });
 
         try {
           // Document ID is required for revert
@@ -531,7 +549,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "revert",
               document_id: documentId,
               target_version: versionToRevert,
@@ -539,7 +557,7 @@ export class GoogleDocumentAgentStreaming {
               streaming: true,
               model_id: this.modelId,
             },
-            duration_ms: perfTracker.end(),
+            duration_ms: perfTracker.getDuration(),
           });
 
           // Return structured output for message part
@@ -561,7 +579,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "revert",
               document_id: documentId,
               target_version: targetVersion,
@@ -570,8 +588,8 @@ export class GoogleDocumentAgentStreaming {
               error_message:
                 error instanceof Error ? error.message : "Unknown error",
             },
-            duration_ms: perfTracker.end(),
-            status: "error",
+            duration_ms: perfTracker.getDuration(),
+            success: false,
           });
           throw error;
         }
@@ -581,7 +599,13 @@ export class GoogleDocumentAgentStreaming {
         console.log("📄 [DOC-AGENT-STREAMING] Operation: SUGGESTION");
 
         const correlationId = createCorrelationId();
-        const perfTracker = new PerformanceTracker();
+        const perfTracker = new PerformanceTracker({
+          correlation_id: correlationId,
+          agent_type: AgentType.DOCUMENT_AGENT,
+          operation_type: AgentOperationType.DOCUMENT_GENERATION,
+          operation_category: AgentOperationCategory.GENERATION,
+          user_id: user?.id,
+        });
 
         try {
           // Document ID is required for suggestions
@@ -631,7 +655,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "generateSuggestions",
               document_id: documentId,
               instruction_length: instruction.length,
@@ -639,7 +663,7 @@ export class GoogleDocumentAgentStreaming {
               streaming: true,
               model_id: this.modelId,
             },
-            duration_ms: perfTracker.end(),
+            duration_ms: perfTracker.getDuration(),
           });
 
           // Return structured output for message part
@@ -660,7 +684,7 @@ export class GoogleDocumentAgentStreaming {
             operation_category: AgentOperationCategory.GENERATION,
             user_id: user?.id,
             correlation_id: correlationId,
-            metadata: {
+            operation_metadata: {
               operation_type: "generateSuggestions",
               document_id: documentId,
               instruction_length: instruction.length,
@@ -669,8 +693,8 @@ export class GoogleDocumentAgentStreaming {
               error_message:
                 error instanceof Error ? error.message : "Unknown error",
             },
-            duration_ms: perfTracker.end(),
-            status: "error",
+            duration_ms: perfTracker.getDuration(),
+            success: false,
           });
           throw error;
         }

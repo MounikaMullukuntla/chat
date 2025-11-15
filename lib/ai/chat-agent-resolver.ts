@@ -58,7 +58,12 @@ export class ChatAgentResolver {
    */
   static async createChatAgent(provider?: Provider): Promise<GoogleChatAgent> {
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       const activeProvider =
@@ -84,35 +89,24 @@ export class ChatAgentResolver {
       }
 
       // Log successful agent initialization
-      await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        operationCategory: AgentOperationCategory.CONFIGURATION,
-        status: "success",
-        duration: tracker.end(),
-        metadata: {
+      await tracker.end({
+        success: true,
+        operation_metadata: {
           provider: activeProvider,
           initialization_result: "success",
         },
-        correlationId,
       });
 
       return agent;
     } catch (error) {
       // Log failed agent initialization
-      await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        operationCategory: AgentOperationCategory.CONFIGURATION,
-        status: "error",
-        duration: tracker.end(),
-        metadata: {
+      await tracker.end({
+        success: false,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+        operation_metadata: {
           provider: provider || "unknown",
           initialization_result: "error",
-          error_message:
-            error instanceof Error ? error.message : "Unknown error",
         },
-        correlationId,
       });
 
       throw error;
@@ -125,7 +119,12 @@ export class ChatAgentResolver {
   private static async createGoogleChatAgent(
     correlationId: string
   ): Promise<GoogleChatAgent> {
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.CHAT_MODEL_AGENT,
+      operation_type: AgentOperationType.INITIALIZATION,
+      operation_category: AgentOperationCategory.CONFIGURATION,
+    });
 
     try {
       // Load Google chat agent config from database
@@ -181,38 +180,27 @@ export class ChatAgentResolver {
       const agent = new GoogleChatAgent(config);
 
       // Log detailed Google agent creation
-      await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        operationCategory: AgentOperationCategory.CONFIGURATION,
-        status: "success",
-        duration: tracker.end(),
-        metadata: {
+      await tracker.end({
+        success: true,
+        operation_metadata: {
           provider: "google",
           model_count: availableModels.length,
           default_model: defaultModel?.id || "none",
           enabled_models: availableModels.filter((m) => m.enabled).length,
           config_loaded: true,
         },
-        correlationId,
       });
 
       return agent;
     } catch (error) {
       // Log detailed Google agent creation failure
-      await logAgentActivity({
-        agentType: AgentType.CHAT_MODEL_AGENT,
-        operationType: AgentOperationType.INITIALIZATION,
-        operationCategory: AgentOperationCategory.CONFIGURATION,
-        status: "error",
-        duration: tracker.end(),
-        metadata: {
+      await tracker.end({
+        success: false,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+        operation_metadata: {
           provider: "google",
           config_loaded: false,
-          error_message:
-            error instanceof Error ? error.message : "Unknown error",
         },
-        correlationId,
       });
 
       console.error("Failed to create Google chat agent:", error);

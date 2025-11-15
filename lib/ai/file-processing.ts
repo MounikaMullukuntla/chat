@@ -21,7 +21,12 @@ export async function extractFileContent(
   attachment: FileAttachment
 ): Promise<string> {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker();
+  const tracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.CHAT_MODEL_AGENT,
+    operation_type: AgentOperationType.TOOL_INVOCATION,
+    operation_category: AgentOperationCategory.TOOL_USE,
+  });
 
   try {
     const response = await fetch(attachment.url);
@@ -94,39 +99,28 @@ export async function extractFileContent(
     }
 
     // Log successful file processing
-    await logAgentActivity({
-      agentType: AgentType.CHAT_MODEL_AGENT,
-      operationType: AgentOperationType.TOOL_INVOCATION,
-      operationCategory: AgentOperationCategory.TOOL_USE,
-      status: "success",
-      duration: tracker.end(),
-      metadata: {
+    await tracker.end({
+      success: true,
+      operation_metadata: {
         file_name: name,
         media_type: mediaType,
         file_size: actualSize,
         processing_result: "success",
       },
-      correlationId,
     });
 
     return content;
   } catch (error) {
     // Log failed file processing
-    await logAgentActivity({
-      agentType: AgentType.CHAT_MODEL_AGENT,
-      operationType: AgentOperationType.TOOL_INVOCATION,
-      operationCategory: AgentOperationCategory.TOOL_USE,
-      status: "error",
-      duration: tracker.end(),
-      metadata: {
+    await tracker.end({
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+      operation_metadata: {
         file_name: attachment.name,
         media_type: attachment.mediaType,
         file_size: attachment.size,
         processing_result: "error",
-        error_message:
-          error instanceof Error ? error.message : "Unknown error",
       },
-      correlationId,
     });
 
     console.error(`Error processing file ${attachment.name}:`, error);
@@ -141,7 +135,12 @@ export function validateFileAttachment(attachment: FileAttachment): {
   error?: string;
 } {
   const correlationId = createCorrelationId();
-  const tracker = new PerformanceTracker();
+  const tracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.CHAT_MODEL_AGENT,
+    operation_type: AgentOperationType.TOOL_INVOCATION,
+    operation_category: AgentOperationCategory.TOOL_USE,
+  });
 
   let validationResult: { valid: boolean; error?: string };
 
@@ -181,19 +180,19 @@ export function validateFileAttachment(attachment: FileAttachment): {
 
   // Log validation activity (fire-and-forget)
   logAgentActivity({
-    agentType: AgentType.CHAT_MODEL_AGENT,
-    operationType: AgentOperationType.TOOL_INVOCATION,
-    operationCategory: AgentOperationCategory.TOOL_USE,
-    status: validationResult.valid ? "success" : "error",
-    duration: tracker.end(),
-    metadata: {
+    agent_type: AgentType.CHAT_MODEL_AGENT,
+    operation_type: AgentOperationType.TOOL_INVOCATION,
+    operation_category: AgentOperationCategory.TOOL_USE,
+    success: validationResult.valid,
+    duration_ms: tracker.getDuration(),
+    error_message: validationResult.error,
+    operation_metadata: {
       file_name: attachment.name || "unknown",
       media_type: attachment.mediaType || "unknown",
       file_size: attachment.size,
       validation_result: validationResult.valid ? "valid" : "invalid",
-      validation_error: validationResult.error,
     },
-    correlationId,
+    correlation_id: correlationId,
   }).catch((err) => {
     // Silent fail for logging - don't interrupt validation flow
     console.error("Failed to log validation activity:", err);

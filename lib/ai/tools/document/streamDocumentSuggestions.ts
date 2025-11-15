@@ -44,7 +44,13 @@ export async function streamDocumentSuggestions(params: {
   } = params;
 
   const correlationId = createCorrelationId();
-  const performanceTracker = new PerformanceTracker();
+  const performanceTracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.DOCUMENT_AGENT,
+    operation_type: AgentOperationType.DOCUMENT_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+  });
 
   console.log("💡 [SUGGESTIONS] Starting suggestion generation");
   console.log("💡 [SUGGESTIONS] Document ID:", documentId);

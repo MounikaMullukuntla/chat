@@ -257,7 +257,13 @@ export class GoogleGitMcpAgent {
   async execute(params: { input: string; userId?: string }): Promise<AgentResult> {
     const { input, userId } = params;
     const correlationId = createCorrelationId();
-    const tracker = new PerformanceTracker();
+    const tracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.GIT_MCP_AGENT,
+      operation_type: AgentOperationType.MCP_OPERATION,
+      operation_category: AgentOperationCategory.TOOL_USE,
+      user_id: userId,
+    });
 
     console.log(`\n${"=".repeat(80)}`);
     console.log("🎯 [GIT-MCP-AGENT] EXECUTION START");
@@ -270,15 +276,15 @@ export class GoogleGitMcpAgent {
       console.log("❌ [GIT-MCP-AGENT] Empty input error");
 
       await logAgentActivity({
-        agentType: AgentType.GIT_MCP_AGENT,
-        operationType: AgentOperationType.MCP_OPERATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
-        userId,
+        agent_type: AgentType.GIT_MCP_AGENT,
+        operation_type: AgentOperationType.MCP_OPERATION,
+        operation_category: AgentOperationCategory.TOOL_USE,
+        correlation_id: correlationId,
+        user_id: userId,
         success: false,
-        duration: tracker.getDuration(),
-        error: "Empty input",
-        metadata: {
+        duration_ms: tracker.getDuration(),
+        error_message: "Empty input",
+        operation_metadata: {
           query_length: 0,
           tool_calls_count: 0,
           mcp_connection_status: "not_attempted",
@@ -441,14 +447,14 @@ export class GoogleGitMcpAgent {
 
       // Log successful MCP operation
       await logAgentActivity({
-        agentType: AgentType.GIT_MCP_AGENT,
-        operationType: AgentOperationType.MCP_OPERATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
-        userId,
+        agent_type: AgentType.GIT_MCP_AGENT,
+        operation_type: AgentOperationType.MCP_OPERATION,
+        operation_category: AgentOperationCategory.TOOL_USE,
+        correlation_id: correlationId,
+        user_id: userId,
         success: true,
-        duration: tracker.getDuration(),
-        metadata: {
+        duration_ms: tracker.getDuration(),
+        operation_metadata: {
           query_length: input.length,
           tool_calls_count: toolCalls.length,
           mcp_connection_status: "connected",
@@ -477,15 +483,15 @@ export class GoogleGitMcpAgent {
 
       // Log MCP operation failure
       await logAgentActivity({
-        agentType: AgentType.GIT_MCP_AGENT,
-        operationType: AgentOperationType.MCP_OPERATION,
-        category: AgentOperationCategory.TOOL_USE,
-        correlationId,
-        userId,
+        agent_type: AgentType.GIT_MCP_AGENT,
+        operation_type: AgentOperationType.MCP_OPERATION,
+        operation_category: AgentOperationCategory.TOOL_USE,
+        correlation_id: correlationId,
+        user_id: userId,
         success: false,
-        duration: tracker.getDuration(),
-        error: errorMessage,
-        metadata: {
+        duration_ms: tracker.getDuration(),
+        error_message: errorMessage,
+        operation_metadata: {
           query_length: input.length,
           tool_calls_count: 0,
           mcp_connection_status: "error",

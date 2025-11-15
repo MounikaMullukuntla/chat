@@ -71,7 +71,13 @@ export async function streamPythonCode(params: {
   } = params;
   const documentId = generateUUID();
   const correlationId = createCorrelationId();
-  const performanceTracker = new PerformanceTracker();
+  const performanceTracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.PYTHON_AGENT,
+    operation_type: AgentOperationType.CODE_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+  });
 
   console.log("🐍 [STREAM-CREATE] Starting real-time code creation");
   console.log("🐍 [STREAM-CREATE] Document ID:", documentId);

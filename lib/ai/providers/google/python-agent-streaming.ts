@@ -292,7 +292,12 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: GENERATE");
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+    });
 
     try {
       if (!this.toolConfigs?.generate?.enabled) {
@@ -331,14 +336,14 @@ export class GooglePythonAgentStreaming {
         operation_type: AgentOperationType.CODE_GENERATION,
         operation_category: AgentOperationCategory.GENERATION,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "generate",
           instruction_length: instruction.length,
           content_length: result.content.length,
           streaming: false,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       // Return code to chat agent
@@ -356,7 +361,7 @@ export class GooglePythonAgentStreaming {
         operation_type: AgentOperationType.CODE_GENERATION,
         operation_category: AgentOperationCategory.GENERATION,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "generate",
           instruction_length: instruction.length,
           streaming: false,
@@ -364,8 +369,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }
@@ -385,7 +390,13 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Operation: CREATE");
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+    });
 
     try {
       if (!this.toolConfigs?.create?.enabled) {
@@ -426,7 +437,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "create",
           code_id: result.documentId,
           instruction_length: instruction.length,
@@ -434,7 +445,7 @@ export class GooglePythonAgentStreaming {
           streaming: true,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       return {
@@ -453,7 +464,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "create",
           instruction_length: instruction.length,
           streaming: true,
@@ -461,8 +472,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }
@@ -484,7 +495,13 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+    });
 
     try {
       if (!this.toolConfigs?.update?.enabled) {
@@ -524,7 +541,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "update",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -532,7 +549,7 @@ export class GooglePythonAgentStreaming {
           streaming: true,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       return {
@@ -551,7 +568,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "update",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -560,8 +577,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }
@@ -583,7 +600,13 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+    });
 
     try {
       if (!this.toolConfigs?.fix?.enabled) {
@@ -623,7 +646,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "fix",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -631,7 +654,7 @@ export class GooglePythonAgentStreaming {
           streaming: true,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       return {
@@ -650,7 +673,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "fix",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -659,8 +682,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }
@@ -682,7 +705,13 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+    });
 
     try {
       if (!this.toolConfigs?.explain?.enabled) {
@@ -729,7 +758,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "explain",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -737,7 +766,7 @@ export class GooglePythonAgentStreaming {
           streaming: true,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       return {
@@ -756,7 +785,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "explain",
           code_id: codeId,
           instruction_length: instruction.length,
@@ -765,8 +794,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }
@@ -788,7 +817,13 @@ export class GooglePythonAgentStreaming {
     console.log("🐍 [PYTHON-AGENT-STREAMING] Code ID:", codeId);
 
     const correlationId = createCorrelationId();
-    const perfTracker = new PerformanceTracker();
+    const perfTracker = new PerformanceTracker({
+      correlation_id: correlationId,
+      agent_type: AgentType.PYTHON_AGENT,
+      operation_type: AgentOperationType.CODE_GENERATION,
+      operation_category: AgentOperationCategory.GENERATION,
+      user_id: user?.id,
+    });
 
     try {
       // Get current document to determine target version
@@ -910,7 +945,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "revert",
           code_id: codeId,
           target_version: versionToRevert,
@@ -918,7 +953,7 @@ export class GooglePythonAgentStreaming {
           streaming: true,
           model_id: this.modelId,
         },
-        duration_ms: perfTracker.end(),
+        duration_ms: perfTracker.getDuration(),
       });
 
       return {
@@ -939,7 +974,7 @@ export class GooglePythonAgentStreaming {
         operation_category: AgentOperationCategory.GENERATION,
         user_id: user?.id,
         correlation_id: correlationId,
-        metadata: {
+        operation_metadata: {
           operation_type: "revert",
           code_id: codeId,
           target_version: targetVersion,
@@ -948,8 +983,8 @@ export class GooglePythonAgentStreaming {
           error_message:
             error instanceof Error ? error.message : "Unknown error",
         },
-        duration_ms: perfTracker.end(),
-        status: "error",
+        duration_ms: perfTracker.getDuration(),
+        success: false,
       });
       throw error;
     }

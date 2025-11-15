@@ -46,7 +46,13 @@ export async function streamTextDocument(params: {
   } = params;
   const documentId = generateUUID();
   const correlationId = createCorrelationId();
-  const performanceTracker = new PerformanceTracker();
+  const performanceTracker = new PerformanceTracker({
+    correlation_id: correlationId,
+    agent_type: AgentType.DOCUMENT_AGENT,
+    operation_type: AgentOperationType.DOCUMENT_GENERATION,
+    operation_category: AgentOperationCategory.GENERATION,
+    user_id: user?.id,
+  });
 
   console.log("📄 [STREAM-CREATE] Starting real-time document creation");
   console.log("📄 [STREAM-CREATE] Document ID:", documentId);
