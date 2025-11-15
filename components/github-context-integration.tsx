@@ -13,6 +13,11 @@ import type {
   GitHubRepo,
   GitHubSearchResponse,
 } from "@/lib/types";
+import {
+  logAppError,
+  ErrorCategory,
+  ErrorSeverity,
+} from "@/lib/errors/logger";
 import { Checkbox } from "./ui/checkbox";
 
 type GitHubContextIntegrationProps = {
@@ -87,6 +92,37 @@ export function GitHubContextIntegration({
       setUserRepos(repos);
     } catch (error) {
       console.error("Failed to fetch user repositories:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch user repositories";
+
+      // Categorize error based on type
+      let errorCategory = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+      let severity = ErrorSeverity.ERROR;
+
+      if (errorMessage.includes("401")) {
+        errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
+        severity = ErrorSeverity.WARNING;
+      } else if (errorMessage.includes("403") || errorMessage.includes("rate limit")) {
+        errorCategory = ErrorCategory.API_RATE_LIMIT;
+        severity = ErrorSeverity.WARNING;
+      }
+
+      // Log the GitHub API error
+      logAppError(
+        errorCategory,
+        `Failed to fetch GitHub user repositories: ${errorMessage}`,
+        {
+          operation: "fetchUserRepositories",
+          error: errorMessage,
+          errorType: error instanceof Error ? error.constructor.name : "Unknown",
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString(),
+        },
+        undefined, // No user_id available in this component
+        severity
+      );
     } finally {
       setLoadingUserRepos(false);
     }
@@ -150,6 +186,38 @@ export function GitHubContextIntegration({
           error instanceof Error
             ? error.message
             : "Failed to search repositories";
+
+        // Categorize error based on message content
+        let errorCategory = ErrorCategory.EXTERNAL_SERVICE_ERROR;
+        let severity = ErrorSeverity.ERROR;
+
+        if (errorMessage.includes("Invalid GitHub Personal Access Token") || errorMessage.includes("401")) {
+          errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
+          severity = ErrorSeverity.WARNING;
+        } else if (errorMessage.includes("rate limit") || errorMessage.includes("403")) {
+          errorCategory = ErrorCategory.API_RATE_LIMIT;
+          severity = ErrorSeverity.WARNING;
+        } else if (errorMessage.includes("404")) {
+          errorCategory = ErrorCategory.API_REQUEST_FAILED;
+          severity = ErrorSeverity.WARNING;
+        }
+
+        // Log the GitHub API error
+        logAppError(
+          errorCategory,
+          `Failed to search GitHub repositories: ${errorMessage}`,
+          {
+            operation: "searchRepositories",
+            query: query,
+            error: errorMessage,
+            errorType: error instanceof Error ? error.constructor.name : "Unknown",
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+          },
+          undefined, // No user_id available in this component
+          severity
+        );
+
         setState((prev) => ({
           ...prev,
           searchResults: [],
