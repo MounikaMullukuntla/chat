@@ -2,8 +2,15 @@ import type { User } from "@supabase/supabase-js";
 import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 export async function GET(request: Request) {
+  const correlationId = createCorrelationId();
   const { searchParams } = new URL(request.url);
   const chatId = searchParams.get("chatId");
 
@@ -33,12 +40,44 @@ export async function GET(request: Request) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 
-  const votes = await getVotesByChatId({ id: chatId });
+  try {
+    const votes = await getVotesByChatId({ id: chatId });
 
-  return Response.json(votes, { status: 200 });
+    // Log successful vote retrieval
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.VOTE_MESSAGE,
+      activity_category: ActivityCategory.VOTE,
+      activity_metadata: {
+        chat_id: chatId,
+        vote_count: votes.length,
+        action: "retrieve",
+      },
+      resource_id: chatId,
+      resource_type: "chat",
+      request_path: request.url,
+      request_method: "GET",
+      success: true,
+    });
+
+    return Response.json(votes, { status: 200 });
+  } catch (error) {
+    // Log failed vote retrieval
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.VOTE_MESSAGE,
+      activity_category: ActivityCategory.VOTE,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }
 
 export async function PATCH(request: Request) {
+  const correlationId = createCorrelationId();
   const {
     chatId,
     messageId,
@@ -72,11 +111,42 @@ export async function PATCH(request: Request) {
     return new ChatSDKError("forbidden:vote").toResponse();
   }
 
-  await voteMessage({
-    chatId,
-    messageId,
-    type,
-  });
+  try {
+    await voteMessage({
+      chatId,
+      messageId,
+      type,
+    });
 
-  return new Response("Message voted", { status: 200 });
+    // Log successful vote
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.VOTE_MESSAGE,
+      activity_category: ActivityCategory.VOTE,
+      activity_metadata: {
+        message_id: messageId,
+        vote_type: type,
+        chat_id: chatId,
+      },
+      resource_id: messageId,
+      resource_type: "message",
+      request_path: request.url,
+      request_method: "PATCH",
+      success: true,
+    });
+
+    return new Response("Message voted", { status: 200 });
+  } catch (error) {
+    // Log failed vote
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.VOTE_MESSAGE,
+      activity_category: ActivityCategory.VOTE,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }

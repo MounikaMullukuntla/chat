@@ -3,8 +3,15 @@ import type { NextRequest } from "next/server";
 import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import { deleteAllChatsByUserId, getChatsByUserId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
+import {
+  logUserActivity,
+  createCorrelationId,
+  UserActivityType,
+  ActivityCategory,
+} from "@/lib/logging";
 
 export async function GET(request: NextRequest) {
+  const correlationId = createCorrelationId();
   const { searchParams } = request.nextUrl;
 
   const limit = Number.parseInt(searchParams.get("limit") || "10", 10);
@@ -27,17 +34,48 @@ export async function GET(request: NextRequest) {
     return createAuthErrorResponse(error as Error);
   }
 
-  const chats = await getChatsByUserId({
-    id: user.id,
-    limit,
-    startingAfter,
-    endingBefore,
-  });
+  try {
+    const chats = await getChatsByUserId({
+      id: user.id,
+      limit,
+      startingAfter,
+      endingBefore,
+    });
 
-  return Response.json(chats);
+    // Log successful history access
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.HISTORY_ACCESS,
+      activity_category: ActivityCategory.HISTORY,
+      activity_metadata: {
+        limit,
+        cursor: startingAfter || endingBefore || null,
+        result_count: chats.length,
+      },
+      request_path: request.url,
+      request_method: "GET",
+      success: true,
+    });
+
+    return Response.json(chats);
+  } catch (error) {
+    // Log failed history access
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.HISTORY_ACCESS,
+      activity_category: ActivityCategory.HISTORY,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const correlationId = createCorrelationId();
+
   // Authenticate user with Supabase
   let user: User;
   try {
@@ -47,7 +85,34 @@ export async function DELETE() {
     return createAuthErrorResponse(error as Error);
   }
 
-  const result = await deleteAllChatsByUserId({ userId: user.id });
+  try {
+    const result = await deleteAllChatsByUserId({ userId: user.id });
 
-  return Response.json(result, { status: 200 });
+    // Log successful history deletion (CRITICAL - destructive operation)
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.HISTORY_DELETE,
+      activity_category: ActivityCategory.HISTORY,
+      activity_metadata: {
+        chats_deleted: result.length,
+      },
+      request_path: request.url,
+      request_method: "DELETE",
+      success: true,
+    });
+
+    return Response.json(result, { status: 200 });
+  } catch (error) {
+    // Log failed history deletion
+    await logUserActivity({
+      user_id: user.id,
+      correlation_id: correlationId,
+      activity_type: UserActivityType.HISTORY_DELETE,
+      activity_category: ActivityCategory.HISTORY,
+      success: false,
+      error_message: error instanceof Error ? error.message : "Unknown error",
+    });
+    throw error;
+  }
 }
