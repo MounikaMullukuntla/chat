@@ -174,3 +174,52 @@ GRANT ALL ON error_logs TO service_role;
 -- Grant execute permissions to authenticated users for functions
 GRANT EXECUTE ON FUNCTION get_current_user_usage_summary(DATE, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION is_current_user_admin() TO authenticated;
+
+-- =====================================================
+-- Activity Logging RLS Policies
+-- =====================================================
+
+-- Enable RLS on activity logging tables
+ALTER TABLE user_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- User Activity Logs Policies
+DROP POLICY IF EXISTS "Users can read own activity logs" ON user_activity_logs;
+CREATE POLICY "Users can read own activity logs" ON user_activity_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can read all activity logs" ON user_activity_logs;
+CREATE POLICY "Admins can read all activity logs" ON user_activity_logs
+  FOR SELECT USING (public.get_user_role() = 'admin');
+
+DROP POLICY IF EXISTS "System can insert activity logs" ON user_activity_logs;
+CREATE POLICY "System can insert activity logs" ON user_activity_logs
+  FOR INSERT WITH CHECK (true);
+
+-- Agent Activity Logs Policies
+DROP POLICY IF EXISTS "Users can read own agent logs" ON agent_activity_logs;
+CREATE POLICY "Users can read own agent logs" ON agent_activity_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can read all agent logs" ON agent_activity_logs;
+CREATE POLICY "Admins can read all agent logs" ON agent_activity_logs
+  FOR SELECT USING (public.get_user_role() = 'admin');
+
+DROP POLICY IF EXISTS "System can insert agent logs" ON agent_activity_logs;
+CREATE POLICY "System can insert agent logs" ON agent_activity_logs
+  FOR INSERT WITH CHECK (true);
+
+-- Grant permissions to Supabase roles for activity logging
+GRANT ALL ON user_activity_logs TO anon;
+GRANT ALL ON user_activity_logs TO authenticated;
+GRANT ALL ON user_activity_logs TO service_role;
+
+GRANT ALL ON agent_activity_logs TO anon;
+GRANT ALL ON agent_activity_logs TO authenticated;
+GRANT ALL ON agent_activity_logs TO service_role;
+
+-- Grant execute permissions for activity logging functions
+GRANT EXECUTE ON FUNCTION get_logging_config() TO authenticated;
+GRANT EXECUTE ON FUNCTION is_user_activity_logging_enabled() TO authenticated;
+GRANT EXECUTE ON FUNCTION is_agent_activity_logging_enabled() TO authenticated;
+GRANT EXECUTE ON FUNCTION purge_old_activity_logs() TO service_role;

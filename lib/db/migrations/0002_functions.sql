@@ -294,7 +294,109 @@ BEGIN
             END IF;
         END IF;
     END IF;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- Activity Logging Functions
+-- =====================================================
+
+-- Function to get logging configuration
+CREATE OR REPLACE FUNCTION public.get_logging_config()
+RETURNS JSONB AS $$
+DECLARE
+  config JSONB;
+BEGIN
+  SELECT config_data INTO config
+  FROM admin_config
+  WHERE config_key = 'logging_settings';
+
+  RETURN COALESCE(config, '{
+    "error_logging_enabled": true,
+    "user_activity_logging_enabled": false,
+    "agent_activity_logging_enabled": false
+  }'::jsonb);
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Function to check if user activity logging is enabled
+CREATE OR REPLACE FUNCTION public.is_user_activity_logging_enabled()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN COALESCE(
+    (SELECT config_data->>'user_activity_logging_enabled' = 'true'
+     FROM admin_config
+     WHERE config_key = 'logging_settings'),
+    false
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Function to check if agent activity logging is enabled
+CREATE OR REPLACE FUNCTION public.is_agent_activity_logging_enabled()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN COALESCE(
+    (SELECT config_data->>'agent_activity_logging_enabled' = 'true'
+     FROM admin_config
+     WHERE config_key = 'logging_settings'),
+    false
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Function to purge old logs based on retention policy
+CREATE OR REPLACE FUNCTION public.purge_old_activity_logs()
+RETURNS TABLE (
+  user_logs_deleted BIGINT,
+  agent_logs_deleted BIGINT,
+  error_logs_deleted BIGINT
+) AS $$
+DECLARE
+  config JSONB;
+  user_retention_days INTEGER;
+  agent_retention_days INTEGER;
+  error_retention_days INTEGER;
+  user_deleted BIGINT;
+  agent_deleted BIGINT;
+  error_deleted BIGINT;
+BEGIN
+  -- Get retention configuration
+  SELECT config_data INTO config
+  FROM admin_config
+  WHERE config_key = 'logging_settings';
+
+  user_retention_days := COALESCE((config->'log_retention_days'->>'user_activity_logs')::INTEGER, 30);
+  agent_retention_days := COALESCE((config->'log_retention_days'->>'agent_activity_logs')::INTEGER, 7);
+  error_retention_days := COALESCE((config->'log_retention_days'->>'error_logs')::INTEGER, 90);
+
+  -- Delete old user activity logs
+  WITH deleted_user AS (
+    DELETE FROM user_activity_logs
+    WHERE created_at < NOW() - INTERVAL '1 day' * user_retention_days
+    RETURNING *
+  )
+  SELECT COUNT(*) INTO user_deleted FROM deleted_user;
+
+  -- Delete old agent activity logs
+  WITH deleted_agent AS (
+    DELETE FROM agent_activity_logs
+    WHERE created_at < NOW() - INTERVAL '1 day' * agent_retention_days
+    RETURNING *
+  )
+  SELECT COUNT(*) INTO agent_deleted FROM deleted_agent;
+
+  -- Delete old error logs (resolved ones only)
+  WITH deleted_error AS (
+    DELETE FROM error_logs
+    WHERE created_at < NOW() - INTERVAL '1 day' * error_retention_days
+    AND resolved = true
+    RETURNING *
+  )
+  SELECT COUNT(*) INTO error_deleted FROM deleted_error;
+
+  RETURN QUERY SELECT user_deleted, agent_deleted, error_deleted;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
