@@ -182,7 +182,7 @@ export function DocumentAgentConfig({
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) =>
+              onCheckedChange={(enabled: boolean) =>
                 setConfig((prev) => ({ ...prev, enabled }))
               }
             />
@@ -309,7 +309,7 @@ export function DocumentAgentConfig({
                       </span>
                       <Switch
                         checked={tool.enabled}
-                        onCheckedChange={(enabled) =>
+                        onCheckedChange={(enabled: boolean) =>
                           updateTool(toolName, { enabled })
                         }
                       />

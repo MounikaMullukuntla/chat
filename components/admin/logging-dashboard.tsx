@@ -212,7 +212,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="error-logging"
                   checked={settings.error_logging_enabled}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({ ...settings, error_logging_enabled: checked })
                   }
                 />
@@ -227,7 +227,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="user-logging"
                   checked={settings.user_activity_logging_enabled}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({ ...settings, user_activity_logging_enabled: checked })
                   }
                 />
@@ -242,7 +242,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="agent-logging"
                   checked={settings.agent_activity_logging_enabled}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({ ...settings, agent_activity_logging_enabled: checked })
                   }
                 />
@@ -336,7 +336,7 @@ export function LoggingDashboard() {
                     <Switch
                       id={key}
                       checked={value}
-                      onCheckedChange={(checked) =>
+                      onCheckedChange={(checked: boolean) =>
                         setSettings({
                           ...settings,
                           category_toggles: {
@@ -366,7 +366,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="batch-writes"
                   checked={settings.performance_settings.batch_writes}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       performance_settings: {
@@ -420,7 +420,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="async-logging"
                   checked={settings.performance_settings.async_logging}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       performance_settings: {
@@ -448,7 +448,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="anonymize-ip"
                   checked={settings.privacy_settings.anonymize_ip}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {
@@ -464,7 +464,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="hash-email"
                   checked={settings.privacy_settings.hash_email}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {
@@ -480,7 +480,7 @@ export function LoggingDashboard() {
                 <Switch
                   id="log-user-agent"
                   checked={settings.privacy_settings.log_user_agent}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {

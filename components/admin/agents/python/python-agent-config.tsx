@@ -195,7 +195,7 @@ export function PythonAgentConfig({
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) =>
+              onCheckedChange={(enabled: boolean) =>
                 setConfig((prev) => ({ ...prev, enabled }))
               }
             />
@@ -322,7 +322,7 @@ export function PythonAgentConfig({
                       </span>
                       <Switch
                         checked={tool.enabled}
-                        onCheckedChange={(enabled) =>
+                        onCheckedChange={(enabled: boolean) =>
                           updateTool(toolName, { enabled })
                         }
                       />
