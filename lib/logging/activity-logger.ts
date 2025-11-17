@@ -148,12 +148,9 @@ async function getLoggingConfig(): Promise<any> {
   }
 
   try {
-    // Fetch from database
-    const { createBrowserClient } = await import('@supabase/ssr');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    const supabase = createBrowserClient(supabaseUrl, serviceRoleKey);
+    // Fetch from database using admin client
+    const { createAdminClient } = await import('@/lib/db/supabase-client');
+    const supabase = createAdminClient();
 
     const { data, error } = await supabase
       .from('admin_config')
@@ -202,13 +199,8 @@ async function flushBatch() {
   }
 
   try {
-    const { createBrowserClient } = await import('@supabase/ssr');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    const supabase = createBrowserClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
+    const { createAdminClient } = await import('@/lib/db/supabase-client');
+    const supabase = createAdminClient();
 
     // Insert user activity logs
     if (userActivityBatch.length > 0) {
@@ -285,11 +277,8 @@ export async function logUserActivity(log: UserActivityLog): Promise<void> {
       }
     } else {
       // Write immediately
-      const { createBrowserClient } = await import('@supabase/ssr');
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-      const supabase = createBrowserClient(supabaseUrl, serviceRoleKey);
+      const { createAdminClient } = await import('@/lib/db/supabase-client');
+      const supabase = createAdminClient();
       await supabase.from('user_activity_logs').insert(log);
     }
   } catch (err) {
@@ -323,11 +312,8 @@ export async function logAgentActivity(log: AgentActivityLog): Promise<void> {
       }
     } else {
       // Write immediately
-      const { createBrowserClient } = await import('@supabase/ssr');
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-      const supabase = createBrowserClient(supabaseUrl, serviceRoleKey);
+      const { createAdminClient } = await import('@/lib/db/supabase-client');
+      const supabase = createAdminClient();
       await supabase.from('agent_activity_logs').insert(log);
     }
   } catch (err) {
