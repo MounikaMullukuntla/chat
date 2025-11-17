@@ -14,6 +14,15 @@ const runMigrate = async () => {
     return;
   }
 
+  // Skip migrations during Vercel build phase
+  // Database is not accessible during build, only at runtime
+  if (process.env.VERCEL || process.env.CI) {
+    console.log("⚠️  Running in CI/build environment - skipping migrations");
+    console.log("ℹ️  Migrations should be run manually or during deployment");
+    console.log("ℹ️  Use 'npm run db:migrate' to run migrations manually");
+    return;
+  }
+
   const connection = postgres(process.env.POSTGRES_URL, { max: 1 });
 
   console.log("⏳ Running migrations...");
