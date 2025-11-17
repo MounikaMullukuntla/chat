@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DataStreamProvider } from "@/components/data-stream-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -9,12 +10,15 @@ export default async function ChatLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <DataStreamProvider>{children}</DataStreamProvider>
-      </SidebarInset>
-    </SidebarProvider>
+    <DataStreamProvider>
+      <SidebarProvider defaultOpen={!isCollapsed}>
+        <AppSidebar />
+        <SidebarInset>{children}</SidebarInset>
+      </SidebarProvider>
+    </DataStreamProvider>
   );
 }
