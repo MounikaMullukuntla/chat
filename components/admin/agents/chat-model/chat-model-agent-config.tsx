@@ -343,7 +343,7 @@ export function ChatModelAgentConfig({
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) =>
+              onCheckedChange={(enabled: boolean) =>
                 setConfig((prev) => ({ ...prev, enabled }))
               }
             />
@@ -467,7 +467,7 @@ export function ChatModelAgentConfig({
               </div>
               <Switch
                 checked={config.capabilities.fileInput}
-                onCheckedChange={(fileInput) =>
+                onCheckedChange={(fileInput: boolean) =>
                   setConfig((prev) => ({
                     ...prev,
                     capabilities: { ...prev.capabilities, fileInput },
@@ -637,7 +637,7 @@ export function ChatModelAgentConfig({
                           </span>
                           <Switch
                             checked={tool.enabled}
-                            onCheckedChange={(enabled) =>
+                            onCheckedChange={(enabled: boolean) =>
                               updateTool(toolName, { enabled })
                             }
                           />

@@ -189,7 +189,7 @@ export function MermaidAgentConfig({
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) =>
+              onCheckedChange={(enabled: boolean) =>
                 setConfig((prev) => ({ ...prev, enabled }))
               }
             />
@@ -316,7 +316,7 @@ export function MermaidAgentConfig({
                       </span>
                       <Switch
                         checked={tool.enabled}
-                        onCheckedChange={(enabled) =>
+                        onCheckedChange={(enabled: boolean) =>
                           updateTool(toolName, { enabled })
                         }
                       />
