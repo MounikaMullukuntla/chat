@@ -131,35 +131,26 @@ export async function logError(entry: ErrorLogEntry): Promise<void> {
  */
 async function logErrorSupabase(entry: ErrorLogEntry): Promise<void> {
   try {
-    // Create Supabase client with service role key for error logging
-    const { createBrowserClient } = await import("@supabase/ssr");
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl) {
-      throw new Error("NEXT_PUBLIC_SUPABASE_URL is not defined");
-    }
+    // Determine if running in browser or server context
+    const isBrowser = typeof window !== "undefined";
 
     let supabase;
 
-    if (serviceRoleKey) {
-      // Use service role key to bypass RLS
-      supabase = createBrowserClient(supabaseUrl, serviceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      });
-    } else {
-      // Fallback to anon key (will rely on RLS policies)
+    if (isBrowser) {
+      // Client-side: use browser client
+      const { createBrowserClient } = await import("@supabase/ssr");
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      if (!anonKey) {
-        throw new Error(
-          "Neither SUPABASE_SERVICE_ROLE_KEY nor NEXT_PUBLIC_SUPABASE_ANON_KEY is available"
-        );
+
+      if (!supabaseUrl || !anonKey) {
+        throw new Error("Supabase environment variables not defined");
       }
+
       supabase = createBrowserClient(supabaseUrl, anonKey);
+    } else {
+      // Server-side: use admin client with service role key
+      const { createAdminClient } = await import("@/lib/db/supabase-client");
+      supabase = createAdminClient();
     }
 
     const { error } = await supabase.from("error_logs").insert({
