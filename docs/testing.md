@@ -1418,14 +1418,14 @@ Brief description of changes
   - [x] Test modifying and re-running code
   - [x] Test error handling in execution
 
-- [ ] **Mermaid Diagram Journey** (`tests/e2e/mermaid-diagram.spec.ts`)
-  - [ ] Test requesting diagram
-  - [ ] Test diagram streaming
-  - [ ] Test live preview rendering
-  - [ ] Test editing diagram code
-  - [ ] Test preview updates
-  - [ ] Test syntax error display
-  - [ ] Test exporting diagram
+- [x] **Mermaid Diagram Journey** (`tests/e2e/mermaid-diagram.spec.ts`)
+  - [x] Test requesting diagram
+  - [x] Test diagram streaming
+  - [x] Test live preview rendering
+  - [x] Test editing diagram code
+  - [x] Test preview updates
+  - [x] Test syntax error display
+  - [x] Test exporting diagram
 
 - [x] **GitHub MCP Journey** (`tests/e2e/github-integration.spec.ts`)
   - [x] Test entering GitHub PAT
