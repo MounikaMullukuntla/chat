@@ -109,11 +109,8 @@ export const pythonArtifact = new Artifact<
 
         // Log artifact execution
         try {
-          const {
-            logUserActivity,
-            UserActivityType,
-            ActivityCategory,
-          } = await import("@/lib/logging");
+          const { logUserActivity, UserActivityType, ActivityCategory } =
+            await import("@/lib/logging");
 
           // Fire and forget
           void logUserActivity({
@@ -139,11 +136,9 @@ export const pythonArtifact = new Artifact<
 
           // Log execution error
           try {
-            const {
-              logAppError,
-              ErrorCategory,
-              ErrorSeverity,
-            } = await import("@/lib/errors/logger");
+            const { logAppError, ErrorCategory, ErrorSeverity } = await import(
+              "@/lib/errors/logger"
+            );
 
             void logAppError(
               ErrorCategory.COMPONENT_ERROR,
@@ -180,11 +175,9 @@ export const pythonArtifact = new Artifact<
 
         // Log critical execution failure
         try {
-          const {
-            logAppError,
-            ErrorCategory,
-            ErrorSeverity,
-          } = await import("@/lib/errors/logger");
+          const { logAppError, ErrorCategory, ErrorSeverity } = await import(
+            "@/lib/errors/logger"
+          );
 
           void logAppError(
             ErrorCategory.COMPONENT_ERROR,

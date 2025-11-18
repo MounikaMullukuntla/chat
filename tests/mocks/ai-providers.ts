@@ -2,11 +2,11 @@
  * Mock AI provider responses for testing
  */
 
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 export const mockGoogleAIResponse = {
-  text: 'This is a mock response from Google AI',
-  finishReason: 'stop',
+  text: "This is a mock response from Google AI",
+  finishReason: "stop",
   usage: {
     promptTokens: 10,
     completionTokens: 20,
@@ -16,10 +16,10 @@ export const mockGoogleAIResponse = {
 
 export const mockStreamingResponse = {
   textStream: (async function* () {
-    yield 'Hello ';
-    yield 'from ';
-    yield 'streaming ';
-    yield 'response';
+    yield "Hello ";
+    yield "from ";
+    yield "streaming ";
+    yield "response";
   })(),
 };
 
@@ -35,10 +35,10 @@ export const mockOpenAI = {
         choices: [
           {
             message: {
-              role: 'assistant',
-              content: 'This is a mock response from OpenAI',
+              role: "assistant",
+              content: "This is a mock response from OpenAI",
             },
-            finish_reason: 'stop',
+            finish_reason: "stop",
           },
         ],
         usage: {
@@ -56,11 +56,11 @@ export const mockAnthropic = {
     create: vi.fn().mockResolvedValue({
       content: [
         {
-          type: 'text',
-          text: 'This is a mock response from Anthropic',
+          type: "text",
+          text: "This is a mock response from Anthropic",
         },
       ],
-      stop_reason: 'end_turn',
+      stop_reason: "end_turn",
       usage: {
         input_tokens: 10,
         output_tokens: 20,

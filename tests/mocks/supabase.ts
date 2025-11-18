@@ -2,7 +2,7 @@
  * Mock Supabase client for testing
  */
 
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 export const mockSupabaseClient = {
   auth: {

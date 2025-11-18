@@ -19,30 +19,29 @@ import {
 } from "@/lib/db/queries/document";
 import { ChatSDKError } from "@/lib/errors";
 import {
+  ActivityCategory,
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  logUserActivity,
+  PerformanceTracker,
+  UserActivityType,
+} from "@/lib/logging";
+import {
   buildArtifactContext,
   convertToUIMessages,
   generateUUID,
 } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
-import {
-  logUserActivity,
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  UserActivityType,
-  ActivityCategory,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging";
 
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
   // Create correlation ID for request tracking
   const correlationId = createCorrelationId();
-  const requestStartTime = Date.now();
+  const _requestStartTime = Date.now();
   let requestBody: PostRequestBody;
   let user: User | undefined;
   let chat: Awaited<ReturnType<typeof getChatById>> | undefined;
@@ -154,7 +153,9 @@ export async function POST(request: Request) {
     await logUserActivity({
       user_id: user.id,
       correlation_id: correlationId,
-      activity_type: chat ? UserActivityType.CHAT_MESSAGE_SEND : UserActivityType.CHAT_CREATE,
+      activity_type: chat
+        ? UserActivityType.CHAT_MESSAGE_SEND
+        : UserActivityType.CHAT_CREATE,
       activity_category: ActivityCategory.CHAT,
       activity_metadata: {
         chat_id: id,
@@ -263,7 +264,10 @@ export async function POST(request: Request) {
           success: true,
           operation_metadata: {
             message_count: assistantMessages.length,
-            parts_count: assistantMessages.reduce((sum, msg) => sum + msg.parts.length, 0),
+            parts_count: assistantMessages.reduce(
+              (sum, msg) => sum + msg.parts.length,
+              0
+            ),
           },
         });
       },
@@ -276,7 +280,9 @@ export async function POST(request: Request) {
       await logUserActivity({
         user_id: user.id,
         correlation_id: correlationId,
-        activity_type: chat ? UserActivityType.CHAT_MESSAGE_SEND : UserActivityType.CHAT_CREATE,
+        activity_type: chat
+          ? UserActivityType.CHAT_MESSAGE_SEND
+          : UserActivityType.CHAT_CREATE,
         activity_category: ActivityCategory.CHAT,
         success: false,
         error_message: error instanceof Error ? error.message : "Unknown error",

@@ -2,12 +2,12 @@
 // Implements requirement 2.1, 2.2, 2.3, 2.4, 2.5
 
 import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
   logAgentActivity,
   PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
 } from "@/lib/logging/activity-logger";
 
 export type FileAttachment = {
@@ -146,12 +146,18 @@ export function validateFileAttachment(attachment: FileAttachment): {
 
   // Basic validation
   if (!attachment.name || !attachment.url || !attachment.mediaType) {
-    validationResult = { valid: false, error: "Missing required file properties" };
+    validationResult = {
+      valid: false,
+      error: "Missing required file properties",
+    };
   } else {
     // Size validation (if provided)
     const maxSizeBytes = 10 * 1024 * 1024; // 10MB limit
     if (attachment.size && attachment.size > maxSizeBytes) {
-      validationResult = { valid: false, error: "File size exceeds 10MB limit" };
+      validationResult = {
+        valid: false,
+        error: "File size exceeds 10MB limit",
+      };
     } else {
       // Supported file types
       const supportedTypes = [
@@ -167,13 +173,13 @@ export function validateFileAttachment(attachment: FileAttachment): {
       const isSupported = supportedTypes.some((type) =>
         attachment.mediaType.startsWith(type)
       );
-      if (!isSupported) {
+      if (isSupported) {
+        validationResult = { valid: true };
+      } else {
         validationResult = {
           valid: false,
           error: `Unsupported file type: ${attachment.mediaType}`,
         };
-      } else {
-        validationResult = { valid: true };
       }
     }
   }

@@ -166,11 +166,9 @@ export function AdminLayout({ provider, children }: AdminLayoutProps) {
 
       // Log API save error (separate from child component logging)
       try {
-        const {
-          logAdminError,
-          ErrorCategory,
-          ErrorSeverity,
-        } = await import("@/lib/errors/logger");
+        const { logAdminError, ErrorCategory, ErrorSeverity } = await import(
+          "@/lib/errors/logger"
+        );
 
         void logAdminError(
           ErrorCategory.CONFIG_UPDATE_FAILED,

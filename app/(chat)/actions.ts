@@ -3,23 +3,22 @@
 import type { UIMessage } from "ai";
 import { cookies } from "next/headers";
 import type { VisibilityType } from "@/components/visibility-selector";
+import { getCurrentUser } from "@/lib/auth/server";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
   updateChatVisiblityById,
 } from "@/lib/db/queries";
 import {
-  logUserActivity,
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
-  AgentType,
-  AgentOperationType,
   AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  logUserActivity,
+  PerformanceTracker,
+  UserActivityType,
 } from "@/lib/logging/activity-logger";
-import { getCurrentUser } from "@/lib/auth/server";
 
 export async function saveChatModelAsCookie(model: string) {
   const correlationId = createCorrelationId();

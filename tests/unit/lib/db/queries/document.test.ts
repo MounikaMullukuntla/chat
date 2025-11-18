@@ -3,15 +3,15 @@
  * Tests document creation, versioning, retrieval, and deletion
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChatSDKError } from '@/lib/errors';
-import type { ArtifactKind } from '@/components/artifact';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ArtifactKind } from "@/components/artifact";
+import { ChatSDKError } from "@/lib/errors";
 
 // Mock server-only module to prevent client component error
-vi.mock('server-only', () => ({}));
+vi.mock("server-only", () => ({}));
 
 // Mock the database module
-vi.mock('@/lib/db/queries/base', () => ({
+vi.mock("@/lib/db/queries/base", () => ({
   db: {
     select: vi.fn(),
     insert: vi.fn(),
@@ -19,21 +19,21 @@ vi.mock('@/lib/db/queries/base', () => ({
   },
 }));
 
+import { db } from "@/lib/db/queries/base";
 // Import after mocking
 import {
-  saveDocument,
-  getDocumentsById,
+  deleteDocumentsByIdAfterTimestamp,
   getDocumentById,
   getDocumentByIdAndVersion,
+  getDocumentsById,
   getDocumentVersions,
-  deleteDocumentsByIdAfterTimestamp,
-} from '@/lib/db/queries/document';
-import { db } from '@/lib/db/queries/base';
+  saveDocument,
+} from "@/lib/db/queries/document";
 
-describe('Document Query Tests', () => {
-  const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
-  const mockChatId = '123e4567-e89b-12d3-a456-426614174001';
-  const mockDocumentId = 'doc-123e4567-e89b-12d3-a456-426614174002';
+describe("Document Query Tests", () => {
+  const mockUserId = "123e4567-e89b-12d3-a456-426614174000";
+  const mockChatId = "123e4567-e89b-12d3-a456-426614174001";
+  const mockDocumentId = "doc-123e4567-e89b-12d3-a456-426614174002";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,13 +43,13 @@ describe('Document Query Tests', () => {
     vi.restoreAllMocks();
   });
 
-  describe('saveDocument - Document Creation (Version 1)', () => {
-    it('should create a new document with version 1', async () => {
+  describe("saveDocument - Document Creation (Version 1)", () => {
+    it("should create a new document with version 1", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Test Document',
-        kind: 'text' as ArtifactKind,
-        content: 'This is test content',
+        title: "Test Document",
+        kind: "text" as ArtifactKind,
+        content: "This is test content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 1,
@@ -59,7 +59,7 @@ describe('Document Query Tests', () => {
       };
 
       // Mock the max version query (returns null for first version)
-      const mockSelect = vi.fn().mockReturnThis();
+      const _mockSelect = vi.fn().mockReturnThis();
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockResolvedValue([{ maxVersion: null }]);
 
@@ -70,7 +70,7 @@ describe('Document Query Tests', () => {
       });
 
       // Mock the insert query
-      const mockInsert = vi.fn().mockReturnThis();
+      const _mockInsert = vi.fn().mockReturnThis();
       const mockValues = vi.fn().mockReturnThis();
       const mockReturning = vi.fn().mockResolvedValue([mockDocument]);
 
@@ -82,9 +82,9 @@ describe('Document Query Tests', () => {
 
       const result = await saveDocument({
         id: mockDocumentId,
-        title: 'Test Document',
-        kind: 'text',
-        content: 'This is test content',
+        title: "Test Document",
+        kind: "text",
+        content: "This is test content",
         userId: mockUserId,
         chatId: mockChatId,
       });
@@ -92,16 +92,16 @@ describe('Document Query Tests', () => {
       expect(result).toBeDefined();
       expect(result).toHaveLength(1);
       expect(result[0].version_number).toBe(1);
-      expect(result[0].title).toBe('Test Document');
+      expect(result[0].title).toBe("Test Document");
     });
 
-    it('should create document with metadata', async () => {
-      const mockMetadata = { tags: ['test', 'document'], priority: 'high' };
+    it("should create document with metadata", async () => {
+      const mockMetadata = { tags: ["test", "document"], priority: "high" };
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Test Document with Metadata',
-        kind: 'text' as ArtifactKind,
-        content: 'Content',
+        title: "Test Document with Metadata",
+        kind: "text" as ArtifactKind,
+        content: "Content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 1,
@@ -132,9 +132,9 @@ describe('Document Query Tests', () => {
 
       const result = await saveDocument({
         id: mockDocumentId,
-        title: 'Test Document with Metadata',
-        kind: 'text',
-        content: 'Content',
+        title: "Test Document with Metadata",
+        kind: "text",
+        content: "Content",
         userId: mockUserId,
         chatId: mockChatId,
         metadata: mockMetadata,
@@ -143,7 +143,7 @@ describe('Document Query Tests', () => {
       expect(result[0].metadata).toEqual(mockMetadata);
     });
 
-    it('should handle database errors during creation', async () => {
+    it("should handle database errors during creation", async () => {
       // Mock the max version query
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockResolvedValue([{ maxVersion: null }]);
@@ -156,7 +156,9 @@ describe('Document Query Tests', () => {
 
       // Mock insert to throw error
       const mockValues = vi.fn().mockReturnThis();
-      const mockReturning = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockReturning = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
 
       (db.insert as any).mockReturnValue({
         values: mockValues.mockReturnValue({
@@ -167,9 +169,9 @@ describe('Document Query Tests', () => {
       await expect(
         saveDocument({
           id: mockDocumentId,
-          title: 'Test Document',
-          kind: 'text',
-          content: 'Content',
+          title: "Test Document",
+          kind: "text",
+          content: "Content",
           userId: mockUserId,
           chatId: mockChatId,
         })
@@ -177,13 +179,13 @@ describe('Document Query Tests', () => {
     });
   });
 
-  describe('saveDocument - Document Update (New Version)', () => {
-    it('should create version 2 when updating existing document', async () => {
+  describe("saveDocument - Document Update (New Version)", () => {
+    it("should create version 2 when updating existing document", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Updated Document',
-        kind: 'text' as ArtifactKind,
-        content: 'Updated content',
+        title: "Updated Document",
+        kind: "text" as ArtifactKind,
+        content: "Updated content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 2,
@@ -214,23 +216,23 @@ describe('Document Query Tests', () => {
 
       const result = await saveDocument({
         id: mockDocumentId,
-        title: 'Updated Document',
-        kind: 'text',
-        content: 'Updated content',
+        title: "Updated Document",
+        kind: "text",
+        content: "Updated content",
         userId: mockUserId,
         chatId: mockChatId,
       });
 
       expect(result[0].version_number).toBe(2);
-      expect(result[0].title).toBe('Updated Document');
+      expect(result[0].title).toBe("Updated Document");
     });
 
-    it('should create version 3 when document already has 2 versions', async () => {
+    it("should create version 3 when document already has 2 versions", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Third Version',
-        kind: 'text' as ArtifactKind,
-        content: 'Third version content',
+        title: "Third Version",
+        kind: "text" as ArtifactKind,
+        content: "Third version content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 3,
@@ -261,9 +263,9 @@ describe('Document Query Tests', () => {
 
       const result = await saveDocument({
         id: mockDocumentId,
-        title: 'Third Version',
-        kind: 'text',
-        content: 'Third version content',
+        title: "Third Version",
+        kind: "text",
+        content: "Third version content",
         userId: mockUserId,
         chatId: mockChatId,
       });
@@ -271,13 +273,13 @@ describe('Document Query Tests', () => {
       expect(result[0].version_number).toBe(3);
     });
 
-    it('should track parent version when updating', async () => {
-      const parentVersionId = 'parent-version-123';
+    it("should track parent version when updating", async () => {
+      const parentVersionId = "parent-version-123";
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Document with Parent',
-        kind: 'text' as ArtifactKind,
-        content: 'Content',
+        title: "Document with Parent",
+        kind: "text" as ArtifactKind,
+        content: "Content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 2,
@@ -308,9 +310,9 @@ describe('Document Query Tests', () => {
 
       const result = await saveDocument({
         id: mockDocumentId,
-        title: 'Document with Parent',
-        kind: 'text',
-        content: 'Content',
+        title: "Document with Parent",
+        kind: "text",
+        content: "Content",
         userId: mockUserId,
         chatId: mockChatId,
         parentVersionId,
@@ -320,13 +322,13 @@ describe('Document Query Tests', () => {
     });
   });
 
-  describe('getDocumentByIdAndVersion - Version Retrieval', () => {
-    it('should retrieve a specific version of a document', async () => {
+  describe("getDocumentByIdAndVersion - Version Retrieval", () => {
+    it("should retrieve a specific version of a document", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Version 1 Document',
-        kind: 'text' as ArtifactKind,
-        content: 'Version 1 content',
+        title: "Version 1 Document",
+        kind: "text" as ArtifactKind,
+        content: "Version 1 content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 1,
@@ -352,15 +354,15 @@ describe('Document Query Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.version_number).toBe(1);
-      expect(result.title).toBe('Version 1 Document');
+      expect(result.title).toBe("Version 1 Document");
     });
 
-    it('should retrieve version 2 when requested', async () => {
+    it("should retrieve version 2 when requested", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Version 2 Document',
-        kind: 'text' as ArtifactKind,
-        content: 'Version 2 content',
+        title: "Version 2 Document",
+        kind: "text" as ArtifactKind,
+        content: "Version 2 content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 2,
@@ -387,10 +389,10 @@ describe('Document Query Tests', () => {
       expect(result.version_number).toBe(2);
     });
 
-    it('should handle errors when retrieving specific version', async () => {
+    it("should handle errors when retrieving specific version", async () => {
       // Mock select to throw error
       const mockFrom = vi.fn().mockReturnThis();
-      const mockWhere = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockWhere = vi.fn().mockRejectedValue(new Error("Database error"));
 
       (db.select as any).mockReturnValue({
         from: mockFrom.mockReturnValue({
@@ -404,43 +406,43 @@ describe('Document Query Tests', () => {
     });
   });
 
-  describe('getDocumentVersions - Version List for Document', () => {
-    it('should retrieve all versions of a document ordered by version number', async () => {
+  describe("getDocumentVersions - Version List for Document", () => {
+    it("should retrieve all versions of a document ordered by version number", async () => {
       const mockDocuments = [
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 3',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 3",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 3,
           metadata: {},
-          createdAt: new Date('2024-01-03'),
+          createdAt: new Date("2024-01-03"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 2',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 2",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 2,
           metadata: {},
-          createdAt: new Date('2024-01-02'),
+          createdAt: new Date("2024-01-02"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 1',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 1",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 1,
           metadata: {},
-          createdAt: new Date('2024-01-01'),
+          createdAt: new Date("2024-01-01"),
           parent_version_id: null,
         },
       ];
@@ -466,7 +468,7 @@ describe('Document Query Tests', () => {
       expect(result[2].version_number).toBe(1);
     });
 
-    it('should return empty array for document with no versions', async () => {
+    it("should return empty array for document with no versions", async () => {
       // Mock the select query to return empty array
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockReturnThis();
@@ -480,16 +482,18 @@ describe('Document Query Tests', () => {
         }),
       });
 
-      const result = await getDocumentVersions({ id: 'non-existent-id' });
+      const result = await getDocumentVersions({ id: "non-existent-id" });
 
       expect(result).toHaveLength(0);
     });
 
-    it('should handle database errors when retrieving versions', async () => {
+    it("should handle database errors when retrieving versions", async () => {
       // Mock select to throw error
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockReturnThis();
-      const mockOrderBy = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockOrderBy = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
 
       (db.select as any).mockReturnValue({
         from: mockFrom.mockReturnValue({
@@ -499,19 +503,19 @@ describe('Document Query Tests', () => {
         }),
       });
 
-      await expect(
-        getDocumentVersions({ id: mockDocumentId })
-      ).rejects.toThrow(ChatSDKError);
+      await expect(getDocumentVersions({ id: mockDocumentId })).rejects.toThrow(
+        ChatSDKError
+      );
     });
   });
 
-  describe('getDocumentById - Latest Version Retrieval', () => {
-    it('should retrieve the latest version of a document', async () => {
+  describe("getDocumentById - Latest Version Retrieval", () => {
+    it("should retrieve the latest version of a document", async () => {
       const mockDocument = {
         id: mockDocumentId,
-        title: 'Latest Document',
-        kind: 'text' as ArtifactKind,
-        content: 'Latest content',
+        title: "Latest Document",
+        kind: "text" as ArtifactKind,
+        content: "Latest content",
         user_id: mockUserId,
         chat_id: mockChatId,
         version_number: 3,
@@ -537,10 +541,10 @@ describe('Document Query Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.version_number).toBe(3);
-      expect(result.title).toBe('Latest Document');
+      expect(result.title).toBe("Latest Document");
     });
 
-    it('should return undefined when document does not exist', async () => {
+    it("should return undefined when document does not exist", async () => {
       // Mock the select query to return empty array
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockReturnThis();
@@ -554,16 +558,18 @@ describe('Document Query Tests', () => {
         }),
       });
 
-      const result = await getDocumentById({ id: 'non-existent-id' });
+      const result = await getDocumentById({ id: "non-existent-id" });
 
       expect(result).toBeUndefined();
     });
 
-    it('should handle database errors when retrieving latest version', async () => {
+    it("should handle database errors when retrieving latest version", async () => {
       // Mock select to throw error
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockReturnThis();
-      const mockOrderBy = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockOrderBy = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
 
       (db.select as any).mockReturnValue({
         from: mockFrom.mockReturnValue({
@@ -573,32 +579,32 @@ describe('Document Query Tests', () => {
         }),
       });
 
-      await expect(
-        getDocumentById({ id: mockDocumentId })
-      ).rejects.toThrow(ChatSDKError);
+      await expect(getDocumentById({ id: mockDocumentId })).rejects.toThrow(
+        ChatSDKError
+      );
     });
   });
 
-  describe('deleteDocumentsByIdAfterTimestamp - Document Deletion', () => {
-    it('should delete documents created after a specific timestamp', async () => {
-      const timestamp = new Date('2024-01-02');
+  describe("deleteDocumentsByIdAfterTimestamp - Document Deletion", () => {
+    it("should delete documents created after a specific timestamp", async () => {
+      const timestamp = new Date("2024-01-02");
       const mockDeletedDocuments = [
         {
           id: mockDocumentId,
-          title: 'Deleted Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Content',
+          title: "Deleted Document",
+          kind: "text" as ArtifactKind,
+          content: "Content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 3,
           metadata: {},
-          createdAt: new Date('2024-01-03'),
+          createdAt: new Date("2024-01-03"),
           parent_version_id: null,
         },
       ];
 
       // Mock the suggestion delete
-      const mockSuggestionDelete = vi.fn().mockReturnThis();
+      const _mockSuggestionDelete = vi.fn().mockReturnThis();
       const mockSuggestionWhere = vi.fn().mockResolvedValue(undefined);
 
       (db.delete as any).mockReturnValueOnce({
@@ -606,7 +612,7 @@ describe('Document Query Tests', () => {
       });
 
       // Mock the document delete
-      const mockDocumentDelete = vi.fn().mockReturnThis();
+      const _mockDocumentDelete = vi.fn().mockReturnThis();
       const mockDocumentWhere = vi.fn().mockReturnThis();
       const mockReturning = vi.fn().mockResolvedValue(mockDeletedDocuments);
 
@@ -625,8 +631,8 @@ describe('Document Query Tests', () => {
       expect(result[0].version_number).toBe(3);
     });
 
-    it('should delete related suggestions before deleting documents', async () => {
-      const timestamp = new Date('2024-01-02');
+    it("should delete related suggestions before deleting documents", async () => {
+      const timestamp = new Date("2024-01-02");
 
       // Mock the suggestion delete
       const mockSuggestionWhere = vi.fn().mockResolvedValue(undefined);
@@ -654,8 +660,8 @@ describe('Document Query Tests', () => {
       expect(db.delete).toHaveBeenCalledTimes(2);
     });
 
-    it('should return empty array when no documents match timestamp criteria', async () => {
-      const timestamp = new Date('2024-01-01');
+    it("should return empty array when no documents match timestamp criteria", async () => {
+      const timestamp = new Date("2024-01-01");
 
       // Mock the suggestion delete
       const mockSuggestionWhere = vi.fn().mockResolvedValue(undefined);
@@ -682,8 +688,8 @@ describe('Document Query Tests', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should handle database errors during deletion', async () => {
-      const timestamp = new Date('2024-01-02');
+    it("should handle database errors during deletion", async () => {
+      const timestamp = new Date("2024-01-02");
 
       // Mock the suggestion delete
       const mockSuggestionWhere = vi.fn().mockResolvedValue(undefined);
@@ -694,7 +700,9 @@ describe('Document Query Tests', () => {
 
       // Mock document delete to throw error
       const mockDocumentWhere = vi.fn().mockReturnThis();
-      const mockReturning = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockReturning = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
 
       (db.delete as any).mockReturnValueOnce({
         where: mockDocumentWhere.mockReturnValue({
@@ -708,43 +716,43 @@ describe('Document Query Tests', () => {
     });
   });
 
-  describe('getDocumentsById - Version Comparison Query', () => {
-    it('should retrieve all versions for comparison ordered by creation time', async () => {
+  describe("getDocumentsById - Version Comparison Query", () => {
+    it("should retrieve all versions for comparison ordered by creation time", async () => {
       const mockDocuments = [
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 1 content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 1 content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 1,
           metadata: {},
-          createdAt: new Date('2024-01-01'),
+          createdAt: new Date("2024-01-01"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 2 content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 2 content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 2,
           metadata: {},
-          createdAt: new Date('2024-01-02'),
+          createdAt: new Date("2024-01-02"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Version 3 content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Version 3 content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 3,
           metadata: {},
-          createdAt: new Date('2024-01-03'),
+          createdAt: new Date("2024-01-03"),
           parent_version_id: null,
         },
       ];
@@ -771,30 +779,30 @@ describe('Document Query Tests', () => {
       expect(result[2].version_number).toBe(3);
     });
 
-    it('should allow comparison between any two versions', async () => {
+    it("should allow comparison between any two versions", async () => {
       const mockDocuments = [
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Original content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Original content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 1,
           metadata: {},
-          createdAt: new Date('2024-01-01'),
+          createdAt: new Date("2024-01-01"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Updated content with changes',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Updated content with changes",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 2,
           metadata: {},
-          createdAt: new Date('2024-01-02'),
+          createdAt: new Date("2024-01-02"),
           parent_version_id: null,
         },
       ];
@@ -816,35 +824,35 @@ describe('Document Query Tests', () => {
 
       expect(result).toHaveLength(2);
       // Verify we can compare content between versions
-      expect(result[0].content).toBe('Original content');
-      expect(result[1].content).toBe('Updated content with changes');
+      expect(result[0].content).toBe("Original content");
+      expect(result[1].content).toBe("Updated content with changes");
       expect(result[0].content).not.toBe(result[1].content);
     });
 
-    it('should include metadata in version comparison', async () => {
+    it("should include metadata in version comparison", async () => {
       const mockDocuments = [
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 1,
-          metadata: { status: 'draft' },
-          createdAt: new Date('2024-01-01'),
+          metadata: { status: "draft" },
+          createdAt: new Date("2024-01-01"),
           parent_version_id: null,
         },
         {
           id: mockDocumentId,
-          title: 'Document',
-          kind: 'text' as ArtifactKind,
-          content: 'Content',
+          title: "Document",
+          kind: "text" as ArtifactKind,
+          content: "Content",
           user_id: mockUserId,
           chat_id: mockChatId,
           version_number: 2,
-          metadata: { status: 'published' },
-          createdAt: new Date('2024-01-02'),
+          metadata: { status: "published" },
+          createdAt: new Date("2024-01-02"),
           parent_version_id: null,
         },
       ];
@@ -864,15 +872,17 @@ describe('Document Query Tests', () => {
 
       const result = await getDocumentsById({ id: mockDocumentId });
 
-      expect(result[0].metadata).toEqual({ status: 'draft' });
-      expect(result[1].metadata).toEqual({ status: 'published' });
+      expect(result[0].metadata).toEqual({ status: "draft" });
+      expect(result[1].metadata).toEqual({ status: "published" });
     });
 
-    it('should handle errors during version comparison query', async () => {
+    it("should handle errors during version comparison query", async () => {
       // Mock select to throw error
       const mockFrom = vi.fn().mockReturnThis();
       const mockWhere = vi.fn().mockReturnThis();
-      const mockOrderBy = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockOrderBy = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
 
       (db.select as any).mockReturnValue({
         from: mockFrom.mockReturnValue({
@@ -882,9 +892,9 @@ describe('Document Query Tests', () => {
         }),
       });
 
-      await expect(
-        getDocumentsById({ id: mockDocumentId })
-      ).rejects.toThrow(ChatSDKError);
+      await expect(getDocumentsById({ id: mockDocumentId })).rejects.toThrow(
+        ChatSDKError
+      );
     });
   });
 });

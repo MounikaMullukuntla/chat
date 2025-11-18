@@ -9,18 +9,18 @@ import {
   getDocumentByIdAndVersion,
   saveDocument,
 } from "@/lib/db/queries/document";
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  logAgentActivity,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import type { ChatMessage } from "@/lib/types";
 import { streamPythonCode } from "../../tools/python/streamPythonCode";
 import { streamPythonCodeFix } from "../../tools/python/streamPythonCodeFix";
 import { streamPythonCodeUpdate } from "../../tools/python/streamPythonCodeUpdate";
-import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 // Agent config interface
 type PythonAgentConfig = {
@@ -42,10 +42,9 @@ type PythonAgentConfig = {
  */
 export class GooglePythonAgentStreaming {
   private apiKey?: string;
-  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
   private readonly config: PythonAgentConfig;
-  private toolConfigs?: {
+  private readonly toolConfigs?: {
     create?: { systemPrompt: string; enabled: boolean };
     update?: {
       systemPrompt: string;
@@ -400,7 +399,9 @@ export class GooglePythonAgentStreaming {
 
     try {
       if (!this.toolConfigs?.create?.enabled) {
-        throw new Error("GooglePythonAgentStreaming: create tool is not enabled");
+        throw new Error(
+          "GooglePythonAgentStreaming: create tool is not enabled"
+        );
       }
 
       const toolConfig = this.toolConfigs.create;
@@ -428,7 +429,10 @@ export class GooglePythonAgentStreaming {
         streamToUI: true,
       });
 
-      console.log("✅ [PYTHON-AGENT-STREAMING] Code created:", result.documentId);
+      console.log(
+        "✅ [PYTHON-AGENT-STREAMING] Code created:",
+        result.documentId
+      );
 
       // Log successful activity
       await logAgentActivity({
@@ -505,7 +509,9 @@ export class GooglePythonAgentStreaming {
 
     try {
       if (!this.toolConfigs?.update?.enabled) {
-        throw new Error("GooglePythonAgentStreaming: update tool is not enabled");
+        throw new Error(
+          "GooglePythonAgentStreaming: update tool is not enabled"
+        );
       }
 
       const toolConfig = this.toolConfigs.update;
@@ -865,7 +871,9 @@ export class GooglePythonAgentStreaming {
       });
 
       if (!targetDocument) {
-        throw new Error(`Version ${versionToRevert} of code ${codeId} not found`);
+        throw new Error(
+          `Version ${versionToRevert} of code ${codeId} not found`
+        );
       }
 
       console.log(

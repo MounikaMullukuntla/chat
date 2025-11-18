@@ -48,11 +48,8 @@ export class GitHubVerificationService extends BaseVerificationService {
 
         // Log successful verification
         try {
-          const {
-            logUserActivity,
-            UserActivityType,
-            ActivityCategory,
-          } = await import("@/lib/logging");
+          const { logUserActivity, UserActivityType, ActivityCategory } =
+            await import("@/lib/logging");
 
           const verificationTime = Date.now() - startTime;
 
@@ -143,11 +140,9 @@ export class GitHubVerificationService extends BaseVerificationService {
     } catch (error) {
       // Log verification failure
       try {
-        const {
-          logSystemError,
-          ErrorCategory,
-          ErrorSeverity,
-        } = await import("@/lib/errors/logger");
+        const { logSystemError, ErrorCategory, ErrorSeverity } = await import(
+          "@/lib/errors/logger"
+        );
 
         const verificationTime = Date.now() - startTime;
         const errorMessage =
@@ -157,7 +152,10 @@ export class GitHubVerificationService extends BaseVerificationService {
         let severity = ErrorSeverity.WARNING;
         let category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
 
-        if (errorMessage.includes("Invalid") || errorMessage.includes("format")) {
+        if (
+          errorMessage.includes("Invalid") ||
+          errorMessage.includes("format")
+        ) {
           severity = ErrorSeverity.WARNING;
           category = ErrorCategory.VALIDATION_ERROR;
         } else if (errorMessage.includes("rate limit")) {

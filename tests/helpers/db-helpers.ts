@@ -3,10 +3,12 @@
  * Provides utilities for setting up and tearing down test data
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key';
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321";
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "test-service-role-key";
 
 /**
  * Create a Supabase client for testing with service role key
@@ -27,7 +29,9 @@ export async function createTestUser(email: string, password: string) {
     email_confirm: true,
   });
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
   return data.user;
 }
 
@@ -38,7 +42,9 @@ export async function deleteTestUser(userId: string) {
   const supabase = createTestSupabaseClient();
 
   const { error } = await supabase.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 }
 
 /**
@@ -50,19 +56,21 @@ export async function cleanupTable(tableName: string) {
   const { error } = await supabase
     .from(tableName)
     .delete()
-    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all except system records
+    .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all except system records
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 }
 
 /**
  * Create a test chat
  */
-export async function createTestChat(userId: string, title: string = 'Test Chat') {
+export async function createTestChat(userId: string, title = "Test Chat") {
   const supabase = createTestSupabaseClient();
 
   const { data, error } = await supabase
-    .from('Chat')
+    .from("Chat")
     .insert({
       userId,
       title,
@@ -70,27 +78,35 @@ export async function createTestChat(userId: string, title: string = 'Test Chat'
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
   return data;
 }
 
 /**
  * Create a test message
  */
-export async function createTestMessage(chatId: string, role: 'user' | 'assistant', content: string) {
+export async function createTestMessage(
+  chatId: string,
+  role: "user" | "assistant",
+  content: string
+) {
   const supabase = createTestSupabaseClient();
 
   const { data, error } = await supabase
-    .from('Message_v2')
+    .from("Message_v2")
     .insert({
       chatId,
       role,
-      content: { type: 'text', text: content },
+      content: { type: "text", text: content },
     })
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
   return data;
 }
 
@@ -101,13 +117,13 @@ export async function createTestDocument(
   chatId: string,
   userId: string,
   title: string,
-  kind: 'text' | 'code',
+  kind: "text" | "code",
   content: string
 ) {
   const supabase = createTestSupabaseClient();
 
   const { data, error } = await supabase
-    .from('Document')
+    .from("Document")
     .insert({
       chatId,
       userId,
@@ -118,6 +134,8 @@ export async function createTestDocument(
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
   return data;
 }

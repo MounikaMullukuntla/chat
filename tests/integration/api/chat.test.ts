@@ -3,18 +3,17 @@
  * Tests the /api/chat endpoint with various scenarios
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { POST, DELETE } from '@/app/(chat)/api/chat/route';
-import { testUsers } from '@/tests/fixtures/users';
-import { testChats } from '@/tests/fixtures/chats';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DELETE, POST } from "@/app/(chat)/api/chat/route";
+import { testUsers } from "@/tests/fixtures/users";
 
 // Mock dependencies
-vi.mock('@/lib/auth/server', () => ({
+vi.mock("@/lib/auth/server", () => ({
   requireAuth: vi.fn(),
   createAuthErrorResponse: vi.fn(),
 }));
 
-vi.mock('@/lib/db/queries', () => ({
+vi.mock("@/lib/db/queries", () => ({
   getChatById: vi.fn(),
   saveChat: vi.fn(),
   saveMessages: vi.fn(),
@@ -22,93 +21,91 @@ vi.mock('@/lib/db/queries', () => ({
   deleteChatById: vi.fn(),
 }));
 
-vi.mock('@/lib/db/queries/document', () => ({
+vi.mock("@/lib/db/queries/document", () => ({
   getLatestDocumentVersionsByChat: vi.fn(),
   getLastDocumentInChat: vi.fn(),
 }));
 
-vi.mock('@/lib/ai/chat-agent-resolver', () => ({
+vi.mock("@/lib/ai/chat-agent-resolver", () => ({
   ChatAgentResolver: {
     createChatAgent: vi.fn(),
   },
 }));
 
-vi.mock('@/lib/ai/file-processing', () => ({
+vi.mock("@/lib/ai/file-processing", () => ({
   validateFileAttachment: vi.fn(),
   extractFileContent: vi.fn(),
 }));
 
-vi.mock('@/app/(chat)/actions', () => ({
+vi.mock("@/app/(chat)/actions", () => ({
   generateTitleFromUserMessage: vi.fn(),
 }));
 
-vi.mock('@/lib/logging', () => {
-  const mockPerformanceTracker = vi.fn(function() {
-    return {
-      end: vi.fn().mockResolvedValue(undefined),
-    };
-  });
+vi.mock("@/lib/logging", () => {
+  const mockPerformanceTracker = vi.fn(() => ({
+    end: vi.fn().mockResolvedValue(undefined),
+  }));
 
   return {
     logUserActivity: vi.fn().mockResolvedValue(undefined),
     logAgentActivity: vi.fn().mockResolvedValue(undefined),
     PerformanceTracker: mockPerformanceTracker,
-    createCorrelationId: vi.fn(() => 'test-correlation-id'),
+    createCorrelationId: vi.fn(() => "test-correlation-id"),
     UserActivityType: {
-      CHAT_CREATE: 'chat.create',
-      CHAT_MESSAGE_SEND: 'chat.message.send',
-      CHAT_DELETE: 'chat.delete',
+      CHAT_CREATE: "chat.create",
+      CHAT_MESSAGE_SEND: "chat.message.send",
+      CHAT_DELETE: "chat.delete",
     },
     ActivityCategory: {
-      CHAT: 'chat',
+      CHAT: "chat",
     },
     AgentType: {
-      CHAT_MODEL_AGENT: 'chat_model_agent',
+      CHAT_MODEL_AGENT: "chat_model_agent",
     },
     AgentOperationType: {
-      STREAMING: 'streaming',
+      STREAMING: "streaming",
     },
     AgentOperationCategory: {
-      STREAMING: 'streaming',
+      STREAMING: "streaming",
     },
   };
 });
 
-vi.mock('@/lib/errors/logger', () => ({
+vi.mock("@/lib/errors/logger", () => ({
   logApiError: vi.fn().mockResolvedValue(undefined),
   logAuthError: vi.fn().mockResolvedValue(undefined),
   logDatabaseError: vi.fn().mockResolvedValue(undefined),
   ErrorCategory: {
-    VALIDATION_ERROR: 'validation_error',
-    AUTHENTICATION_ERROR: 'authentication_error',
-    AUTHORIZATION_ERROR: 'authorization_error',
-    NOT_FOUND_ERROR: 'not_found_error',
-    NETWORK_ERROR: 'network_error',
-    DATABASE_ERROR: 'database_error',
-    UNKNOWN_ERROR: 'unknown_error',
+    VALIDATION_ERROR: "validation_error",
+    AUTHENTICATION_ERROR: "authentication_error",
+    AUTHORIZATION_ERROR: "authorization_error",
+    NOT_FOUND_ERROR: "not_found_error",
+    NETWORK_ERROR: "network_error",
+    DATABASE_ERROR: "database_error",
+    UNKNOWN_ERROR: "unknown_error",
   },
 }));
 
-import { requireAuth } from '@/lib/auth/server';
+import { generateTitleFromUserMessage } from "@/app/(chat)/actions";
+import { ChatAgentResolver } from "@/lib/ai/chat-agent-resolver";
 import {
+  extractFileContent,
+  validateFileAttachment,
+} from "@/lib/ai/file-processing";
+import { requireAuth } from "@/lib/auth/server";
+import {
+  deleteChatById,
   getChatById,
+  getMessagesByChatId,
   saveChat,
   saveMessages,
-  getMessagesByChatId,
-  deleteChatById
-} from '@/lib/db/queries';
+} from "@/lib/db/queries";
 import {
+  getLastDocumentInChat,
   getLatestDocumentVersionsByChat,
-  getLastDocumentInChat
-} from '@/lib/db/queries/document';
-import { ChatAgentResolver } from '@/lib/ai/chat-agent-resolver';
-import {
-  validateFileAttachment,
-  extractFileContent
-} from '@/lib/ai/file-processing';
-import { generateTitleFromUserMessage } from '@/app/(chat)/actions';
+} from "@/lib/db/queries/document";
 
-describe('Chat API Integration Tests', () => {
+describe("Chat API Integration Tests", () => {
   let mockChatAgent: any;
   let mockRequest: Request;
 
@@ -123,27 +120,29 @@ describe('Chat API Integration Tests', () => {
       chat: vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            type: 'text',
-            text: 'Hello! How can I help you today?'
+            type: "text",
+            text: "Hello! How can I help you today?",
           }),
           {
             status: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { "Content-Type": "application/json" },
           }
         )
       ),
     };
 
     // Mock ChatAgentResolver
-    vi.mocked(ChatAgentResolver.createChatAgent).mockResolvedValue(mockChatAgent);
+    vi.mocked(ChatAgentResolver.createChatAgent).mockResolvedValue(
+      mockChatAgent
+    );
 
     // Mock authentication to return test user
     vi.mocked(requireAuth).mockResolvedValue({
       user: {
         id: testUsers.regularUser.id,
         email: testUsers.regularUser.email,
-        aud: 'authenticated',
-        role: 'authenticated',
+        aud: "authenticated",
+        role: "authenticated",
         created_at: new Date().toISOString(),
         app_metadata: {},
         user_metadata: testUsers.regularUser.raw_user_meta_data,
@@ -157,41 +156,41 @@ describe('Chat API Integration Tests', () => {
     vi.mocked(getMessagesByChatId).mockResolvedValue([]);
     vi.mocked(getLatestDocumentVersionsByChat).mockResolvedValue([]);
     vi.mocked(getLastDocumentInChat).mockResolvedValue(null);
-    vi.mocked(generateTitleFromUserMessage).mockResolvedValue('Test Chat');
+    vi.mocked(generateTitleFromUserMessage).mockResolvedValue("Test Chat");
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('POST /api/chat', () => {
-    describe('Valid Requests', () => {
-      it('should successfully process a valid chat request', async () => {
-        const chatId = '660e8400-e29b-41d4-a716-446655440001';
-        const messageId = '770e8400-e29b-41d4-a716-446655440001';
+  describe("POST /api/chat", () => {
+    describe("Valid Requests", () => {
+      it("should successfully process a valid chat request", async () => {
+        const chatId = "660e8400-e29b-41d4-a716-446655440001";
+        const messageId = "770e8400-e29b-41d4-a716-446655440001";
 
         const requestBody = {
           id: chatId,
           message: {
             id: messageId,
-            role: 'user' as const,
+            role: "user" as const,
             parts: [
               {
-                type: 'text' as const,
-                text: 'Hello, how are you?',
+                type: "text" as const,
+                text: "Hello, how are you?",
               },
             ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
           thinkingEnabled: false,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -200,37 +199,37 @@ describe('Chat API Integration Tests', () => {
 
         expect(response).toBeDefined();
         expect(response.status).toBe(200);
-        expect(mockChatAgent.setApiKey).toHaveBeenCalledWith('test-api-key');
+        expect(mockChatAgent.setApiKey).toHaveBeenCalledWith("test-api-key");
         expect(mockChatAgent.chat).toHaveBeenCalled();
         expect(saveChat).toHaveBeenCalledWith(
           expect.objectContaining({
             id: chatId,
             userId: testUsers.regularUser.id,
-            title: 'Test Chat',
-            visibility: 'private',
+            title: "Test Chat",
+            visibility: "private",
           })
         );
         expect(saveMessages).toHaveBeenCalled();
       });
     });
 
-    describe('Authentication Tests', () => {
-      it('should reject request without API key (401)', async () => {
+    describe("Authentication Tests", () => {
+      it("should reject request without API key (401)", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             // No x-google-api-key header
           },
           body: JSON.stringify(requestBody),
@@ -244,23 +243,23 @@ describe('Chat API Integration Tests', () => {
         expect(mockChatAgent.chat).not.toHaveBeenCalled();
       });
 
-      it('should reject request with empty API key (401)', async () => {
+      it("should reject request with empty API key (401)", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': '   ', // Empty/whitespace API key
+            "Content-Type": "application/json",
+            "x-google-api-key": "   ", // Empty/whitespace API key
           },
           body: JSON.stringify(requestBody),
         });
@@ -272,26 +271,26 @@ describe('Chat API Integration Tests', () => {
         expect(mockChatAgent.setApiKey).not.toHaveBeenCalled();
       });
 
-      it('should reject request with invalid API key format (401)', async () => {
+      it("should reject request with invalid API key format (401)", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
         // Mock chat agent to throw error for invalid API key
-        mockChatAgent.chat.mockRejectedValueOnce(new Error('Invalid API key'));
+        mockChatAgent.chat.mockRejectedValueOnce(new Error("Invalid API key"));
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'invalid-key-format',
+            "Content-Type": "application/json",
+            "x-google-api-key": "invalid-key-format",
           },
           body: JSON.stringify(requestBody),
         });
@@ -304,25 +303,25 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('Thinking Mode Tests', () => {
-      it('should process chat with thinking mode enabled', async () => {
+    describe("Thinking Mode Tests", () => {
+      it("should process chat with thinking mode enabled", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Explain quantum physics' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Explain quantum physics" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-thinking-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-thinking-exp",
+          selectedVisibilityType: "private" as const,
           thinkingEnabled: true,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -338,24 +337,24 @@ describe('Chat API Integration Tests', () => {
         );
       });
 
-      it('should process chat with thinking mode disabled', async () => {
+      it("should process chat with thinking mode disabled", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
           thinkingEnabled: false,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -372,35 +371,37 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('File Attachment Tests', () => {
-      it('should process chat with image file attachment', async () => {
+    describe("File Attachment Tests", () => {
+      it("should process chat with image file attachment", async () => {
         vi.mocked(validateFileAttachment).mockReturnValue({ valid: true });
-        vi.mocked(extractFileContent).mockResolvedValue('base64-encoded-image-data');
+        vi.mocked(extractFileContent).mockResolvedValue(
+          "base64-encoded-image-data"
+        );
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
             parts: [
-              { type: 'text' as const, text: 'What is in this image?' },
+              { type: "text" as const, text: "What is in this image?" },
               {
-                type: 'file' as const,
-                mediaType: 'image/png' as const,
-                name: 'test-image.png',
-                url: 'https://example.com/test-image.png',
+                type: "file" as const,
+                mediaType: "image/png" as const,
+                name: "test-image.png",
+                url: "https://example.com/test-image.png",
               },
             ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -414,40 +415,40 @@ describe('Chat API Integration Tests', () => {
         expect(mockChatAgent.chat).toHaveBeenCalled();
       });
 
-      it('should process chat with multiple file attachments', async () => {
+      it("should process chat with multiple file attachments", async () => {
         vi.mocked(validateFileAttachment).mockReturnValue({ valid: true });
-        vi.mocked(extractFileContent).mockResolvedValue('file-content');
+        vi.mocked(extractFileContent).mockResolvedValue("file-content");
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
             parts: [
-              { type: 'text' as const, text: 'Analyze these images' },
+              { type: "text" as const, text: "Analyze these images" },
               {
-                type: 'file' as const,
-                mediaType: 'image/png' as const,
-                name: 'image1.png',
-                url: 'https://example.com/image1.png',
+                type: "file" as const,
+                mediaType: "image/png" as const,
+                name: "image1.png",
+                url: "https://example.com/image1.png",
               },
               {
-                type: 'file' as const,
-                mediaType: 'image/jpeg' as const,
-                name: 'image2.jpg',
-                url: 'https://example.com/image2.jpg',
+                type: "file" as const,
+                mediaType: "image/jpeg" as const,
+                name: "image2.jpg",
+                url: "https://example.com/image2.jpg",
               },
             ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -460,33 +461,36 @@ describe('Chat API Integration Tests', () => {
         expect(extractFileContent).toHaveBeenCalledTimes(2);
       });
 
-      it('should handle file processing errors gracefully', async () => {
-        vi.mocked(validateFileAttachment).mockReturnValue({ valid: false, error: 'Invalid file type' });
+      it("should handle file processing errors gracefully", async () => {
+        vi.mocked(validateFileAttachment).mockReturnValue({
+          valid: false,
+          error: "Invalid file type",
+        });
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
             parts: [
-              { type: 'text' as const, text: 'What is in this file?' },
+              { type: "text" as const, text: "What is in this file?" },
               {
-                type: 'file' as const,
-                mediaType: 'image/png' as const,
-                name: 'invalid.png',
-                url: 'https://example.com/invalid.png',
+                type: "file" as const,
+                mediaType: "image/png" as const,
+                name: "invalid.png",
+                url: "https://example.com/invalid.png",
               },
             ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -500,25 +504,27 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('GitHub Context Tests', () => {
-      it('should process chat with GitHub PAT for MCP agent', async () => {
+    describe("GitHub Context Tests", () => {
+      it("should process chat with GitHub PAT for MCP agent", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Search GitHub for repositories' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [
+              { type: "text" as const, text: "Search GitHub for repositories" },
+            ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
-            'x-github-pat': 'github-personal-access-token',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
+            "x-github-pat": "github-personal-access-token",
           },
           body: JSON.stringify(requestBody),
         });
@@ -527,26 +533,28 @@ describe('Chat API Integration Tests', () => {
 
         expect(response).toBeDefined();
         expect(response.status).toBe(200);
-        expect(mockChatAgent.setGitHubPAT).toHaveBeenCalledWith('github-personal-access-token');
+        expect(mockChatAgent.setGitHubPAT).toHaveBeenCalledWith(
+          "github-personal-access-token"
+        );
       });
 
-      it('should process chat without GitHub PAT', async () => {
+      it("should process chat without GitHub PAT", async () => {
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
             // No GitHub PAT
           },
           body: JSON.stringify(requestBody),
@@ -560,42 +568,42 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('Streaming Response Tests', () => {
-      it('should handle streaming response from chat agent', async () => {
+    describe("Streaming Response Tests", () => {
+      it("should handle streaming response from chat agent", async () => {
         // Mock streaming response
         const mockStreamResponse = new Response(
           new ReadableStream({
             start(controller) {
-              controller.enqueue(new TextEncoder().encode('Hello '));
-              controller.enqueue(new TextEncoder().encode('from '));
-              controller.enqueue(new TextEncoder().encode('AI'));
+              controller.enqueue(new TextEncoder().encode("Hello "));
+              controller.enqueue(new TextEncoder().encode("from "));
+              controller.enqueue(new TextEncoder().encode("AI"));
               controller.close();
             },
           }),
           {
             status: 200,
-            headers: { 'Content-Type': 'text/plain' },
+            headers: { "Content-Type": "text/plain" },
           }
         );
 
         mockChatAgent.chat.mockResolvedValue(mockStreamResponse);
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -608,8 +616,8 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('Multi-step Tool Execution Tests', () => {
-      it('should handle chat with tool calls', async () => {
+    describe("Multi-step Tool Execution Tests", () => {
+      it("should handle chat with tool calls", async () => {
         // Mock chat agent response with tool calls
         mockChatAgent.chat.mockImplementation(({ onFinish }) => {
           // Simulate tool execution and message saving
@@ -617,23 +625,23 @@ describe('Chat API Integration Tests', () => {
             await onFinish({
               messages: [
                 {
-                  id: 'assistant-msg-1',
-                  role: 'assistant',
+                  id: "assistant-msg-1",
+                  role: "assistant",
                   parts: [
                     {
-                      type: 'tool-call',
-                      toolName: 'search',
-                      args: { query: 'test query' },
+                      type: "tool-call",
+                      toolName: "search",
+                      args: { query: "test query" },
                     },
                   ],
                 },
                 {
-                  id: 'assistant-msg-2',
-                  role: 'assistant',
+                  id: "assistant-msg-2",
+                  role: "assistant",
                   parts: [
                     {
-                      type: 'text',
-                      text: 'Based on the search results...',
+                      type: "text",
+                      text: "Based on the search results...",
                     },
                   ],
                 },
@@ -642,28 +650,36 @@ describe('Chat API Integration Tests', () => {
           }, 0);
 
           return Promise.resolve(
-            new Response(JSON.stringify({ type: 'text', text: 'Processing...' }), {
-              status: 200,
-            })
+            new Response(
+              JSON.stringify({ type: "text", text: "Processing..." }),
+              {
+                status: 200,
+              }
+            )
           );
         });
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Search for information about AI' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [
+              {
+                type: "text" as const,
+                text: "Search for information about AI",
+              },
+            ],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -674,32 +690,32 @@ describe('Chat API Integration Tests', () => {
         expect(response.status).toBe(200);
 
         // Wait for onFinish to be called
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
 
         expect(saveMessages).toHaveBeenCalledTimes(2); // User message + assistant messages
       });
     });
 
-    describe('Error Handling Tests', () => {
-      it('should handle network timeout errors', async () => {
-        mockChatAgent.chat.mockRejectedValue(new Error('Network timeout'));
+    describe("Error Handling Tests", () => {
+      it("should handle network timeout errors", async () => {
+        mockChatAgent.chat.mockRejectedValue(new Error("Network timeout"));
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -710,17 +726,17 @@ describe('Chat API Integration Tests', () => {
         expect(response.status).toBeGreaterThanOrEqual(400);
       });
 
-      it('should handle invalid request body', async () => {
+      it("should handle invalid request body", async () => {
         const invalidRequestBody = {
-          id: 'not-a-uuid',
-          message: 'invalid-message-format',
+          id: "not-a-uuid",
+          message: "invalid-message-format",
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(invalidRequestBody),
         });
@@ -731,25 +747,27 @@ describe('Chat API Integration Tests', () => {
         expect(response.status).toBe(400);
       });
 
-      it('should handle database errors gracefully', async () => {
-        vi.mocked(saveChat).mockRejectedValue(new Error('Database connection failed'));
+      it("should handle database errors gracefully", async () => {
+        vi.mocked(saveChat).mockRejectedValue(
+          new Error("Database connection failed")
+        );
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -761,47 +779,47 @@ describe('Chat API Integration Tests', () => {
       });
     });
 
-    describe('Rate Limiting Tests (Future Implementation)', () => {
-      it.skip('should enforce rate limits when implemented', async () => {
+    describe("Rate Limiting Tests (Future Implementation)", () => {
+      it("should enforce rate limits when implemented", async () => {
         // TODO: Implement when rate limiting is added
         // This test is skipped for now but serves as a placeholder
         expect(true).toBe(true);
       });
 
-      it.skip('should return 429 when rate limit exceeded', async () => {
+      it("should return 429 when rate limit exceeded", async () => {
         // TODO: Implement when rate limiting is added
         expect(true).toBe(true);
       });
     });
 
-    describe('Chat Ownership Tests', () => {
-      it('should reject access to chat owned by different user', async () => {
+    describe("Chat Ownership Tests", () => {
+      it("should reject access to chat owned by different user", async () => {
         // Mock existing chat owned by different user
         vi.mocked(getChatById).mockResolvedValue({
-          id: '660e8400-e29b-41d4-a716-446655440001',
-          user_id: 'different-user-id', // Different from testUsers.regularUser.id
-          title: 'Someone elses chat',
-          visibility: 'private',
+          id: "660e8400-e29b-41d4-a716-446655440001",
+          user_id: "different-user-id", // Different from testUsers.regularUser.id
+          title: "Someone elses chat",
+          visibility: "private",
           created_at: new Date(),
           updated_at: new Date(),
         } as any);
 
         const requestBody = {
-          id: '660e8400-e29b-41d4-a716-446655440001',
+          id: "660e8400-e29b-41d4-a716-446655440001",
           message: {
-            id: '770e8400-e29b-41d4-a716-446655440001',
-            role: 'user' as const,
-            parts: [{ type: 'text' as const, text: 'Hello' }],
+            id: "770e8400-e29b-41d4-a716-446655440001",
+            role: "user" as const,
+            parts: [{ type: "text" as const, text: "Hello" }],
           },
-          selectedChatModel: 'gemini-2.0-flash-exp',
-          selectedVisibilityType: 'private' as const,
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
         };
 
-        mockRequest = new Request('http://localhost:3000/api/chat', {
-          method: 'POST',
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-google-api-key': 'test-api-key',
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
           },
           body: JSON.stringify(requestBody),
         });
@@ -814,15 +832,15 @@ describe('Chat API Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/chat', () => {
-    it('should successfully delete a chat', async () => {
-      const chatId = '660e8400-e29b-41d4-a716-446655440001';
+  describe("DELETE /api/chat", () => {
+    it("should successfully delete a chat", async () => {
+      const chatId = "660e8400-e29b-41d4-a716-446655440001";
 
       vi.mocked(getChatById).mockResolvedValue({
         id: chatId,
         user_id: testUsers.regularUser.id,
-        title: 'Test Chat',
-        visibility: 'private',
+        title: "Test Chat",
+        visibility: "private",
         created_at: new Date(),
         updated_at: new Date(),
       } as any);
@@ -830,11 +848,11 @@ describe('Chat API Integration Tests', () => {
       vi.mocked(deleteChatById).mockResolvedValue({
         id: chatId,
         user_id: testUsers.regularUser.id,
-        title: 'Test Chat',
+        title: "Test Chat",
       } as any);
 
       mockRequest = new Request(`http://localhost:3000/api/chat?id=${chatId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const response = await DELETE(mockRequest);
@@ -844,20 +862,20 @@ describe('Chat API Integration Tests', () => {
       expect(deleteChatById).toHaveBeenCalledWith({ id: chatId });
     });
 
-    it('should reject deletion of chat owned by different user', async () => {
-      const chatId = '660e8400-e29b-41d4-a716-446655440001';
+    it("should reject deletion of chat owned by different user", async () => {
+      const chatId = "660e8400-e29b-41d4-a716-446655440001";
 
       vi.mocked(getChatById).mockResolvedValue({
         id: chatId,
-        user_id: 'different-user-id',
-        title: 'Someone elses chat',
-        visibility: 'private',
+        user_id: "different-user-id",
+        title: "Someone elses chat",
+        visibility: "private",
         created_at: new Date(),
         updated_at: new Date(),
       } as any);
 
       mockRequest = new Request(`http://localhost:3000/api/chat?id=${chatId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       const response = await DELETE(mockRequest);
@@ -867,9 +885,9 @@ describe('Chat API Integration Tests', () => {
       expect(deleteChatById).not.toHaveBeenCalled();
     });
 
-    it('should handle missing chat ID parameter', async () => {
-      mockRequest = new Request('http://localhost:3000/api/chat', {
-        method: 'DELETE',
+    it("should handle missing chat ID parameter", async () => {
+      mockRequest = new Request("http://localhost:3000/api/chat", {
+        method: "DELETE",
       });
 
       const response = await DELETE(mockRequest);

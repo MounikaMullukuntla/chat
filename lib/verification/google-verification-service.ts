@@ -40,11 +40,8 @@ export class GoogleVerificationService extends BaseVerificationService {
         if (data.models && Array.isArray(data.models)) {
           // Log successful verification
           try {
-            const {
-              logUserActivity,
-              UserActivityType,
-              ActivityCategory,
-            } = await import("@/lib/logging");
+            const { logUserActivity, UserActivityType, ActivityCategory } =
+              await import("@/lib/logging");
 
             const verificationTime = Date.now() - startTime;
 
@@ -56,7 +53,8 @@ export class GoogleVerificationService extends BaseVerificationService {
                 verification_type: "google_ai_api_key",
                 verification_time_ms: verificationTime,
                 models_count: data.models.length,
-                primary_model: data.models.length > 0 ? data.models[0].name : undefined,
+                primary_model:
+                  data.models.length > 0 ? data.models[0].name : undefined,
               },
               resource_type: "google_verification",
               success: true,
@@ -133,11 +131,9 @@ export class GoogleVerificationService extends BaseVerificationService {
     } catch (error) {
       // Log verification failure
       try {
-        const {
-          logSystemError,
-          ErrorCategory,
-          ErrorSeverity,
-        } = await import("@/lib/errors/logger");
+        const { logSystemError, ErrorCategory, ErrorSeverity } = await import(
+          "@/lib/errors/logger"
+        );
 
         const verificationTime = Date.now() - startTime;
         const errorMessage =
@@ -147,10 +143,16 @@ export class GoogleVerificationService extends BaseVerificationService {
         let severity = ErrorSeverity.WARNING;
         let category = ErrorCategory.EXTERNAL_SERVICE_ERROR;
 
-        if (errorMessage.includes("Invalid") || errorMessage.includes("format")) {
+        if (
+          errorMessage.includes("Invalid") ||
+          errorMessage.includes("format")
+        ) {
           severity = ErrorSeverity.WARNING;
           category = ErrorCategory.VALIDATION_ERROR;
-        } else if (errorMessage.includes("Rate limit") || errorMessage.includes("quota")) {
+        } else if (
+          errorMessage.includes("Rate limit") ||
+          errorMessage.includes("quota")
+        ) {
           severity = ErrorSeverity.WARNING;
           category = ErrorCategory.API_RATE_LIMIT;
         } else if (errorMessage.includes("service unavailable")) {

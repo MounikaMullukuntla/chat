@@ -3,22 +3,22 @@
  * Tests the complete request/response flow for document operations
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GET, POST, DELETE } from '@/app/(chat)/api/document/route';
-import type { User } from '@supabase/supabase-js';
-import type { ArtifactKind } from '@/components/artifact';
+import type { User } from "@supabase/supabase-js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DELETE, GET, POST } from "@/app/(chat)/api/document/route";
+import type { ArtifactKind } from "@/components/artifact";
 
 // Mock server-only module
-vi.mock('server-only', () => ({}));
+vi.mock("server-only", () => ({}));
 
 // Mock the auth module
-vi.mock('@/lib/auth/server', () => ({
+vi.mock("@/lib/auth/server", () => ({
   requireAuth: vi.fn(),
   createAuthErrorResponse: vi.fn((error: Error) => {
     return new Response(
       JSON.stringify({
         error: {
-          code: 'unauthorized',
+          code: "unauthorized",
           message: error.message,
         },
       }),
@@ -28,74 +28,74 @@ vi.mock('@/lib/auth/server', () => ({
 }));
 
 // Mock the logging module
-vi.mock('@/lib/errors/logger', () => ({
+vi.mock("@/lib/errors/logger", () => ({
   logApiError: vi.fn(),
   logPermissionError: vi.fn(),
   ErrorCategory: {
-    INVALID_REQUEST: 'invalid_request',
-    UNAUTHORIZED_ACCESS: 'unauthorized_access',
-    PERMISSION_DENIED: 'permission_denied',
-    API_REQUEST_FAILED: 'api_request_failed',
-    DATABASE_ERROR: 'database_error',
+    INVALID_REQUEST: "invalid_request",
+    UNAUTHORIZED_ACCESS: "unauthorized_access",
+    PERMISSION_DENIED: "permission_denied",
+    API_REQUEST_FAILED: "api_request_failed",
+    DATABASE_ERROR: "database_error",
   },
   ErrorSeverity: {
-    INFO: 'info',
-    WARNING: 'warning',
-    ERROR: 'error',
+    INFO: "info",
+    WARNING: "warning",
+    ERROR: "error",
   },
 }));
 
 // Mock the activity logging module
-vi.mock('@/lib/logging', () => ({
+vi.mock("@/lib/logging", () => ({
   logUserActivity: vi.fn(),
-  createCorrelationId: vi.fn(() => 'test-correlation-id'),
+  createCorrelationId: vi.fn(() => "test-correlation-id"),
   UserActivityType: {
-    DOCUMENT_VIEW: 'document_view',
-    DOCUMENT_CREATE: 'document_create',
-    DOCUMENT_UPDATE: 'document_update',
-    DOCUMENT_DELETE: 'document_delete',
+    DOCUMENT_VIEW: "document_view",
+    DOCUMENT_CREATE: "document_create",
+    DOCUMENT_UPDATE: "document_update",
+    DOCUMENT_DELETE: "document_delete",
   },
   ActivityCategory: {
-    DOCUMENT: 'document',
+    DOCUMENT: "document",
   },
 }));
 
 // Mock the database queries
-vi.mock('@/lib/db/queries', () => ({
+vi.mock("@/lib/db/queries", () => ({
   getDocumentsById: vi.fn(),
   saveDocument: vi.fn(),
   deleteDocumentsByIdAfterTimestamp: vi.fn(),
 }));
 
 // Import after mocking
-import { requireAuth } from '@/lib/auth/server';
+import { requireAuth } from "@/lib/auth/server";
 import {
+  deleteDocumentsByIdAfterTimestamp,
   getDocumentsById,
   saveDocument,
-  deleteDocumentsByIdAfterTimestamp,
-} from '@/lib/db/queries';
+} from "@/lib/db/queries";
 
-describe('Document API Integration Tests', () => {
-  const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
-  const mockOtherUserId = '123e4567-e89b-12d3-a456-426614174999';
-  const mockDocumentId = 'doc-123';
+describe("Document API Integration Tests", () => {
+  const mockUserId = "123e4567-e89b-12d3-a456-426614174000";
+  const mockOtherUserId = "123e4567-e89b-12d3-a456-426614174999";
+  const mockDocumentId = "doc-123";
 
   const mockUser: User = {
     id: mockUserId,
-    email: 'test@example.com',
+    email: "test@example.com",
     app_metadata: {},
     user_metadata: {},
-    aud: 'authenticated',
+    aud: "authenticated",
     created_at: new Date().toISOString(),
   };
 
   const mockDocument = {
     id: mockDocumentId,
-    title: 'Test Document',
-    kind: 'text' as ArtifactKind,
-    content: 'Test content',
+    title: "Test Document",
+    kind: "text" as ArtifactKind,
+    content: "Test content",
     user_id: mockUserId,
-    chat_id: 'chat-123',
+    chat_id: "chat-123",
     version_number: 1,
     metadata: {},
     createdAt: new Date(),
@@ -112,8 +112,8 @@ describe('Document API Integration Tests', () => {
     vi.restoreAllMocks();
   });
 
-  describe('GET /api/document - Retrieve Document', () => {
-    it('should retrieve document with valid id and auth', async () => {
+  describe("GET /api/document - Retrieve Document", () => {
+    it("should retrieve document with valid id and auth", async () => {
       const documents = [mockDocument];
       (getDocumentsById as any).mockResolvedValue(documents);
 
@@ -127,12 +127,12 @@ describe('Document API Integration Tests', () => {
       // Date is serialized as string in JSON response
       expect(data).toHaveLength(1);
       expect(data[0].id).toBe(mockDocumentId);
-      expect(data[0].title).toBe('Test Document');
+      expect(data[0].title).toBe("Test Document");
       expect(getDocumentsById).toHaveBeenCalledWith({ id: mockDocumentId });
     });
 
-    it('should return 400 when id parameter is missing', async () => {
-      const request = new Request('http://localhost:3000/api/document');
+    it("should return 400 when id parameter is missing", async () => {
+      const request = new Request("http://localhost:3000/api/document");
       const response = await GET(request);
 
       expect(response.status).toBe(400);
@@ -142,8 +142,8 @@ describe('Document API Integration Tests', () => {
       expect(data.error || data.message).toBeDefined();
     });
 
-    it('should return 401 when authentication fails', async () => {
-      (requireAuth as any).mockRejectedValue(new Error('Not authenticated'));
+    it("should return 401 when authentication fails", async () => {
+      (requireAuth as any).mockRejectedValue(new Error("Not authenticated"));
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`
@@ -153,11 +153,11 @@ describe('Document API Integration Tests', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 404 when document does not exist', async () => {
+    it("should return 404 when document does not exist", async () => {
       (getDocumentsById as any).mockResolvedValue([]);
 
       const request = new Request(
-        `http://localhost:3000/api/document?id=non-existent`
+        "http://localhost:3000/api/document?id=non-existent"
       );
       const response = await GET(request);
 
@@ -168,7 +168,7 @@ describe('Document API Integration Tests', () => {
       expect(data.error?.code || data.code).toBeDefined();
     });
 
-    it('should return 403 when user tries to access document owned by another user', async () => {
+    it("should return 403 when user tries to access document owned by another user", async () => {
       const otherUserDocument = {
         ...mockDocument,
         user_id: mockOtherUserId,
@@ -187,7 +187,7 @@ describe('Document API Integration Tests', () => {
       expect(data.error?.code || data.code).toBeDefined();
     });
 
-    it('should return all versions of a document', async () => {
+    it("should return all versions of a document", async () => {
       const documents = [
         { ...mockDocument, version_number: 1 },
         { ...mockDocument, version_number: 2 },
@@ -208,8 +208,8 @@ describe('Document API Integration Tests', () => {
       expect(data[2].version_number).toBe(3);
     });
 
-    it('should handle database errors gracefully', async () => {
-      (getDocumentsById as any).mockRejectedValue(new Error('Database error'));
+    it("should handle database errors gracefully", async () => {
+      (getDocumentsById as any).mockRejectedValue(new Error("Database error"));
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`
@@ -224,21 +224,21 @@ describe('Document API Integration Tests', () => {
     });
   });
 
-  describe('POST /api/document - Create/Update Document', () => {
+  describe("POST /api/document - Create/Update Document", () => {
     const createPayload = {
-      content: 'New document content',
-      title: 'New Document',
-      kind: 'text' as ArtifactKind,
+      content: "New document content",
+      title: "New Document",
+      kind: "text" as ArtifactKind,
     };
 
-    it('should create a new document when id does not exist', async () => {
+    it("should create a new document when id does not exist", async () => {
       (getDocumentsById as any).mockResolvedValue([]);
       (saveDocument as any).mockResolvedValue([mockDocument]);
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(createPayload),
         }
       );
@@ -257,27 +257,27 @@ describe('Document API Integration Tests', () => {
       });
     });
 
-    it('should update existing document when id exists', async () => {
+    it("should update existing document when id exists", async () => {
       const existingDocument = { ...mockDocument };
       const updatedDocument = {
         ...mockDocument,
         version_number: 2,
-        content: 'Updated content',
+        content: "Updated content",
       };
 
       (getDocumentsById as any).mockResolvedValue([existingDocument]);
       (saveDocument as any).mockResolvedValue([updatedDocument]);
 
       const updatePayload = {
-        content: 'Updated content',
-        title: 'Updated Document',
-        kind: 'text' as ArtifactKind,
+        content: "Updated content",
+        title: "Updated Document",
+        kind: "text" as ArtifactKind,
       };
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(updatePayload),
         }
       );
@@ -296,9 +296,9 @@ describe('Document API Integration Tests', () => {
       });
     });
 
-    it('should return 400 when id parameter is missing', async () => {
-      const request = new Request('http://localhost:3000/api/document', {
-        method: 'POST',
+    it("should return 400 when id parameter is missing", async () => {
+      const request = new Request("http://localhost:3000/api/document", {
+        method: "POST",
         body: JSON.stringify(createPayload),
       });
       const response = await POST(request);
@@ -310,13 +310,13 @@ describe('Document API Integration Tests', () => {
       expect(data.error || data.message).toBeDefined();
     });
 
-    it('should return 401 when authentication fails', async () => {
-      (requireAuth as any).mockRejectedValue(new Error('Not authenticated'));
+    it("should return 401 when authentication fails", async () => {
+      (requireAuth as any).mockRejectedValue(new Error("Not authenticated"));
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(createPayload),
         }
       );
@@ -325,7 +325,7 @@ describe('Document API Integration Tests', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 403 when user tries to update document owned by another user', async () => {
+    it("should return 403 when user tries to update document owned by another user", async () => {
       const otherUserDocument = {
         ...mockDocument,
         user_id: mockOtherUserId,
@@ -335,7 +335,7 @@ describe('Document API Integration Tests', () => {
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(createPayload),
         }
       );
@@ -348,14 +348,12 @@ describe('Document API Integration Tests', () => {
       expect(data.error?.code || data.code).toBeDefined();
     });
 
-    it('should handle different document kinds (text, code, mermaid)', async () => {
-      const kinds: ArtifactKind[] = ['text', 'code', 'python', 'mermaid'];
+    it("should handle different document kinds (text, code, mermaid)", async () => {
+      const kinds: ArtifactKind[] = ["text", "code", "python", "mermaid"];
 
       for (const kind of kinds) {
         (getDocumentsById as any).mockResolvedValue([]);
-        (saveDocument as any).mockResolvedValue([
-          { ...mockDocument, kind },
-        ]);
+        (saveDocument as any).mockResolvedValue([{ ...mockDocument, kind }]);
 
         const payload = {
           content: `${kind} content`,
@@ -366,7 +364,7 @@ describe('Document API Integration Tests', () => {
         const request = new Request(
           `http://localhost:3000/api/document?id=${mockDocumentId}-${kind}`,
           {
-            method: 'POST',
+            method: "POST",
             body: JSON.stringify(payload),
           }
         );
@@ -385,10 +383,10 @@ describe('Document API Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/document - Delete Document', () => {
-    const timestamp = '2024-01-01T00:00:00.000Z';
+  describe("DELETE /api/document - Delete Document", () => {
+    const timestamp = "2024-01-01T00:00:00.000Z";
 
-    it('should delete document versions after timestamp', async () => {
+    it("should delete document versions after timestamp", async () => {
       const deletedDocuments = [
         { ...mockDocument, version_number: 2 },
         { ...mockDocument, version_number: 3 },
@@ -415,7 +413,7 @@ describe('Document API Integration Tests', () => {
       });
     });
 
-    it('should return 400 when id parameter is missing', async () => {
+    it("should return 400 when id parameter is missing", async () => {
       const request = new Request(
         `http://localhost:3000/api/document?timestamp=${timestamp}`
       );
@@ -428,7 +426,7 @@ describe('Document API Integration Tests', () => {
       expect(data.error || data.message).toBeDefined();
     });
 
-    it('should return 400 when timestamp parameter is missing', async () => {
+    it("should return 400 when timestamp parameter is missing", async () => {
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`
       );
@@ -441,8 +439,8 @@ describe('Document API Integration Tests', () => {
       expect(data.error || data.message).toBeDefined();
     });
 
-    it('should return 401 when authentication fails', async () => {
-      (requireAuth as any).mockRejectedValue(new Error('Not authenticated'));
+    it("should return 401 when authentication fails", async () => {
+      (requireAuth as any).mockRejectedValue(new Error("Not authenticated"));
 
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}&timestamp=${timestamp}`
@@ -452,7 +450,7 @@ describe('Document API Integration Tests', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 403 when user tries to delete document owned by another user', async () => {
+    it("should return 403 when user tries to delete document owned by another user", async () => {
       const otherUserDocument = {
         ...mockDocument,
         user_id: mockOtherUserId,
@@ -471,11 +469,23 @@ describe('Document API Integration Tests', () => {
       expect(data.error?.code || data.code).toBeDefined();
     });
 
-    it('should handle deletion of all versions after specific timestamp', async () => {
+    it("should handle deletion of all versions after specific timestamp", async () => {
       const documents = [
-        { ...mockDocument, version_number: 1, createdAt: new Date('2023-12-31') },
-        { ...mockDocument, version_number: 2, createdAt: new Date('2024-01-01') },
-        { ...mockDocument, version_number: 3, createdAt: new Date('2024-01-02') },
+        {
+          ...mockDocument,
+          version_number: 1,
+          createdAt: new Date("2023-12-31"),
+        },
+        {
+          ...mockDocument,
+          version_number: 2,
+          createdAt: new Date("2024-01-01"),
+        },
+        {
+          ...mockDocument,
+          version_number: 3,
+          createdAt: new Date("2024-01-02"),
+        },
       ];
 
       const deletedVersions = documents.filter(
@@ -497,11 +507,11 @@ describe('Document API Integration Tests', () => {
       expect(data).toHaveLength(2); // versions 2 and 3
     });
 
-    it('should return empty array when no versions match timestamp criteria', async () => {
+    it("should return empty array when no versions match timestamp criteria", async () => {
       (getDocumentsById as any).mockResolvedValue([mockDocument]);
       (deleteDocumentsByIdAfterTimestamp as any).mockResolvedValue([]);
 
-      const futureTimestamp = '2099-12-31T00:00:00.000Z';
+      const futureTimestamp = "2099-12-31T00:00:00.000Z";
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}&timestamp=${futureTimestamp}`
       );
@@ -513,25 +523,25 @@ describe('Document API Integration Tests', () => {
     });
   });
 
-  describe('Document API - Edge Cases', () => {
-    it('should handle malformed JSON in POST request', async () => {
+  describe("Document API - Edge Cases", () => {
+    it("should handle malformed JSON in POST request", async () => {
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
-          body: 'invalid json',
+          method: "POST",
+          body: "invalid json",
         }
       );
 
       await expect(POST(request)).rejects.toThrow();
     });
 
-    it('should handle very long document content', async () => {
-      const longContent = 'a'.repeat(1000000); // 1MB of text
+    it("should handle very long document content", async () => {
+      const longContent = "a".repeat(1_000_000); // 1MB of text
       const payload = {
         content: longContent,
-        title: 'Long Document',
-        kind: 'text' as ArtifactKind,
+        title: "Long Document",
+        kind: "text" as ArtifactKind,
       };
 
       (getDocumentsById as any).mockResolvedValue([]);
@@ -542,7 +552,7 @@ describe('Document API Integration Tests', () => {
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}`,
         {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(payload),
         }
       );
@@ -556,8 +566,8 @@ describe('Document API Integration Tests', () => {
       );
     });
 
-    it('should handle special characters in document ID', async () => {
-      const specialId = 'doc-with-special-chars-!@#$%^&*()';
+    it("should handle special characters in document ID", async () => {
+      const specialId = "doc-with-special-chars-!@#$%^&*()";
       const documents = [{ ...mockDocument, id: specialId }];
       (getDocumentsById as any).mockResolvedValue(documents);
 
@@ -570,11 +580,11 @@ describe('Document API Integration Tests', () => {
       expect(getDocumentsById).toHaveBeenCalledWith({ id: specialId });
     });
 
-    it('should handle invalid timestamp format in DELETE', async () => {
+    it("should handle invalid timestamp format in DELETE", async () => {
       (getDocumentsById as any).mockResolvedValue([mockDocument]);
       (deleteDocumentsByIdAfterTimestamp as any).mockResolvedValue([]);
 
-      const invalidTimestamp = 'not-a-date';
+      const invalidTimestamp = "not-a-date";
       const request = new Request(
         `http://localhost:3000/api/document?id=${mockDocumentId}&timestamp=${invalidTimestamp}`
       );

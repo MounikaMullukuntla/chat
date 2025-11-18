@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, Brain, MessageSquare, Settings, Zap, Database } from "lucide-react";
+import {
+  ArrowLeft,
+  Brain,
+  Database,
+  MessageSquare,
+  Settings,
+  Zap,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -161,7 +168,8 @@ export function AdminDashboard() {
           <CardHeader>
             <CardTitle>System Configuration</CardTitle>
             <CardDescription>
-              Configure system-wide settings for logging, monitoring, and error tracking
+              Configure system-wide settings for logging, monitoring, and error
+              tracking
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -175,7 +183,8 @@ export function AdminDashboard() {
                         Logging Settings
                       </h3>
                       <p className="text-gray-600 dark:text-gray-400">
-                        Configure error logging, user activity logging, and agent activity logging
+                        Configure error logging, user activity logging, and
+                        agent activity logging
                       </p>
                     </div>
                   </div>

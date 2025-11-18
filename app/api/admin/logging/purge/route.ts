@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // Log successful admin action
     await logAdminError(
       ErrorCategory.CONFIG_UPDATE_FAILED, // This will be changed to success category when available
-      `Activity logs purged successfully by admin`,
+      "Activity logs purged successfully by admin",
       {
         action: "purge_logs",
         result,

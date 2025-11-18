@@ -5,77 +5,77 @@
  * with toggle control, batching, and privacy compliance
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 // Activity Types
 export enum UserActivityType {
-  AUTH_LOGIN = 'auth_login',
-  AUTH_LOGOUT = 'auth_logout',
-  AUTH_REGISTER = 'auth_register',
-  CHAT_CREATE = 'chat_create',
-  CHAT_VIEW = 'chat_view',
-  CHAT_DELETE = 'chat_delete',
-  CHAT_MESSAGE_SEND = 'chat_message_send',
-  DOCUMENT_CREATE = 'document_create',
-  DOCUMENT_VIEW = 'document_view',
-  DOCUMENT_UPDATE = 'document_update',
-  DOCUMENT_DELETE = 'document_delete',
-  ADMIN_CONFIG_UPDATE = 'admin_config_update',
-  ADMIN_DASHBOARD_VIEW = 'admin_dashboard_view',
-  ADMIN_PROVIDER_VIEW = 'admin_provider_view',
-  VOTE_MESSAGE = 'vote_message',
-  SUGGESTION_VIEW = 'suggestion_view',
-  FILE_UPLOAD = 'file_upload',
-  ARTIFACT_CREATE = 'artifact_create',
-  ARTIFACT_EXECUTE = 'artifact_execute',
-  MODEL_SELECTION = 'model_selection',
-  HISTORY_ACCESS = 'history_access',
-  HISTORY_DELETE = 'history_delete',
+  AUTH_LOGIN = "auth_login",
+  AUTH_LOGOUT = "auth_logout",
+  AUTH_REGISTER = "auth_register",
+  CHAT_CREATE = "chat_create",
+  CHAT_VIEW = "chat_view",
+  CHAT_DELETE = "chat_delete",
+  CHAT_MESSAGE_SEND = "chat_message_send",
+  DOCUMENT_CREATE = "document_create",
+  DOCUMENT_VIEW = "document_view",
+  DOCUMENT_UPDATE = "document_update",
+  DOCUMENT_DELETE = "document_delete",
+  ADMIN_CONFIG_UPDATE = "admin_config_update",
+  ADMIN_DASHBOARD_VIEW = "admin_dashboard_view",
+  ADMIN_PROVIDER_VIEW = "admin_provider_view",
+  VOTE_MESSAGE = "vote_message",
+  SUGGESTION_VIEW = "suggestion_view",
+  FILE_UPLOAD = "file_upload",
+  ARTIFACT_CREATE = "artifact_create",
+  ARTIFACT_EXECUTE = "artifact_execute",
+  MODEL_SELECTION = "model_selection",
+  HISTORY_ACCESS = "history_access",
+  HISTORY_DELETE = "history_delete",
 }
 
 export enum ActivityCategory {
-  AUTHENTICATION = 'authentication',
-  CHAT = 'chat',
-  DOCUMENT = 'document',
-  ADMIN = 'admin',
-  VOTE = 'vote',
-  FILE = 'file',
-  ARTIFACT = 'artifact',
-  HISTORY = 'history',
+  AUTHENTICATION = "authentication",
+  CHAT = "chat",
+  DOCUMENT = "document",
+  ADMIN = "admin",
+  VOTE = "vote",
+  FILE = "file",
+  ARTIFACT = "artifact",
+  HISTORY = "history",
 }
 
 export enum AgentType {
-  CHAT_MODEL_AGENT = 'chat_model_agent',
-  PROVIDER_TOOLS_AGENT = 'provider_tools_agent',
-  DOCUMENT_AGENT = 'document_agent',
-  PYTHON_AGENT = 'python_agent',
-  MERMAID_AGENT = 'mermaid_agent',
-  GIT_MCP_AGENT = 'git_mcp_agent',
+  CHAT_MODEL_AGENT = "chat_model_agent",
+  PROVIDER_TOOLS_AGENT = "provider_tools_agent",
+  DOCUMENT_AGENT = "document_agent",
+  PYTHON_AGENT = "python_agent",
+  MERMAID_AGENT = "mermaid_agent",
+  GIT_MCP_AGENT = "git_mcp_agent",
 }
 
 export enum AgentOperationType {
-  INITIALIZATION = 'initialization',
-  TOOL_INVOCATION = 'tool_invocation',
-  CODE_GENERATION = 'code_generation',
-  DOCUMENT_GENERATION = 'document_generation',
-  DIAGRAM_GENERATION = 'diagram_generation',
-  CODE_EXECUTION = 'code_execution',
-  SEARCH = 'search',
-  URL_FETCH = 'url_fetch',
-  MCP_OPERATION = 'mcp_operation',
-  STREAMING = 'streaming',
+  INITIALIZATION = "initialization",
+  TOOL_INVOCATION = "tool_invocation",
+  CODE_GENERATION = "code_generation",
+  DOCUMENT_GENERATION = "document_generation",
+  DIAGRAM_GENERATION = "diagram_generation",
+  CODE_EXECUTION = "code_execution",
+  SEARCH = "search",
+  URL_FETCH = "url_fetch",
+  MCP_OPERATION = "mcp_operation",
+  STREAMING = "streaming",
 }
 
 export enum AgentOperationCategory {
-  GENERATION = 'generation',
-  EXECUTION = 'execution',
-  TOOL_USE = 'tool_use',
-  STREAMING = 'streaming',
-  CONFIGURATION = 'configuration',
+  GENERATION = "generation",
+  EXECUTION = "execution",
+  TOOL_USE = "tool_use",
+  STREAMING = "streaming",
+  CONFIGURATION = "configuration",
 }
 
 // Interfaces
-export interface UserActivityLog {
+export type UserActivityLog = {
   user_id: string;
   correlation_id?: string;
   activity_type: UserActivityType;
@@ -90,9 +90,9 @@ export interface UserActivityLog {
   session_id?: string;
   success?: boolean;
   error_message?: string;
-}
+};
 
-export interface AgentActivityLog {
+export type AgentActivityLog = {
   user_id?: string;
   correlation_id: string;
   agent_type: AgentType;
@@ -124,12 +124,12 @@ export interface AgentActivityLog {
   error_type?: string;
   error_message?: string;
   retry_count?: number;
-}
+};
 
 // Logging configuration cache
 let loggingConfig: any = null;
-let configLastFetched: number = 0;
-const CONFIG_CACHE_TTL = 60000; // 1 minute
+let configLastFetched = 0;
+const CONFIG_CACHE_TTL = 60_000; // 1 minute
 
 // Batch queue for async logging
 let userActivityBatch: UserActivityLog[] = [];
@@ -143,19 +143,19 @@ async function getLoggingConfig(): Promise<any> {
   const now = Date.now();
 
   // Return cached config if fresh
-  if (loggingConfig && (now - configLastFetched) < CONFIG_CACHE_TTL) {
+  if (loggingConfig && now - configLastFetched < CONFIG_CACHE_TTL) {
     return loggingConfig;
   }
 
   try {
     // Fetch from database using admin client
-    const { createAdminClient } = await import('@/lib/db/supabase-client');
+    const { createAdminClient } = await import("@/lib/db/supabase-client");
     const supabase = createAdminClient();
 
     const { data, error } = await supabase
-      .from('admin_config')
-      .select('config_data')
-      .eq('config_key', 'logging_settings')
+      .from("admin_config")
+      .select("config_data")
+      .eq("config_key", "logging_settings")
       .single();
 
     if (!error && data) {
@@ -164,7 +164,7 @@ async function getLoggingConfig(): Promise<any> {
       return loggingConfig;
     }
   } catch (err) {
-    console.error('Failed to fetch logging config:', err);
+    console.error("Failed to fetch logging config:", err);
   }
 
   // Fallback config
@@ -199,17 +199,17 @@ async function flushBatch() {
   }
 
   try {
-    const { createAdminClient } = await import('@/lib/db/supabase-client');
+    const { createAdminClient } = await import("@/lib/db/supabase-client");
     const supabase = createAdminClient();
 
     // Insert user activity logs
     if (userActivityBatch.length > 0) {
       const { error } = await supabase
-        .from('user_activity_logs')
+        .from("user_activity_logs")
         .insert(userActivityBatch);
 
       if (error) {
-        console.error('Failed to insert user activity logs:', error);
+        console.error("Failed to insert user activity logs:", error);
       } else {
         userActivityBatch = [];
       }
@@ -218,17 +218,17 @@ async function flushBatch() {
     // Insert agent activity logs
     if (agentActivityBatch.length > 0) {
       const { error } = await supabase
-        .from('agent_activity_logs')
+        .from("agent_activity_logs")
         .insert(agentActivityBatch);
 
       if (error) {
-        console.error('Failed to insert agent activity logs:', error);
+        console.error("Failed to insert agent activity logs:", error);
       } else {
         agentActivityBatch = [];
       }
     }
   } catch (err) {
-    console.error('Failed to flush activity log batch:', err);
+    console.error("Failed to flush activity log batch:", err);
   }
 }
 
@@ -270,19 +270,22 @@ export async function logUserActivity(log: UserActivityLog): Promise<void> {
       userActivityBatch.push(log);
 
       // Flush if batch is full
-      if (userActivityBatch.length >= (config.performance_settings?.batch_size || 100)) {
+      if (
+        userActivityBatch.length >=
+        (config.performance_settings?.batch_size || 100)
+      ) {
         await flushBatch();
       } else {
         scheduleBatchFlush();
       }
     } else {
       // Write immediately
-      const { createAdminClient } = await import('@/lib/db/supabase-client');
+      const { createAdminClient } = await import("@/lib/db/supabase-client");
       const supabase = createAdminClient();
-      await supabase.from('user_activity_logs').insert(log);
+      await supabase.from("user_activity_logs").insert(log);
     }
   } catch (err) {
-    console.error('Failed to log user activity:', err);
+    console.error("Failed to log user activity:", err);
   }
 }
 
@@ -305,19 +308,22 @@ export async function logAgentActivity(log: AgentActivityLog): Promise<void> {
       agentActivityBatch.push(log);
 
       // Flush if batch is full
-      if (agentActivityBatch.length >= (config.performance_settings?.batch_size || 100)) {
+      if (
+        agentActivityBatch.length >=
+        (config.performance_settings?.batch_size || 100)
+      ) {
         await flushBatch();
       } else {
         scheduleBatchFlush();
       }
     } else {
       // Write immediately
-      const { createAdminClient } = await import('@/lib/db/supabase-client');
+      const { createAdminClient } = await import("@/lib/db/supabase-client");
       const supabase = createAdminClient();
-      await supabase.from('agent_activity_logs').insert(log);
+      await supabase.from("agent_activity_logs").insert(log);
     }
   } catch (err) {
-    console.error('Failed to log agent activity:', err);
+    console.error("Failed to log agent activity:", err);
   }
 }
 
@@ -325,8 +331,8 @@ export async function logAgentActivity(log: AgentActivityLog): Promise<void> {
  * Performance tracking helper
  */
 export class PerformanceTracker {
-  private startTime: number;
-  private log: Partial<AgentActivityLog>;
+  private readonly startTime: number;
+  private readonly log: Partial<AgentActivityLog>;
 
   constructor(log: Partial<AgentActivityLog>) {
     this.startTime = Date.now();

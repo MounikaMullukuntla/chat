@@ -4,23 +4,6 @@
  * Centralized exports for error logging and activity logging
  */
 
-// Activity Logging Exports
-export {
-  ActivityCategory,
-  AgentOperationCategory,
-  AgentOperationType,
-  AgentType,
-  createCorrelationId,
-  isAgentActivityLoggingEnabled,
-  isUserActivityLoggingEnabled,
-  logAgentActivity,
-  logUserActivity,
-  PerformanceTracker,
-  UserActivityType,
-  type AgentActivityLog,
-  type UserActivityLog,
-} from './activity-logger';
-
 // Error Logging Exports (re-export from errors module)
 export {
   type ClientErrorContext,
@@ -39,4 +22,20 @@ export {
   logUserError,
   type ServerErrorContext,
   setupGlobalErrorHandling,
-} from '../errors/logger';
+} from "../errors/logger";
+// Activity Logging Exports
+export {
+  ActivityCategory,
+  type AgentActivityLog,
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  isAgentActivityLoggingEnabled,
+  isUserActivityLoggingEnabled,
+  logAgentActivity,
+  logUserActivity,
+  PerformanceTracker,
+  type UserActivityLog,
+  UserActivityType,
+} from "./activity-logger";
