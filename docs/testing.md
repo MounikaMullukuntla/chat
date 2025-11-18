@@ -1288,12 +1288,12 @@ Brief description of changes
   - [x] Test execution controls
   - [x] Test syntax highlighting
 
-- [ ] **Model Selector Tests** (`tests/unit/components/model-selector.test.tsx`)
-  - [ ] Test model dropdown rendering
-  - [ ] Test API key input
-  - [ ] Test model selection
-  - [ ] Test thinking mode toggle
-  - [ ] Test validation messages
+- [x] **Model Selector Tests** (`tests/unit/components/model-selector.test.tsx`)
+  - [x] Test model dropdown rendering
+  - [x] Test API key input
+  - [x] Test model selection
+  - [x] Test thinking mode toggle
+  - [x] Test validation messages
 
 ---
 
