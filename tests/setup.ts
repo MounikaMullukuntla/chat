@@ -12,6 +12,9 @@ afterEach(() => {
   cleanup();
 });
 
+// Mock server-only module (allows testing of server components)
+vi.mock('server-only', () => ({}));
+
 // Setup global test environment
 beforeAll(() => {
   // Mock environment variables for testing
