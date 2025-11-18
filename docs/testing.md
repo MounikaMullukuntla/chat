@@ -1247,12 +1247,12 @@ Brief description of changes
   - [x] Test settings persistence
   - [x] Test settings retrieval
 
-- [ ] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
-  - [ ] Test user activity logging
-  - [ ] Test agent activity logging
-  - [ ] Test error logging
-  - [ ] Test batch processing
-  - [ ] Test log filtering by category
+- [x] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
+  - [x] Test user activity logging
+  - [x] Test agent activity logging
+  - [x] Test error logging
+  - [x] Test batch processing
+  - [x] Test log filtering by category
 
 #### Component Unit Tests (~50 tests)
 
