@@ -1345,13 +1345,13 @@ Brief description of changes
 
 #### Agent Flow Integration Tests (~20 tests)
 
-- [ ] **Document Lifecycle Tests** (`tests/integration/flows/document-lifecycle.test.ts`)
-  - [ ] Test complete document creation flow
-  - [ ] Test document update flow with versioning
-  - [ ] Test version comparison flow
-  - [ ] Test version revert flow
-  - [ ] Test suggestion generation and acceptance
-  - [ ] Test concurrent edits handling
+- [x] **Document Lifecycle Tests** (`tests/integration/flows/document-lifecycle.test.ts`)
+  - [x] Test complete document creation flow
+  - [x] Test document update flow with versioning
+  - [x] Test version comparison flow
+  - [x] Test version revert flow
+  - [x] Test suggestion generation and acceptance
+  - [x] Test concurrent edits handling
 
 - [ ] **Multi-Agent Orchestration Tests** (`tests/integration/flows/agent-orchestration.test.ts`)
   - [ ] Test search + document creation flow
