@@ -1231,14 +1231,14 @@ Brief description of changes
 
 #### Utility Function Tests (~20 tests)
 
-- [ ] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
-  - [ ] Test image file validation (PNG, JPG, WebP)
-  - [ ] Test PDF file validation
-  - [ ] Test code file validation (py, js, ts)
-  - [ ] Test file size validation (reject >10MB)
-  - [ ] Test file type rejection (unsupported types)
-  - [ ] Test file content extraction
-  - [ ] Test base64 encoding
+- [x] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
+  - [x] Test image file validation (PNG, JPG, WebP)
+  - [x] Test PDF file validation
+  - [x] Test code file validation (py, js, ts)
+  - [x] Test file size validation (reject >10MB)
+  - [x] Test file type rejection (unsupported types)
+  - [x] Test file content extraction
+  - [x] Test base64 encoding
 
 - [ ] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
   - [ ] Test API key storage
