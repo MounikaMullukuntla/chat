@@ -54,13 +54,41 @@
 ## Testing
 <!-- Describe how you tested these changes -->
 - [ ] ✅ Tested locally
-- [ ] ✅ All existing tests pass
-- [ ] ✅ New tests added
+- [ ] ✅ All existing tests pass (`pnpm test:all`)
+- [ ] ✅ New unit tests added (for new features/functions)
+- [ ] ✅ New integration tests added (for new API endpoints/flows)
+- [ ] ✅ New E2E tests added (for new user journeys)
 - [ ] ✅ Manual testing performed
 - [ ] ✅ Tested with production-like data
 
 ### Test Coverage
 <!-- Describe your testing approach -->
+**Unit Tests:**
+- Files:
+- Coverage: %
+
+**Integration Tests:**
+- Files:
+- Coverage: %
+
+**E2E Tests:**
+- Files:
+- Scenarios tested:
+
+**Test Commands Run:**
+```bash
+pnpm test:unit          # Unit tests
+pnpm test:integration   # Integration tests
+pnpm test:e2e          # E2E tests
+pnpm test:coverage     # Coverage report
+```
+
+**Coverage Report:**
+- Overall: %
+- Lines: % (minimum: 80%)
+- Functions: % (minimum: 80%)
+- Branches: % (minimum: 75%)
+- Statements: % (minimum: 80%)
 
 
 ## Screenshots/Videos (if UI changes)
@@ -102,16 +130,39 @@
 
 ## Checklist
 <!-- Ensure all items are completed before requesting review -->
-- [ ] 📖 Code follows project style guidelines (run `pnpm lint`)
+
+### Code Quality
+- [ ] 📖 Code follows project style guidelines (`pnpm lint` passes)
 - [ ] 🔍 Self-reviewed the code
 - [ ] 💬 Commented complex/unclear code
-- [ ] 📚 Updated relevant documentation (README, API docs, etc.)
-- [ ] 🧪 Added/updated tests for new functionality
-- [ ] 🔒 Verified RLS policies work correctly (if DB changes)
-- [ ] ⚡ Added indexes for new foreign keys (if DB changes)
 - [ ] 🏷️ Updated TypeScript types/interfaces
-- [ ] ♿ Considered accessibility (if UI changes)
-- [ ] 📱 Tested on mobile/responsive (if UI changes)
+- [ ] ♻️ No code duplication
+
+### Testing Requirements ⚠️ MANDATORY
+- [ ] 🧪 **All existing tests pass** (`pnpm test:all`)
+- [ ] 📝 **New features have unit tests** (functions, utilities, components)
+- [ ] 🔗 **New endpoints have integration tests** (API routes, database operations)
+- [ ] 🎭 **New user flows have E2E tests** (Playwright)
+- [ ] 📊 **Coverage thresholds met** (80% lines, 80% functions, 75% branches)
+- [ ] 🐛 **Bug fixes include regression tests**
+- [ ] ⏱️ **No commented-out or skipped tests** (unless justified in PR description)
+
+### Documentation
+- [ ] 📚 Updated relevant documentation (README, docs/, etc.)
+- [ ] 📖 Updated test documentation if adding new test patterns
+- [ ] 💡 Added JSDoc comments for exported functions
+- [ ] 📝 Updated CHANGELOG.md (if applicable)
+
+### Database (if applicable)
+- [ ] 🔒 Verified RLS policies work correctly
+- [ ] ⚡ Added indexes for new foreign keys
+- [ ] 🧪 Database queries have unit tests
+- [ ] 🔄 Migration tested on local Supabase
+
+### UI/UX (if applicable)
+- [ ] ♿ Considered accessibility (ARIA labels, keyboard navigation)
+- [ ] 📱 Tested on mobile/responsive breakpoints
+- [ ] 🎨 Follows existing design patterns
 - [ ] 🌐 No hardcoded strings (using i18n if applicable)
 
 ## Related Issues
@@ -138,12 +189,25 @@ Related to #
 ## For Reviewers
 <!-- Help reviewers understand what to focus on -->
 **Focus areas:**
-1. 
-2. 
+1.
+2.
 
 **Testing instructions:**
-1. 
-2. 
+1. Clone and checkout this branch
+2. Run `pnpm install`
+3. Run `pnpm test:all` to verify all tests pass
+4. Run `pnpm test:coverage` to check coverage report
+5. Review test files for quality and completeness
+
+**Test Review Checklist:**
+- [ ] Tests are well-organized and follow project patterns
+- [ ] Test names clearly describe what they test
+- [ ] Tests are independent (no shared state)
+- [ ] Tests cover edge cases and error scenarios
+- [ ] Mocks are used appropriately for external dependencies
+- [ ] Integration tests verify actual behavior (minimal mocking)
+- [ ] E2E tests cover critical user paths
+- [ ] No flaky or brittle tests 
 
 ---
 
