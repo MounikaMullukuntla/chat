@@ -1199,13 +1199,13 @@ Brief description of changes
 
 #### Database Query Unit Tests (~25 tests)
 
-- [ ] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
-  - [ ] Test chat creation
-  - [ ] Test chat retrieval by ID
-  - [ ] Test chat list for user
-  - [ ] Test chat deletion
-  - [ ] Test chat update
-  - [ ] Test error handling (not found, invalid user)
+- [x] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
+  - [x] Test chat creation
+  - [x] Test chat retrieval by ID
+  - [x] Test chat list for user
+  - [x] Test chat deletion
+  - [x] Test chat update
+  - [x] Test error handling (not found, invalid user)
 
 - [x] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
   - [x] Test document creation (version 1)
