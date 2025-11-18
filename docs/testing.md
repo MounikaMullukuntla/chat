@@ -1207,14 +1207,14 @@ Brief description of changes
   - [ ] Test chat update
   - [ ] Test error handling (not found, invalid user)
 
-- [ ] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
-  - [ ] Test document creation (version 1)
-  - [ ] Test document update (new version)
-  - [ ] Test version retrieval
-  - [ ] Test version list for document
-  - [ ] Test latest version retrieval
-  - [ ] Test document deletion
-  - [ ] Test version comparison query
+- [x] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
+  - [x] Test document creation (version 1)
+  - [x] Test document update (new version)
+  - [x] Test version retrieval
+  - [x] Test version list for document
+  - [x] Test latest version retrieval
+  - [x] Test document deletion
+  - [x] Test version comparison query
 
 - [ ] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
   - [ ] Test message creation
