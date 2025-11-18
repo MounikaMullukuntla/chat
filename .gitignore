@@ -7,6 +7,10 @@ node_modules
 
 # testing
 coverage
+test-results/
+playwright-report/
+.vitest-cache/
+coverage-summary.json
 
 # next.js
 .next/
