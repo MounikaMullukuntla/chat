@@ -1,14 +1,33 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Plugin to handle CSS imports in tests
+const cssPlugin = (): Plugin => ({
+  name: 'vitest-css-plugin',
+  transform(code, id) {
+    if (id.endsWith('.css')) {
+      return {
+        code: 'export default {}',
+        map: null,
+      };
+    }
+  },
+});
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), cssPlugin()],
   test: {
     name: 'codechat-tests',
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    css: false,
+    server: {
+      deps: {
+        external: ['katex'],
+      },
+    },
     include: [
       'tests/unit/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',

@@ -12,6 +12,26 @@ afterEach(() => {
   cleanup();
 });
 
+// Mock CSS imports
+vi.mock('*.css', () => ({}));
+vi.mock('*.scss', () => ({}));
+
+// Mock katex to avoid CSS import issues
+vi.mock('katex', () => ({
+  default: {
+    render: vi.fn(),
+  },
+  renderToString: vi.fn(() => ''),
+}));
+
+// Mock mermaid to avoid CSS import issues
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    render: vi.fn(() => Promise.resolve({ svg: '' })),
+  },
+}));
+
 // Setup global test environment
 beforeAll(() => {
   // Mock environment variables for testing

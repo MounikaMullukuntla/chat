@@ -1266,13 +1266,13 @@ Brief description of changes
   - [ ] Test error message display
   - [ ] Test retry functionality
 
-- [ ] **Artifact Component Tests** (`tests/unit/components/artifact.test.tsx`)
-  - [ ] Test document artifact rendering
-  - [ ] Test Python artifact rendering
-  - [ ] Test Mermaid artifact rendering
-  - [ ] Test artifact type detection
-  - [ ] Test artifact loading state
-  - [ ] Test artifact error state
+- [x] **Artifact Component Tests** (`tests/unit/components/artifact.test.tsx`)
+  - [x] Test document artifact rendering
+  - [x] Test Python artifact rendering
+  - [x] Test Mermaid artifact rendering
+  - [x] Test artifact type detection
+  - [x] Test artifact loading state
+  - [x] Test artifact error state
 
 - [ ] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
   - [ ] Test document display
