@@ -1222,12 +1222,12 @@ Brief description of changes
   - [ ] Test message deletion
   - [ ] Test message pagination
 
-- [ ] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
-  - [ ] Test config retrieval
-  - [ ] Test config creation
-  - [ ] Test config update
-  - [ ] Test config deletion
-  - [ ] Test config summary generation
+- [x] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
+  - [x] Test config retrieval
+  - [x] Test config creation
+  - [x] Test config update
+  - [x] Test config deletion
+  - [x] Test config summary generation
 
 #### Utility Function Tests (~20 tests)
 
