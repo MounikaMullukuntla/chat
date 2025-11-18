@@ -1190,12 +1190,12 @@ Brief description of changes
   - [x] Test tool execution delegation
   - [x] Test error handling in tool execution
 
-- [ ] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
-  - [ ] Test agent config loading from database
-  - [ ] Test config caching
-  - [ ] Test API key propagation to all agents
-  - [ ] Test agent initialization on demand
-  - [ ] Test config validation
+- [x] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
+  - [x] Test agent config loading from database
+  - [x] Test config caching
+  - [x] Test API key propagation to all agents
+  - [x] Test agent initialization on demand
+  - [x] Test config validation
 
 #### Database Query Unit Tests (~25 tests)
 
