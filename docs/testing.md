@@ -1360,12 +1360,12 @@ Brief description of changes
   - [x] Test tool error recovery
   - [x] Test agent delegation logic
 
-- [ ] **Streaming Tests** (`tests/integration/flows/streaming.test.ts`)
-  - [ ] Test document streaming
-  - [ ] Test Python code streaming
-  - [ ] Test Mermaid diagram streaming
-  - [ ] Test stream interruption handling
-  - [ ] Test stream resumption
+- [x] **Streaming Tests** (`tests/integration/flows/streaming.test.ts`)
+  - [x] Test document streaming
+  - [x] Test Python code streaming
+  - [x] Test Mermaid diagram streaming
+  - [x] Test stream interruption handling
+  - [x] Test stream resumption
 
 #### Database Integration Tests (~15 tests)
 
