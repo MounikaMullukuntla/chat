@@ -1281,12 +1281,12 @@ Brief description of changes
   - [ ] Test diff viewer
   - [ ] Test suggestion display
 
-- [ ] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
-  - [ ] Test code editor rendering
-  - [ ] Test console tab rendering
-  - [ ] Test diff tab rendering
-  - [ ] Test execution controls
-  - [ ] Test syntax highlighting
+- [x] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
+  - [x] Test code editor rendering
+  - [x] Test console tab rendering
+  - [x] Test diff tab rendering
+  - [x] Test execution controls
+  - [x] Test syntax highlighting
 
 - [ ] **Model Selector Tests** (`tests/unit/components/model-selector.test.tsx`)
   - [ ] Test model dropdown rendering
