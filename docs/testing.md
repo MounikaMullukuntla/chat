@@ -1303,17 +1303,17 @@ Brief description of changes
 
 #### API Route Integration Tests (~40 tests)
 
-- [ ] **Chat API Integration Tests** (`tests/integration/api/chat.test.ts`)
-  - [ ] Test POST /api/chat with valid request
-  - [ ] Test chat without API key (401)
-  - [ ] Test chat with invalid API key (401)
-  - [ ] Test chat with thinking mode enabled
-  - [ ] Test chat with file attachments
-  - [ ] Test chat with GitHub context
-  - [ ] Test streaming response
-  - [ ] Test multi-step tool execution
-  - [ ] Test error handling (timeout, network error)
-  - [ ] Test rate limiting (when implemented)
+- [x] **Chat API Integration Tests** (`tests/integration/api/chat.test.ts`)
+  - [x] Test POST /api/chat with valid request
+  - [x] Test chat without API key (401)
+  - [x] Test chat with invalid API key (401)
+  - [x] Test chat with thinking mode enabled
+  - [x] Test chat with file attachments
+  - [x] Test chat with GitHub context
+  - [x] Test streaming response
+  - [x] Test multi-step tool execution
+  - [x] Test error handling (timeout, network error)
+  - [x] Test rate limiting (when implemented)
 
 - [ ] **Document API Integration Tests** (`tests/integration/api/document.test.ts`)
   - [ ] Test POST /api/document (create)
