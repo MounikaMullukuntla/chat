@@ -1335,13 +1335,13 @@ Brief description of changes
   - [x] Test PATCH /api/admin/models/:id (update model)
   - [x] Test non-admin access (403)
 
-- [ ] **Authentication Integration Tests** (`tests/integration/api/auth.test.ts`)
-  - [ ] Test user registration
-  - [ ] Test user login
-  - [ ] Test login with invalid credentials
-  - [ ] Test logout
-  - [ ] Test session validation
-  - [ ] Test token refresh
+- [x] **Authentication Integration Tests** (`tests/integration/api/auth.test.ts`)
+  - [x] Test user registration
+  - [x] Test user login
+  - [x] Test login with invalid credentials
+  - [x] Test logout
+  - [x] Test session validation
+  - [x] Test token refresh
 
 #### Agent Flow Integration Tests (~20 tests)
 
