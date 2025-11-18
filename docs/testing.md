@@ -1427,14 +1427,14 @@ Brief description of changes
   - [ ] Test syntax error display
   - [ ] Test exporting diagram
 
-- [ ] **GitHub MCP Journey** (`tests/e2e/github-integration.spec.ts`)
-  - [ ] Test entering GitHub PAT
-  - [ ] Test connecting to GitHub
-  - [ ] Test selecting repository
-  - [ ] Test browsing files
-  - [ ] Test loading file content
-  - [ ] Test asking questions about code
-  - [ ] Test AI using GitHub context
+- [x] **GitHub MCP Journey** (`tests/e2e/github-integration.spec.ts`)
+  - [x] Test entering GitHub PAT
+  - [x] Test connecting to GitHub
+  - [x] Test selecting repository
+  - [x] Test browsing files
+  - [x] Test loading file content
+  - [x] Test asking questions about code
+  - [x] Test AI using GitHub context
 
 - [ ] **Admin Configuration Journey** (`tests/e2e/admin-config.spec.ts`)
   - [ ] Test admin login
