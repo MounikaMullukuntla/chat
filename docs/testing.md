@@ -1240,12 +1240,12 @@ Brief description of changes
   - [ ] Test file content extraction
   - [ ] Test base64 encoding
 
-- [ ] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
-  - [ ] Test API key storage
-  - [ ] Test API key retrieval
-  - [ ] Test API key deletion
-  - [ ] Test settings persistence
-  - [ ] Test settings retrieval
+- [x] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
+  - [x] Test API key storage
+  - [x] Test API key retrieval
+  - [x] Test API key deletion
+  - [x] Test settings persistence
+  - [x] Test settings retrieval
 
 - [ ] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
   - [ ] Test user activity logging
