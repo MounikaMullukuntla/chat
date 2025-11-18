@@ -1408,15 +1408,15 @@ Brief description of changes
   - [x] Test comparing versions
   - [x] Test reverting to previous version
 
-- [ ] **Python Code Journey** (`tests/e2e/python-execution.spec.ts`)
-  - [ ] Test requesting Python code
-  - [ ] Test code appearing in editor
-  - [ ] Test syntax highlighting
-  - [ ] Test switching to console tab
-  - [ ] Test executing code
-  - [ ] Test viewing output
-  - [ ] Test modifying and re-running code
-  - [ ] Test error handling in execution
+- [x] **Python Code Journey** (`tests/e2e/python-execution.spec.ts`)
+  - [x] Test requesting Python code
+  - [x] Test code appearing in editor
+  - [x] Test syntax highlighting
+  - [x] Test switching to console tab
+  - [x] Test executing code
+  - [x] Test viewing output
+  - [x] Test modifying and re-running code
+  - [x] Test error handling in execution
 
 - [ ] **Mermaid Diagram Journey** (`tests/e2e/mermaid-diagram.spec.ts`)
   - [ ] Test requesting diagram
