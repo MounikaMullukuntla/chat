@@ -1325,15 +1325,15 @@ Brief description of changes
   - [x] Test unauthorized access (403)
   - [x] Test not found (404)
 
-- [ ] **Admin API Integration Tests** (`tests/integration/api/admin.test.ts`)
-  - [ ] Test GET /api/admin/config/:key
-  - [ ] Test PUT /api/admin/config/:key (create/update)
-  - [ ] Test PATCH /api/admin/config/:key (partial update)
-  - [ ] Test DELETE /api/admin/config/:key
-  - [ ] Test GET /api/admin/config/summary
-  - [ ] Test POST /api/admin/models (create model)
-  - [ ] Test PATCH /api/admin/models/:id (update model)
-  - [ ] Test non-admin access (403)
+- [x] **Admin API Integration Tests** (`tests/integration/api/admin.test.ts`)
+  - [x] Test GET /api/admin/config/:key
+  - [x] Test PUT /api/admin/config/:key (create/update)
+  - [x] Test PATCH /api/admin/config/:key (partial update)
+  - [x] Test DELETE /api/admin/config/:key
+  - [x] Test GET /api/admin/config/summary
+  - [x] Test POST /api/admin/models (create model)
+  - [x] Test PATCH /api/admin/models/:id (update model)
+  - [x] Test non-admin access (403)
 
 - [ ] **Authentication Integration Tests** (`tests/integration/api/auth.test.ts`)
   - [ ] Test user registration
