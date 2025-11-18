@@ -1173,15 +1173,15 @@ Brief description of changes
 
 #### Agent System Unit Tests (~30 tests)
 
-- [ ] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
-  - [ ] Test agent initialization with config
-  - [ ] Test API key setting and propagation
-  - [ ] Test GitHub PAT setting
-  - [ ] Test model selection
-  - [ ] Test thinking mode support detection
-  - [ ] Test tool building delegation
-  - [ ] Test streaming configuration
-  - [ ] Test error handling (invalid config, missing API key)
+- [x] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
+  - [x] Test agent initialization with config
+  - [x] Test API key setting and propagation
+  - [x] Test GitHub PAT setting
+  - [x] Test model selection
+  - [x] Test thinking mode support detection
+  - [x] Test tool building delegation
+  - [x] Test streaming configuration
+  - [x] Test error handling (invalid config, missing API key)
 
 - [ ] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
   - [ ] Test tool creation for each agent type
