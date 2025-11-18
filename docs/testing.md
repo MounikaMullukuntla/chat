@@ -1216,11 +1216,11 @@ Brief description of changes
   - [x] Test document deletion
   - [x] Test version comparison query
 
-- [ ] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
-  - [ ] Test message creation
-  - [ ] Test message list for chat
-  - [ ] Test message deletion
-  - [ ] Test message pagination
+- [x] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
+  - [x] Test message creation
+  - [x] Test message list for chat
+  - [x] Test message deletion
+  - [x] Test message pagination
 
 - [x] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
   - [x] Test config retrieval
