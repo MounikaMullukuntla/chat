@@ -1389,14 +1389,14 @@ Brief description of changes
 
 #### Core User Journeys (~30 tests)
 
-- [ ] **New User Chat Session** (`tests/e2e/chat-session.spec.ts`)
-  - [ ] Test complete first-time user flow
-  - [ ] Test API key entry and validation
-  - [ ] Test model selection
-  - [ ] Test sending first message
-  - [ ] Test receiving response
-  - [ ] Test multi-turn conversation
-  - [ ] Test chat persistence after refresh
+- [x] **New User Chat Session** (`tests/e2e/chat-session.spec.ts`)
+  - [x] Test complete first-time user flow
+  - [x] Test API key entry and validation
+  - [x] Test model selection
+  - [x] Test sending first message
+  - [x] Test receiving response
+  - [x] Test multi-turn conversation
+  - [x] Test chat persistence after refresh
 
 - [ ] **Document Creation Journey** (`tests/e2e/document-creation.spec.ts`)
   - [ ] Test requesting document creation
