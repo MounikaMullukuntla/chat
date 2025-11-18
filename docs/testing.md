@@ -1274,12 +1274,12 @@ Brief description of changes
   - [ ] Test artifact loading state
   - [ ] Test artifact error state
 
-- [ ] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
-  - [ ] Test document display
-  - [ ] Test edit mode toggle
-  - [ ] Test version navigation
-  - [ ] Test diff viewer
-  - [ ] Test suggestion display
+- [x] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
+  - [x] Test document display
+  - [x] Test edit mode toggle
+  - [x] Test version navigation
+  - [x] Test diff viewer
+  - [x] Test suggestion display
 
 - [ ] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
   - [ ] Test code editor rendering
