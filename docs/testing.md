@@ -1436,14 +1436,14 @@ Brief description of changes
   - [ ] Test asking questions about code
   - [ ] Test AI using GitHub context
 
-- [ ] **Admin Configuration Journey** (`tests/e2e/admin-config.spec.ts`)
-  - [ ] Test admin login
-  - [ ] Test accessing admin panel
-  - [ ] Test selecting provider
-  - [ ] Test updating agent config
-  - [ ] Test saving configuration
-  - [ ] Test configuration taking effect
-  - [ ] Test non-admin redirect
+- [x] **Admin Configuration Journey** (`tests/e2e/admin-config.spec.ts`)
+  - [x] Test admin login
+  - [x] Test accessing admin panel
+  - [x] Test selecting provider
+  - [x] Test updating agent config
+  - [x] Test saving configuration
+  - [x] Test configuration taking effect
+  - [x] Test non-admin redirect
 
 #### Error Recovery Scenarios (~10 tests)
 
