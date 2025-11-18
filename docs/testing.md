@@ -1183,12 +1183,12 @@ Brief description of changes
   - [x] Test streaming configuration
   - [x] Test error handling (invalid config, missing API key)
 
-- [ ] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
-  - [ ] Test tool creation for each agent type
-  - [ ] Test tool enablement based on config
-  - [ ] Test tool parameter validation
-  - [ ] Test tool execution delegation
-  - [ ] Test error handling in tool execution
+- [x] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
+  - [x] Test tool creation for each agent type
+  - [x] Test tool enablement based on config
+  - [x] Test tool parameter validation
+  - [x] Test tool execution delegation
+  - [x] Test error handling in tool execution
 
 - [ ] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
   - [ ] Test agent config loading from database
