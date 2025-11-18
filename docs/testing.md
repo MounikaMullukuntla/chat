@@ -1173,98 +1173,98 @@ Brief description of changes
 
 #### Agent System Unit Tests (~30 tests)
 
-- [ ] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
-  - [ ] Test agent initialization with config
-  - [ ] Test API key setting and propagation
-  - [ ] Test GitHub PAT setting
-  - [ ] Test model selection
-  - [ ] Test thinking mode support detection
-  - [ ] Test tool building delegation
-  - [ ] Test streaming configuration
-  - [ ] Test error handling (invalid config, missing API key)
+- [x] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
+  - [x] Test agent initialization with config
+  - [x] Test API key setting and propagation
+  - [x] Test GitHub PAT setting
+  - [x] Test model selection
+  - [x] Test thinking mode support detection
+  - [x] Test tool building delegation
+  - [x] Test streaming configuration
+  - [x] Test error handling (invalid config, missing API key)
 
-- [ ] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
-  - [ ] Test tool creation for each agent type
-  - [ ] Test tool enablement based on config
-  - [ ] Test tool parameter validation
-  - [ ] Test tool execution delegation
-  - [ ] Test error handling in tool execution
+- [x] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
+  - [x] Test tool creation for each agent type
+  - [x] Test tool enablement based on config
+  - [x] Test tool parameter validation
+  - [x] Test tool execution delegation
+  - [x] Test error handling in tool execution
 
-- [ ] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
-  - [ ] Test agent config loading from database
-  - [ ] Test config caching
-  - [ ] Test API key propagation to all agents
-  - [ ] Test agent initialization on demand
-  - [ ] Test config validation
+- [x] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
+  - [x] Test agent config loading from database
+  - [x] Test config caching
+  - [x] Test API key propagation to all agents
+  - [x] Test agent initialization on demand
+  - [x] Test config validation
 
 #### Database Query Unit Tests (~25 tests)
 
-- [ ] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
-  - [ ] Test chat creation
-  - [ ] Test chat retrieval by ID
-  - [ ] Test chat list for user
-  - [ ] Test chat deletion
-  - [ ] Test chat update
-  - [ ] Test error handling (not found, invalid user)
+- [x] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
+  - [x] Test chat creation
+  - [x] Test chat retrieval by ID
+  - [x] Test chat list for user
+  - [x] Test chat deletion
+  - [x] Test chat update
+  - [x] Test error handling (not found, invalid user)
 
-- [ ] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
-  - [ ] Test document creation (version 1)
-  - [ ] Test document update (new version)
-  - [ ] Test version retrieval
-  - [ ] Test version list for document
-  - [ ] Test latest version retrieval
-  - [ ] Test document deletion
-  - [ ] Test version comparison query
+- [x] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
+  - [x] Test document creation (version 1)
+  - [x] Test document update (new version)
+  - [x] Test version retrieval
+  - [x] Test version list for document
+  - [x] Test latest version retrieval
+  - [x] Test document deletion
+  - [x] Test version comparison query
 
-- [ ] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
-  - [ ] Test message creation
-  - [ ] Test message list for chat
-  - [ ] Test message deletion
-  - [ ] Test message pagination
+- [x] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
+  - [x] Test message creation
+  - [x] Test message list for chat
+  - [x] Test message deletion
+  - [x] Test message pagination
 
-- [ ] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
-  - [ ] Test config retrieval
-  - [ ] Test config creation
-  - [ ] Test config update
-  - [ ] Test config deletion
-  - [ ] Test config summary generation
+- [x] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
+  - [x] Test config retrieval
+  - [x] Test config creation
+  - [x] Test config update
+  - [x] Test config deletion
+  - [x] Test config summary generation
 
 #### Utility Function Tests (~20 tests)
 
-- [ ] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
-  - [ ] Test image file validation (PNG, JPG, WebP)
-  - [ ] Test PDF file validation
-  - [ ] Test code file validation (py, js, ts)
-  - [ ] Test file size validation (reject >10MB)
-  - [ ] Test file type rejection (unsupported types)
-  - [ ] Test file content extraction
-  - [ ] Test base64 encoding
+- [x] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
+  - [x] Test image file validation (PNG, JPG, WebP)
+  - [x] Test PDF file validation
+  - [x] Test code file validation (py, js, ts)
+  - [x] Test file size validation (reject >10MB)
+  - [x] Test file type rejection (unsupported types)
+  - [x] Test file content extraction
+  - [x] Test base64 encoding
 
-- [ ] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
-  - [ ] Test API key storage
-  - [ ] Test API key retrieval
-  - [ ] Test API key deletion
-  - [ ] Test settings persistence
-  - [ ] Test settings retrieval
+- [x] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
+  - [x] Test API key storage
+  - [x] Test API key retrieval
+  - [x] Test API key deletion
+  - [x] Test settings persistence
+  - [x] Test settings retrieval
 
-- [ ] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
-  - [ ] Test user activity logging
-  - [ ] Test agent activity logging
-  - [ ] Test error logging
-  - [ ] Test batch processing
-  - [ ] Test log filtering by category
+- [x] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
+  - [x] Test user activity logging
+  - [x] Test agent activity logging
+  - [x] Test error logging
+  - [x] Test batch processing
+  - [x] Test log filtering by category
 
 #### Component Unit Tests (~50 tests)
 
-- [ ] **Chat Component Tests** (`tests/unit/components/chat.test.tsx`)
-  - [ ] Test rendering with messages
-  - [ ] Test empty state rendering
-  - [ ] Test message input
-  - [ ] Test send button click
-  - [ ] Test file upload
-  - [ ] Test streaming message display
-  - [ ] Test error message display
-  - [ ] Test retry functionality
+- [x] **Chat Component Tests** (`tests/unit/components/chat.test.tsx`)
+  - [x] Test rendering with messages
+  - [x] Test empty state rendering
+  - [x] Test message input
+  - [x] Test send button click
+  - [x] Test file upload
+  - [x] Test streaming message display
+  - [x] Test error message display
+  - [x] Test retry functionality
 
 - [x] **Artifact Component Tests** (`tests/unit/components/artifact.test.tsx`)
   - [x] Test document artifact rendering
@@ -1274,12 +1274,12 @@ Brief description of changes
   - [x] Test artifact loading state
   - [x] Test artifact error state
 
-- [ ] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
-  - [ ] Test document display
-  - [ ] Test edit mode toggle
-  - [ ] Test version navigation
-  - [ ] Test diff viewer
-  - [ ] Test suggestion display
+- [x] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
+  - [x] Test document display
+  - [x] Test edit mode toggle
+  - [x] Test version navigation
+  - [x] Test diff viewer
+  - [x] Test suggestion display
 
 - [ ] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
   - [ ] Test code editor rendering

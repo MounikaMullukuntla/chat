@@ -31,6 +31,8 @@ vi.mock('mermaid', () => ({
     render: vi.fn(() => Promise.resolve({ svg: '' })),
   },
 }));
+// Mock server-only module (allows testing of server components)
+vi.mock('server-only', () => ({}));
 
 // Setup global test environment
 beforeAll(() => {
