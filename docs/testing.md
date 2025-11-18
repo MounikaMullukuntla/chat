@@ -1398,15 +1398,15 @@ Brief description of changes
   - [ ] Test multi-turn conversation
   - [ ] Test chat persistence after refresh
 
-- [ ] **Document Creation Journey** (`tests/e2e/document-creation.spec.ts`)
-  - [ ] Test requesting document creation
-  - [ ] Test watching real-time streaming
-  - [ ] Test document appearing in artifact panel
-  - [ ] Test editing document
-  - [ ] Test saving new version
-  - [ ] Test viewing version history
-  - [ ] Test comparing versions
-  - [ ] Test reverting to previous version
+- [x] **Document Creation Journey** (`tests/e2e/document-creation.spec.ts`)
+  - [x] Test requesting document creation
+  - [x] Test watching real-time streaming
+  - [x] Test document appearing in artifact panel
+  - [x] Test editing document
+  - [x] Test saving new version
+  - [x] Test viewing version history
+  - [x] Test comparing versions
+  - [x] Test reverting to previous version
 
 - [ ] **Python Code Journey** (`tests/e2e/python-execution.spec.ts`)
   - [ ] Test requesting Python code
