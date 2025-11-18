@@ -1353,12 +1353,12 @@ Brief description of changes
   - [x] Test suggestion generation and acceptance
   - [x] Test concurrent edits handling
 
-- [ ] **Multi-Agent Orchestration Tests** (`tests/integration/flows/agent-orchestration.test.ts`)
-  - [ ] Test search + document creation flow
-  - [ ] Test GitHub fetch + code analysis flow
-  - [ ] Test sequential tool calls
-  - [ ] Test tool error recovery
-  - [ ] Test agent delegation logic
+- [x] **Multi-Agent Orchestration Tests** (`tests/integration/flows/agent-orchestration.test.ts`)
+  - [x] Test search + document creation flow
+  - [x] Test GitHub fetch + code analysis flow
+  - [x] Test sequential tool calls
+  - [x] Test tool error recovery
+  - [x] Test agent delegation logic
 
 - [ ] **Streaming Tests** (`tests/integration/flows/streaming.test.ts`)
   - [ ] Test document streaming
