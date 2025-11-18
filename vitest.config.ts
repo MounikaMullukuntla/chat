@@ -49,21 +49,16 @@ export default defineConfig({
         '**/types/**',
         'lib/db/migrations/**',
       ],
-      all: true,
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80,
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
     testTimeout: 30000,
     hookTimeout: 30000,
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: false,
-        isolate: true,
-      },
-    },
   },
   resolve: {
     alias: {
