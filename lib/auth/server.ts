@@ -9,10 +9,10 @@ import type { Session, User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@/lib/db/supabase-client";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging/activity-logger";
 
 // Types for server auth results

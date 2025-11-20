@@ -1,12 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ErrorCategory, ErrorSeverity, logAppError } from "@/lib/errors/logger";
 import type { AdminConfigSummary } from "@/lib/types";
-import {
-  logAppError,
-  ErrorCategory,
-  ErrorSeverity,
-} from "@/lib/errors/logger";
 
 type UseModelCapabilitiesResult = {
   modelCapabilities: AdminConfigSummary | null;
@@ -96,14 +92,22 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
       console.error("Failed to fetch model capabilities:", err);
 
       // Log unexpected errors (network failures, JSON parsing, etc.)
-      if (!(err instanceof Error && err.message.includes("Failed to fetch model capabilities:"))) {
+      if (
+        !(
+          err instanceof Error &&
+          err.message.includes("Failed to fetch model capabilities:")
+        )
+      ) {
         // This is an unexpected error (network, parsing, etc.)
         let errorCategory = ErrorCategory.NETWORK_ERROR;
 
         if (err instanceof Error) {
           if (err.message.includes("JSON")) {
             errorCategory = ErrorCategory.API_REQUEST_FAILED;
-          } else if (err.message.includes("network") || err.message.includes("fetch")) {
+          } else if (
+            err.message.includes("network") ||
+            err.message.includes("fetch")
+          ) {
             errorCategory = ErrorCategory.NETWORK_ERROR;
           }
         }

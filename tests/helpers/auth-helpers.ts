@@ -3,8 +3,8 @@
  * Provides utilities for setting up authenticated sessions
  */
 
-import { Page } from '@playwright/test';
-import { createTestSupabaseClient } from './db-helpers';
+import type { Page } from "@playwright/test";
+import { createTestSupabaseClient } from "./db-helpers";
 
 /**
  * Create a test user with specified role
@@ -12,7 +12,7 @@ import { createTestSupabaseClient } from './db-helpers';
 export async function createTestUserWithRole(
   email: string,
   password: string,
-  role: 'admin' | 'user' = 'user'
+  role: "admin" | "user" = "user"
 ) {
   const supabase = createTestSupabaseClient();
 
@@ -26,7 +26,9 @@ export async function createTestUserWithRole(
     },
   });
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
   return data.user;
 }
 
@@ -46,18 +48,22 @@ export async function loginAsUser(
     password,
   });
 
-  if (error) throw error;
-  if (!data.session) throw new Error('No session created');
+  if (error) {
+    throw error;
+  }
+  if (!data.session) {
+    throw new Error("No session created");
+  }
 
   // Set up authentication cookies/state in the browser
   // Supabase uses cookies for session management
-  await page.goto('/');
+  await page.goto("/");
 
   // Set the session in localStorage (Supabase client-side auth)
   await page.evaluate((session) => {
     // Supabase stores session in localStorage
     localStorage.setItem(
-      `sb-${window.location.hostname.split('.')[0]}-auth-token`,
+      `sb-${window.location.hostname.split(".")[0]}-auth-token`,
       JSON.stringify(session)
     );
   }, data.session);
@@ -65,22 +71,22 @@ export async function loginAsUser(
   // Also set cookies if needed
   const cookies = [
     {
-      name: 'sb-access-token',
+      name: "sb-access-token",
       value: data.session.access_token,
       domain: new URL(page.url()).hostname,
-      path: '/',
+      path: "/",
       httpOnly: true,
       secure: false,
-      sameSite: 'Lax' as const,
+      sameSite: "Lax" as const,
     },
     {
-      name: 'sb-refresh-token',
+      name: "sb-refresh-token",
       value: data.session.refresh_token,
       domain: new URL(page.url()).hostname,
-      path: '/',
+      path: "/",
       httpOnly: true,
       secure: false,
-      sameSite: 'Lax' as const,
+      sameSite: "Lax" as const,
     },
   ];
 
@@ -97,7 +103,7 @@ export async function logout(page: Page): Promise<void> {
   await page.evaluate(() => {
     // Clear Supabase session from localStorage
     Object.keys(localStorage).forEach((key) => {
-      if (key.includes('sb-') && key.includes('-auth-token')) {
+      if (key.includes("sb-") && key.includes("-auth-token")) {
         localStorage.removeItem(key);
       }
     });
@@ -116,7 +122,9 @@ export async function logout(page: Page): Promise<void> {
 export async function deleteTestUserById(userId: string): Promise<void> {
   const supabase = createTestSupabaseClient();
   const { error } = await supabase.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 }
 
 /**
@@ -126,6 +134,8 @@ export async function isAuthenticated(page: Page): Promise<boolean> {
   return await page.evaluate(() => {
     // Check if Supabase session exists in localStorage
     const keys = Object.keys(localStorage);
-    return keys.some((key) => key.includes('sb-') && key.includes('-auth-token'));
+    return keys.some(
+      (key) => key.includes("sb-") && key.includes("-auth-token")
+    );
   });
 }

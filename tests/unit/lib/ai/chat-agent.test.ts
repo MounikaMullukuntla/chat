@@ -3,9 +3,9 @@
  * Tests agent initialization, configuration, and core functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { GoogleChatAgent } from "@/lib/ai/providers/google/chat-agent";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatModelAgentConfig } from "@/lib/ai/core/types";
+import { GoogleChatAgent } from "@/lib/ai/providers/google/chat-agent";
 
 // Mock server-only module
 vi.mock("server-only", () => ({}));
@@ -109,7 +109,7 @@ describe("GoogleChatAgent", () => {
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
       availableModels: [
         {
@@ -272,7 +272,7 @@ describe("GoogleChatAgent", () => {
         rateLimit: {
           perMinute: 60,
           perHour: 1000,
-          perDay: 10000,
+          perDay: 10_000,
         },
       } as ChatModelAgentConfig;
 
@@ -371,7 +371,9 @@ describe("GoogleChatAgent", () => {
       expect(availableModels).toHaveLength(2);
       expect(availableModels[0].id).toBe("gemini-2.0-flash-exp");
       expect(availableModels[1].id).toBe("gemini-1.5-pro");
-      expect(availableModels.find((m) => m.id === "gemini-disabled")).toBeUndefined();
+      expect(
+        availableModels.find((m) => m.id === "gemini-disabled")
+      ).toBeUndefined();
     });
 
     it("should return default model", () => {
@@ -407,7 +409,7 @@ describe("GoogleChatAgent", () => {
         rateLimit: {
           perMinute: 60,
           perHour: 1000,
-          perDay: 10000,
+          perDay: 10_000,
         },
       } as ChatModelAgentConfig;
 
@@ -456,31 +458,41 @@ describe("GoogleChatAgent", () => {
     it("should set provider tools model", () => {
       const agent = new GoogleChatAgent(validConfig);
 
-      expect(() => agent.setProviderToolsModel("gemini-2.0-flash-exp")).not.toThrow();
+      expect(() =>
+        agent.setProviderToolsModel("gemini-2.0-flash-exp")
+      ).not.toThrow();
     });
 
     it("should set document agent model", () => {
       const agent = new GoogleChatAgent(validConfig);
 
-      expect(() => agent.setDocumentAgentModel("gemini-2.0-flash-exp")).not.toThrow();
+      expect(() =>
+        agent.setDocumentAgentModel("gemini-2.0-flash-exp")
+      ).not.toThrow();
     });
 
     it("should set mermaid agent model", () => {
       const agent = new GoogleChatAgent(validConfig);
 
-      expect(() => agent.setMermaidAgentModel("gemini-2.0-flash-exp")).not.toThrow();
+      expect(() =>
+        agent.setMermaidAgentModel("gemini-2.0-flash-exp")
+      ).not.toThrow();
     });
 
     it("should set python agent model", () => {
       const agent = new GoogleChatAgent(validConfig);
 
-      expect(() => agent.setPythonAgentModel("gemini-2.0-flash-exp")).not.toThrow();
+      expect(() =>
+        agent.setPythonAgentModel("gemini-2.0-flash-exp")
+      ).not.toThrow();
     });
 
     it("should set GitHub MCP agent model", () => {
       const agent = new GoogleChatAgent(validConfig);
 
-      expect(() => agent.setGitMcpAgentModel("gemini-2.0-flash-exp")).not.toThrow();
+      expect(() =>
+        agent.setGitMcpAgentModel("gemini-2.0-flash-exp")
+      ).not.toThrow();
     });
   });
 
@@ -575,7 +587,7 @@ describe("GoogleChatAgent", () => {
         rateLimit: {
           perMinute: 60,
           perHour: 1000,
-          perDay: 10000,
+          perDay: 10_000,
         },
         availableModels: [
           {
@@ -629,7 +641,9 @@ describe("GoogleChatAgent", () => {
 
   describe("Error Handling", () => {
     it("should throw AgentError with INVALID_CONFIGURATION when config is null", () => {
-      expect(() => new GoogleChatAgent(null as any)).toThrow("configuration is required");
+      expect(() => new GoogleChatAgent(null as any)).toThrow(
+        "configuration is required"
+      );
     });
 
     it("should throw AgentError with AGENT_DISABLED when agent is disabled", () => {

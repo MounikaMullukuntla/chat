@@ -3,21 +3,21 @@
  * Tests agent configuration loading, caching, API key propagation, and validation
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock server-only module FIRST to avoid import errors
-vi.mock('server-only', () => ({}));
+vi.mock("server-only", () => ({}));
 
-import { AgentConfigLoader } from '@/lib/ai/providers/google/agentConfigLoader';
-import * as adminQueries from '@/lib/db/queries/admin';
+import { AgentConfigLoader } from "@/lib/ai/providers/google/agentConfigLoader";
+import * as adminQueries from "@/lib/db/queries/admin";
 
 // Mock the admin queries module
-vi.mock('@/lib/db/queries/admin', () => ({
+vi.mock("@/lib/db/queries/admin", () => ({
   getAdminConfig: vi.fn(),
 }));
 
 // Mock the specialized agent modules to avoid dependency issues
-vi.mock('@/lib/ai/providers/google/provider-tools-agent', () => ({
+vi.mock("@/lib/ai/providers/google/provider-tools-agent", () => ({
   GoogleProviderToolsAgent: class GoogleProviderToolsAgent {
     config: any;
     setApiKey = vi.fn();
@@ -28,7 +28,7 @@ vi.mock('@/lib/ai/providers/google/provider-tools-agent', () => ({
   },
 }));
 
-vi.mock('@/lib/ai/providers/google/document-agent-streaming', () => ({
+vi.mock("@/lib/ai/providers/google/document-agent-streaming", () => ({
   GoogleDocumentAgentStreaming: class GoogleDocumentAgentStreaming {
     config: any;
     setApiKey = vi.fn();
@@ -39,7 +39,7 @@ vi.mock('@/lib/ai/providers/google/document-agent-streaming', () => ({
   },
 }));
 
-vi.mock('@/lib/ai/providers/google/mermaid-agent-streaming', () => ({
+vi.mock("@/lib/ai/providers/google/mermaid-agent-streaming", () => ({
   GoogleMermaidAgentStreaming: class GoogleMermaidAgentStreaming {
     config: any;
     setApiKey = vi.fn();
@@ -50,7 +50,7 @@ vi.mock('@/lib/ai/providers/google/mermaid-agent-streaming', () => ({
   },
 }));
 
-vi.mock('@/lib/ai/providers/google/python-agent-streaming', () => ({
+vi.mock("@/lib/ai/providers/google/python-agent-streaming", () => ({
   GooglePythonAgentStreaming: class GooglePythonAgentStreaming {
     config: any;
     setApiKey = vi.fn();
@@ -61,7 +61,7 @@ vi.mock('@/lib/ai/providers/google/python-agent-streaming', () => ({
   },
 }));
 
-vi.mock('@/lib/ai/providers/google/git-mcp-agent', () => ({
+vi.mock("@/lib/ai/providers/google/git-mcp-agent", () => ({
   GoogleGitMcpAgent: class GoogleGitMcpAgent {
     config: any;
     setApiKey = vi.fn();
@@ -74,100 +74,99 @@ vi.mock('@/lib/ai/providers/google/git-mcp-agent', () => ({
 }));
 
 // Mock the activity logger to avoid logging during tests
-vi.mock('@/lib/logging/activity-logger', () => ({
+vi.mock("@/lib/logging/activity-logger", () => ({
   logAgentActivity: vi.fn(),
   PerformanceTracker: class PerformanceTracker {
     end = vi.fn();
     getDuration = vi.fn(() => 100);
-    constructor(_config: any) {}
   },
-  createCorrelationId: vi.fn(() => 'test-correlation-id'),
+  createCorrelationId: vi.fn(() => "test-correlation-id"),
   AgentType: {
-    PROVIDER_TOOLS_AGENT: 'provider_tools',
-    DOCUMENT_AGENT: 'document',
-    MERMAID_AGENT: 'mermaid',
-    PYTHON_AGENT: 'python',
-    GIT_MCP_AGENT: 'git_mcp',
+    PROVIDER_TOOLS_AGENT: "provider_tools",
+    DOCUMENT_AGENT: "document",
+    MERMAID_AGENT: "mermaid",
+    PYTHON_AGENT: "python",
+    GIT_MCP_AGENT: "git_mcp",
   },
   AgentOperationType: {
-    INITIALIZATION: 'initialization',
+    INITIALIZATION: "initialization",
   },
   AgentOperationCategory: {
-    CONFIGURATION: 'configuration',
+    CONFIGURATION: "configuration",
   },
 }));
 
-describe('AgentConfigLoader', () => {
+describe("AgentConfigLoader", () => {
   let configLoader: AgentConfigLoader;
   const mockGetAdminConfig = vi.mocked(adminQueries.getAdminConfig);
 
   // Sample configuration data for testing
   const mockProviderToolsConfig = {
-    configKey: 'provider_tools_agent_google',
+    configKey: "provider_tools_agent_google",
     configData: {
       enabled: true,
-      systemPrompt: 'You are a provider tools agent',
-      modelId: 'gemini-2.0-flash-exp',
+      systemPrompt: "You are a provider tools agent",
+      modelId: "gemini-2.0-flash-exp",
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
       tools: {
-        googleSearch: { enabled: true, description: 'Search the web' },
+        googleSearch: { enabled: true, description: "Search the web" },
       },
     },
   };
 
   const mockDocumentAgentConfig = {
-    configKey: 'document_agent_google',
+    configKey: "document_agent_google",
     configData: {
       enabled: true,
-      modelId: 'gemini-2.0-flash-exp',
+      modelId: "gemini-2.0-flash-exp",
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
     },
   };
 
   const mockMermaidAgentConfig = {
-    configKey: 'mermaid_agent_google',
+    configKey: "mermaid_agent_google",
     configData: {
       enabled: true,
-      modelId: 'gemini-2.0-flash-exp',
+      modelId: "gemini-2.0-flash-exp",
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
     },
   };
 
   const mockPythonAgentConfig = {
-    configKey: 'python_agent_google',
+    configKey: "python_agent_google",
     configData: {
       enabled: true,
-      modelId: 'gemini-2.0-flash-exp',
+      modelId: "gemini-2.0-flash-exp",
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
     },
   };
 
   const mockGitMcpAgentConfig = {
-    configKey: 'git_mcp_agent_google',
+    configKey: "git_mcp_agent_google",
     configData: {
       enabled: true,
-      systemPrompt: 'You are a GitHub MCP agent',
-      modelId: 'gemini-2.0-flash-exp',
+      systemPrompt: "You are a GitHub MCP agent",
+      modelId: "gemini-2.0-flash-exp",
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
     },
   };
@@ -180,14 +179,14 @@ describe('AgentConfigLoader', () => {
     configLoader = new AgentConfigLoader();
   });
 
-  describe('Agent Config Loading from Database', () => {
-    it('should load provider tools agent configuration from database', async () => {
+  describe("Agent Config Loading from Database", () => {
+    it("should load provider tools agent configuration from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockProviderToolsConfig as any);
 
       await configLoader.loadProviderToolsConfig();
 
       expect(mockGetAdminConfig).toHaveBeenCalledWith({
-        configKey: 'provider_tools_agent_google',
+        configKey: "provider_tools_agent_google",
       });
 
       const agent = configLoader.getProviderToolsAgent();
@@ -197,13 +196,13 @@ describe('AgentConfigLoader', () => {
       expect(config).toEqual(mockProviderToolsConfig.configData);
     });
 
-    it('should load document agent configuration from database', async () => {
+    it("should load document agent configuration from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockDocumentAgentConfig as any);
 
       await configLoader.loadDocumentAgentConfig();
 
       expect(mockGetAdminConfig).toHaveBeenCalledWith({
-        configKey: 'document_agent_google',
+        configKey: "document_agent_google",
       });
 
       const agent = configLoader.getDocumentAgentStreaming();
@@ -213,13 +212,13 @@ describe('AgentConfigLoader', () => {
       expect(config).toEqual(mockDocumentAgentConfig.configData);
     });
 
-    it('should load mermaid agent configuration from database', async () => {
+    it("should load mermaid agent configuration from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockMermaidAgentConfig as any);
 
       await configLoader.loadMermaidAgentConfig();
 
       expect(mockGetAdminConfig).toHaveBeenCalledWith({
-        configKey: 'mermaid_agent_google',
+        configKey: "mermaid_agent_google",
       });
 
       const agent = configLoader.getMermaidAgentStreaming();
@@ -229,13 +228,13 @@ describe('AgentConfigLoader', () => {
       expect(config).toEqual(mockMermaidAgentConfig.configData);
     });
 
-    it('should load python agent configuration from database', async () => {
+    it("should load python agent configuration from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockPythonAgentConfig as any);
 
       await configLoader.loadPythonAgentConfig();
 
       expect(mockGetAdminConfig).toHaveBeenCalledWith({
-        configKey: 'python_agent_google',
+        configKey: "python_agent_google",
       });
 
       const agent = configLoader.getPythonAgentStreaming();
@@ -245,13 +244,13 @@ describe('AgentConfigLoader', () => {
       expect(config).toEqual(mockPythonAgentConfig.configData);
     });
 
-    it('should load GitHub MCP agent configuration from database', async () => {
+    it("should load GitHub MCP agent configuration from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockGitMcpAgentConfig as any);
 
       await configLoader.loadGitMcpAgentConfig();
 
       expect(mockGetAdminConfig).toHaveBeenCalledWith({
-        configKey: 'git_mcp_agent_google',
+        configKey: "git_mcp_agent_google",
       });
 
       const agent = configLoader.getGitMcpAgent();
@@ -262,8 +261,8 @@ describe('AgentConfigLoader', () => {
     });
   });
 
-  describe('Config Caching', () => {
-    it('should cache loaded configurations and not reload from database', async () => {
+  describe("Config Caching", () => {
+    it("should cache loaded configurations and not reload from database", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockProviderToolsConfig as any);
 
       // Load config once
@@ -281,7 +280,7 @@ describe('AgentConfigLoader', () => {
       expect(config1).toEqual(mockProviderToolsConfig.configData);
     });
 
-    it('should cache agent instances and reuse them', async () => {
+    it("should cache agent instances and reuse them", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockDocumentAgentConfig as any);
 
       // Load config once
@@ -295,7 +294,7 @@ describe('AgentConfigLoader', () => {
       expect(agent1).toBe(agent2);
     });
 
-    it('should store all agent configs separately', async () => {
+    it("should store all agent configs separately", async () => {
       mockGetAdminConfig
         .mockResolvedValueOnce(mockProviderToolsConfig as any)
         .mockResolvedValueOnce(mockDocumentAgentConfig as any)
@@ -305,15 +304,21 @@ describe('AgentConfigLoader', () => {
       await configLoader.loadDocumentAgentConfig();
       await configLoader.loadPythonAgentConfig();
 
-      expect(configLoader.getProviderToolsConfig()).toEqual(mockProviderToolsConfig.configData);
-      expect(configLoader.getDocumentAgentConfig()).toEqual(mockDocumentAgentConfig.configData);
-      expect(configLoader.getPythonAgentConfig()).toEqual(mockPythonAgentConfig.configData);
+      expect(configLoader.getProviderToolsConfig()).toEqual(
+        mockProviderToolsConfig.configData
+      );
+      expect(configLoader.getDocumentAgentConfig()).toEqual(
+        mockDocumentAgentConfig.configData
+      );
+      expect(configLoader.getPythonAgentConfig()).toEqual(
+        mockPythonAgentConfig.configData
+      );
     });
   });
 
-  describe('API Key Propagation', () => {
-    it('should propagate API key to provider tools agent when loaded', async () => {
-      const testApiKey = 'test-google-api-key-123';
+  describe("API Key Propagation", () => {
+    it("should propagate API key to provider tools agent when loaded", async () => {
+      const testApiKey = "test-google-api-key-123";
       mockGetAdminConfig.mockResolvedValueOnce(mockProviderToolsConfig as any);
 
       configLoader.setApiKey(testApiKey);
@@ -323,8 +328,8 @@ describe('AgentConfigLoader', () => {
       expect(agent?.setApiKey).toHaveBeenCalledWith(testApiKey);
     });
 
-    it('should propagate API key to all agents after loading', async () => {
-      const testApiKey = 'test-google-api-key-456';
+    it("should propagate API key to all agents after loading", async () => {
+      const testApiKey = "test-google-api-key-456";
 
       mockGetAdminConfig
         .mockResolvedValueOnce(mockProviderToolsConfig as any)
@@ -342,15 +347,23 @@ describe('AgentConfigLoader', () => {
       await configLoader.loadPythonAgentConfig();
 
       // Verify API key was set on all agents
-      expect(configLoader.getProviderToolsAgent()?.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(configLoader.getDocumentAgentStreaming()?.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(configLoader.getMermaidAgentStreaming()?.setApiKey).toHaveBeenCalledWith(testApiKey);
-      expect(configLoader.getPythonAgentStreaming()?.setApiKey).toHaveBeenCalledWith(testApiKey);
+      expect(
+        configLoader.getProviderToolsAgent()?.setApiKey
+      ).toHaveBeenCalledWith(testApiKey);
+      expect(
+        configLoader.getDocumentAgentStreaming()?.setApiKey
+      ).toHaveBeenCalledWith(testApiKey);
+      expect(
+        configLoader.getMermaidAgentStreaming()?.setApiKey
+      ).toHaveBeenCalledWith(testApiKey);
+      expect(
+        configLoader.getPythonAgentStreaming()?.setApiKey
+      ).toHaveBeenCalledWith(testApiKey);
     });
 
-    it('should propagate GitHub PAT to Git MCP agent', async () => {
-      const testPAT = 'ghp_test_token_123';
-      const testApiKey = 'test-google-api-key-789';
+    it("should propagate GitHub PAT to Git MCP agent", async () => {
+      const testPAT = "ghp_test_token_123";
+      const testApiKey = "test-google-api-key-789";
 
       mockGetAdminConfig.mockResolvedValueOnce(mockGitMcpAgentConfig as any);
 
@@ -363,9 +376,9 @@ describe('AgentConfigLoader', () => {
       expect(agent?.setGoogleApiKey).toHaveBeenCalledWith(testApiKey);
     });
 
-    it('should propagate GitHub PAT to existing Git MCP agent when set after loading', async () => {
-      const testPAT = 'ghp_test_token_456';
-      const testApiKey = 'test-google-api-key-000';
+    it("should propagate GitHub PAT to existing Git MCP agent when set after loading", async () => {
+      const testPAT = "ghp_test_token_456";
+      const testApiKey = "test-google-api-key-000";
 
       mockGetAdminConfig.mockResolvedValueOnce(mockGitMcpAgentConfig as any);
 
@@ -383,8 +396,8 @@ describe('AgentConfigLoader', () => {
       expect(agent?.setGoogleApiKey).toHaveBeenCalledWith(testApiKey);
     });
 
-    it('should handle API key set before agent is loaded', async () => {
-      const testApiKey = 'test-early-api-key';
+    it("should handle API key set before agent is loaded", async () => {
+      const testApiKey = "test-early-api-key";
       mockGetAdminConfig.mockResolvedValueOnce(mockDocumentAgentConfig as any);
 
       // Set API key before loading config
@@ -398,8 +411,8 @@ describe('AgentConfigLoader', () => {
     });
   });
 
-  describe('Agent Initialization on Demand', () => {
-    it('should not initialize agents until config is loaded', () => {
+  describe("Agent Initialization on Demand", () => {
+    it("should not initialize agents until config is loaded", () => {
       expect(configLoader.getProviderToolsAgent()).toBeUndefined();
       expect(configLoader.getDocumentAgentStreaming()).toBeUndefined();
       expect(configLoader.getMermaidAgentStreaming()).toBeUndefined();
@@ -407,7 +420,7 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getGitMcpAgent()).toBeUndefined();
     });
 
-    it('should initialize agent only when config is loaded and enabled', async () => {
+    it("should initialize agent only when config is loaded and enabled", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockProviderToolsConfig as any);
 
       // Agent should not exist before loading
@@ -420,7 +433,7 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getProviderToolsAgent()).toBeDefined();
     });
 
-    it('should allow loading configs independently', async () => {
+    it("should allow loading configs independently", async () => {
       mockGetAdminConfig
         .mockResolvedValueOnce(mockDocumentAgentConfig as any)
         .mockResolvedValueOnce(mockPythonAgentConfig as any);
@@ -439,8 +452,8 @@ describe('AgentConfigLoader', () => {
     });
   });
 
-  describe('Config Validation', () => {
-    it('should not initialize agent when config is disabled', async () => {
+  describe("Config Validation", () => {
+    it("should not initialize agent when config is disabled", async () => {
       const disabledConfig = {
         ...mockProviderToolsConfig,
         configData: {
@@ -457,7 +470,7 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getProviderToolsConfig()).toBeUndefined();
     });
 
-    it('should not initialize agent when config is not found', async () => {
+    it("should not initialize agent when config is not found", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(null);
 
       await configLoader.loadDocumentAgentConfig();
@@ -467,9 +480,9 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getDocumentAgentConfig()).toBeUndefined();
     });
 
-    it('should not initialize agent when configData is missing', async () => {
+    it("should not initialize agent when configData is missing", async () => {
       const invalidConfig = {
-        configKey: 'provider_tools_agent_google',
+        configKey: "provider_tools_agent_google",
         configData: null,
       };
       mockGetAdminConfig.mockResolvedValueOnce(invalidConfig as any);
@@ -480,19 +493,21 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getProviderToolsConfig()).toBeUndefined();
     });
 
-    it('should throw error when config loading fails', async () => {
-      const dbError = new Error('Database connection failed');
+    it("should throw error when config loading fails", async () => {
+      const dbError = new Error("Database connection failed");
       mockGetAdminConfig.mockRejectedValueOnce(dbError);
 
-      await expect(configLoader.loadProviderToolsConfig()).rejects.toThrow('Database connection failed');
+      await expect(configLoader.loadProviderToolsConfig()).rejects.toThrow(
+        "Database connection failed"
+      );
     });
 
-    it('should handle missing enabled property gracefully', async () => {
+    it("should handle missing enabled property gracefully", async () => {
       const configWithoutEnabled = {
-        configKey: 'document_agent_google',
+        configKey: "document_agent_google",
         configData: {
-          modelId: 'gemini-2.0-flash-exp',
-          rateLimit: { perMinute: 60, perHour: 1000, perDay: 10000 },
+          modelId: "gemini-2.0-flash-exp",
+          rateLimit: { perMinute: 60, perHour: 1000, perDay: 10_000 },
         },
       };
       mockGetAdminConfig.mockResolvedValueOnce(configWithoutEnabled as any);
@@ -504,74 +519,76 @@ describe('AgentConfigLoader', () => {
     });
   });
 
-  describe('Model Configuration', () => {
-    it('should set model for provider tools agent', async () => {
+  describe("Model Configuration", () => {
+    it("should set model for provider tools agent", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockProviderToolsConfig as any);
 
       await configLoader.loadProviderToolsConfig();
-      configLoader.setProviderToolsModel('gemini-2.0-flash-thinking-exp');
+      configLoader.setProviderToolsModel("gemini-2.0-flash-thinking-exp");
 
       const agent = configLoader.getProviderToolsAgent();
-      expect(agent?.setModel).toHaveBeenCalledWith('gemini-2.0-flash-thinking-exp');
+      expect(agent?.setModel).toHaveBeenCalledWith(
+        "gemini-2.0-flash-thinking-exp"
+      );
     });
 
-    it('should set model for document agent', async () => {
+    it("should set model for document agent", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockDocumentAgentConfig as any);
 
       await configLoader.loadDocumentAgentConfig();
-      configLoader.setDocumentAgentModel('gemini-1.5-pro');
+      configLoader.setDocumentAgentModel("gemini-1.5-pro");
 
       const agent = configLoader.getDocumentAgentStreaming();
-      expect(agent?.setModel).toHaveBeenCalledWith('gemini-1.5-pro');
+      expect(agent?.setModel).toHaveBeenCalledWith("gemini-1.5-pro");
     });
 
-    it('should set model for mermaid agent', async () => {
+    it("should set model for mermaid agent", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockMermaidAgentConfig as any);
 
       await configLoader.loadMermaidAgentConfig();
-      configLoader.setMermaidAgentModel('gemini-1.5-flash');
+      configLoader.setMermaidAgentModel("gemini-1.5-flash");
 
       const agent = configLoader.getMermaidAgentStreaming();
-      expect(agent?.setModel).toHaveBeenCalledWith('gemini-1.5-flash');
+      expect(agent?.setModel).toHaveBeenCalledWith("gemini-1.5-flash");
     });
 
-    it('should set model for python agent', async () => {
+    it("should set model for python agent", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockPythonAgentConfig as any);
 
       await configLoader.loadPythonAgentConfig();
-      configLoader.setPythonAgentModel('gemini-2.0-flash-exp');
+      configLoader.setPythonAgentModel("gemini-2.0-flash-exp");
 
       const agent = configLoader.getPythonAgentStreaming();
-      expect(agent?.setModel).toHaveBeenCalledWith('gemini-2.0-flash-exp');
+      expect(agent?.setModel).toHaveBeenCalledWith("gemini-2.0-flash-exp");
     });
 
-    it('should set model for Git MCP agent', async () => {
+    it("should set model for Git MCP agent", async () => {
       mockGetAdminConfig.mockResolvedValueOnce(mockGitMcpAgentConfig as any);
 
       await configLoader.loadGitMcpAgentConfig();
-      configLoader.setGitMcpAgentModel('gemini-2.0-flash-exp');
+      configLoader.setGitMcpAgentModel("gemini-2.0-flash-exp");
 
       const agent = configLoader.getGitMcpAgent();
-      expect(agent?.setModel).toHaveBeenCalledWith('gemini-2.0-flash-exp');
+      expect(agent?.setModel).toHaveBeenCalledWith("gemini-2.0-flash-exp");
     });
 
-    it('should not throw error when setting model for uninitialized agent', () => {
+    it("should not throw error when setting model for uninitialized agent", () => {
       // Should not throw even if agent is not loaded yet
       expect(() => {
-        configLoader.setProviderToolsModel('gemini-2.0-flash-exp');
-        configLoader.setDocumentAgentModel('gemini-2.0-flash-exp');
-        configLoader.setMermaidAgentModel('gemini-2.0-flash-exp');
-        configLoader.setPythonAgentModel('gemini-2.0-flash-exp');
-        configLoader.setGitMcpAgentModel('gemini-2.0-flash-exp');
+        configLoader.setProviderToolsModel("gemini-2.0-flash-exp");
+        configLoader.setDocumentAgentModel("gemini-2.0-flash-exp");
+        configLoader.setMermaidAgentModel("gemini-2.0-flash-exp");
+        configLoader.setPythonAgentModel("gemini-2.0-flash-exp");
+        configLoader.setGitMcpAgentModel("gemini-2.0-flash-exp");
       }).not.toThrow();
     });
   });
 
-  describe('Complex Integration Scenarios', () => {
-    it('should handle full initialization flow with all agents', async () => {
-      const apiKey = 'test-full-api-key';
-      const githubPAT = 'ghp_test_full_pat';
-      const modelId = 'gemini-2.0-flash-exp';
+  describe("Complex Integration Scenarios", () => {
+    it("should handle full initialization flow with all agents", async () => {
+      const apiKey = "test-full-api-key";
+      const githubPAT = "ghp_test_full_pat";
+      const modelId = "gemini-2.0-flash-exp";
 
       mockGetAdminConfig
         .mockResolvedValueOnce(mockProviderToolsConfig as any)
@@ -613,7 +630,7 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getGitMcpAgentConfig()).toBeDefined();
     });
 
-    it('should handle partial agent initialization when some configs are disabled', async () => {
+    it("should handle partial agent initialization when some configs are disabled", async () => {
       const enabledDocConfig = mockDocumentAgentConfig;
       const disabledPythonConfig = {
         ...mockPythonAgentConfig,
@@ -636,17 +653,19 @@ describe('AgentConfigLoader', () => {
       expect(configLoader.getPythonAgentConfig()).toBeUndefined();
     });
 
-    it('should handle database errors gracefully for individual agents', async () => {
+    it("should handle database errors gracefully for individual agents", async () => {
       mockGetAdminConfig
         .mockResolvedValueOnce(mockDocumentAgentConfig as any)
-        .mockRejectedValueOnce(new Error('Database error for python agent'));
+        .mockRejectedValueOnce(new Error("Database error for python agent"));
 
       // Document agent should load successfully
       await configLoader.loadDocumentAgentConfig();
       expect(configLoader.getDocumentAgentStreaming()).toBeDefined();
 
       // Python agent should throw error
-      await expect(configLoader.loadPythonAgentConfig()).rejects.toThrow('Database error for python agent');
+      await expect(configLoader.loadPythonAgentConfig()).rejects.toThrow(
+        "Database error for python agent"
+      );
       expect(configLoader.getPythonAgentStreaming()).toBeUndefined();
 
       // Document agent should still be available

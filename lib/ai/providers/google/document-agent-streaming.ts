@@ -8,19 +8,19 @@ import {
   getDocumentByIdAndVersion,
   saveDocument,
 } from "@/lib/db/queries/document";
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  logAgentActivity,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import type { ChatMessage } from "@/lib/types";
 import type { DocumentAgentConfig } from "../../core/types";
 import { streamDocumentSuggestions } from "../../tools/document/streamDocumentSuggestions";
 import { streamTextDocument } from "../../tools/document/streamTextDocument";
 import { streamTextDocumentUpdate } from "../../tools/document/streamTextDocumentUpdate";
-import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 /**
  * GoogleDocumentAgentStreaming - Simplified streaming version of document agent
@@ -33,10 +33,9 @@ import {
  */
 export class GoogleDocumentAgentStreaming {
   private apiKey?: string;
-  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
   private readonly config: DocumentAgentConfig;
-  private toolConfigs?: {
+  private readonly toolConfigs?: {
     create?: {
       systemPrompt: string;
       userPromptTemplate: string;
@@ -538,7 +537,10 @@ export class GoogleDocumentAgentStreaming {
             transient: true,
           });
 
-          console.log("✅ [DOC-AGENT-STREAMING] Document reverted:", documentId);
+          console.log(
+            "✅ [DOC-AGENT-STREAMING] Document reverted:",
+            documentId
+          );
 
           const contentLength = revertedContent.length;
 

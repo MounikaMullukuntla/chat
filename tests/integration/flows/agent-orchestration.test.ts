@@ -3,11 +3,11 @@
  * Tests workflows involving multiple agents working together
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { GoogleChatAgent } from "@/lib/ai/providers/google/chat-agent";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChatModelAgentConfig } from "@/lib/ai/core/types";
 import { AgentConfigLoader } from "@/lib/ai/providers/google/agentConfigLoader";
 import { AgentToolBuilder } from "@/lib/ai/providers/google/agentToolBuilder";
-import type { ChatModelAgentConfig } from "@/lib/ai/core/types";
+import { GoogleChatAgent } from "@/lib/ai/providers/google/chat-agent";
 
 // Mock server-only module
 vi.mock("server-only", () => ({}));
@@ -136,7 +136,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
       rateLimit: {
         perMinute: 60,
         perHour: 1000,
-        perDay: 10000,
+        perDay: 10_000,
       },
       availableModels: [
         {
@@ -657,12 +657,10 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
       // Mock timeout
       const providerToolsAgent = configLoader.getProviderToolsAgent();
       if (providerToolsAgent) {
-        vi.spyOn(providerToolsAgent, "execute").mockImplementation(
-          async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            throw new Error("Request timeout");
-          }
-        );
+        vi.spyOn(providerToolsAgent, "execute").mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          throw new Error("Request timeout");
+        });
       }
 
       await expect(
@@ -843,15 +841,15 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         tools: {
           ...validConfig.tools,
           providerToolsAgent: {
-            ...validConfig.tools!.providerToolsAgent,
+            ...validConfig.tools?.providerToolsAgent,
             enabled: true,
           },
           documentAgent: {
-            ...validConfig.tools!.documentAgent,
+            ...validConfig.tools?.documentAgent,
             enabled: false, // Disabled
           },
           pythonAgent: {
-            ...validConfig.tools!.pythonAgent,
+            ...validConfig.tools?.pythonAgent,
             enabled: true,
           },
         },
@@ -933,11 +931,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         email: "test@example.com",
       };
 
-      const tools = toolBuilder.buildTools(
-        null,
-        testUser,
-        "test-chat-id"
-      );
+      const tools = toolBuilder.buildTools(null, testUser, "test-chat-id");
 
       // Execute with user context
       const result = await tools.documentAgent.execute({
@@ -1100,7 +1094,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
 
       // Workflow should complete in reasonable time
       expect(duration).toBeGreaterThan(0);
-      expect(duration).toBeLessThan(10000); // Less than 10 seconds
+      expect(duration).toBeLessThan(10_000); // Less than 10 seconds
     });
   });
 });

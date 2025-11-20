@@ -1,16 +1,15 @@
 import "server-only";
 
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import { getAdminConfig } from "../db/queries/admin";
 import { getActiveModelsByProvider } from "../db/queries/model-config";
 import { GoogleChatAgent } from "./providers/google/chat-agent";
-import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 // Simple agent config interface
 type AgentConfig = {

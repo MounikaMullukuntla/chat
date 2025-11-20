@@ -146,11 +146,8 @@ export function ChatModelAgentConfig({
 
       // Log successful configuration update
       try {
-        const {
-          logUserActivity,
-          UserActivityType,
-          ActivityCategory,
-        } = await import("@/lib/logging");
+        const { logUserActivity, UserActivityType, ActivityCategory } =
+          await import("@/lib/logging");
 
         void logUserActivity({
           user_id: "", // Will be populated from session
@@ -179,11 +176,9 @@ export function ChatModelAgentConfig({
 
       // Log configuration save error
       try {
-        const {
-          logAdminError,
-          ErrorCategory,
-          ErrorSeverity,
-        } = await import("@/lib/errors/logger");
+        const { logAdminError, ErrorCategory, ErrorSeverity } = await import(
+          "@/lib/errors/logger"
+        );
 
         void logAdminError(
           ErrorCategory.CONFIG_UPDATE_FAILED,

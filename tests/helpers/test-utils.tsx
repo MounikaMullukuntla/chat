@@ -2,15 +2,15 @@
  * Test utilities for rendering React components with providers
  */
 
-import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement } from 'react';
+import { type RenderOptions, render } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 /**
  * Custom render function that wraps components with necessary providers
  */
 export function renderWithProviders(
   ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
+  options?: Omit<RenderOptions, "wrapper">
 ) {
   return render(ui, { ...options });
 }
@@ -18,5 +18,5 @@ export function renderWithProviders(
 /**
  * Re-export everything from React Testing Library
  */
-export * from '@testing-library/react';
+export * from "@testing-library/react";
 export { renderWithProviders as render };

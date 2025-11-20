@@ -1,14 +1,18 @@
-import { defineConfig, Plugin } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import path from "node:path";
+import react from "@vitejs/plugin-react";
+import { defineConfig, type Plugin } from "vitest/config";
+import { config as dotenvConfig } from "dotenv";
+
+// Load .env.test file for test environment variables
+dotenvConfig({ path: ".env.test" });
 
 // Plugin to handle CSS imports in tests
 const cssPlugin = (): Plugin => ({
-  name: 'vitest-css-plugin',
-  transform(code, id) {
-    if (id.endsWith('.css')) {
+  name: "vitest-css-plugin",
+  transform(_code, id) {
+    if (id.endsWith(".css")) {
       return {
-        code: 'export default {}',
+        code: "export default {}",
         map: null,
       };
     }
@@ -18,36 +22,32 @@ const cssPlugin = (): Plugin => ({
 export default defineConfig({
   plugins: [react(), cssPlugin()],
   test: {
-    name: 'codechat-tests',
-    environment: 'happy-dom',
+    name: "codechat-tests",
+    environment: "happy-dom",
     globals: true,
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ["./tests/setup.ts"],
     css: false,
     server: {
       deps: {
-        external: ['katex'],
+        external: ["katex"],
       },
     },
     include: [
-      'tests/unit/**/*.test.{ts,tsx}',
-      'tests/integration/**/*.test.{ts,tsx}',
+      "tests/unit/**/*.test.{ts,tsx}",
+      "tests/integration/**/*.test.{ts,tsx}",
     ],
-    exclude: [
-      'node_modules',
-      '.next',
-      'tests/e2e/**/*',
-    ],
+    exclude: ["node_modules", ".next", "tests/e2e/**/*"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
       exclude: [
-        'node_modules/',
-        '.next/',
-        'tests/',
-        '**/*.config.{js,ts}',
-        '**/*.d.ts',
-        '**/types/**',
-        'lib/db/migrations/**',
+        "node_modules/",
+        ".next/",
+        "tests/",
+        "**/*.config.{js,ts}",
+        "**/*.d.ts",
+        "**/types/**",
+        "lib/db/migrations/**",
       ],
       thresholds: {
         lines: 80,
@@ -56,13 +56,13 @@ export default defineConfig({
         statements: 80,
       },
     },
-    testTimeout: 30000,
-    hookTimeout: 30000,
-    pool: 'threads',
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    pool: "threads",
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './'),
+      "@": path.resolve(__dirname, "./"),
     },
   },
 });

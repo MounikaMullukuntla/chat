@@ -6,15 +6,15 @@
  * Integration tests with actual database would be in tests/integration/
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { randomUUID } from 'crypto';
-import type { DBMessage } from '@/lib/db/drizzle-schema';
+import { randomUUID } from "node:crypto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DBMessage } from "@/lib/db/drizzle-schema";
 
 // Mock server-only before importing
-vi.mock('server-only', () => ({}));
+vi.mock("server-only", () => ({}));
 
 // Mock the entire database base module with factory function
-vi.mock('@/lib/db/queries/base', () => ({
+vi.mock("@/lib/db/queries/base", () => ({
   db: {
     insert: vi.fn(),
     select: vi.fn(),
@@ -23,19 +23,19 @@ vi.mock('@/lib/db/queries/base', () => ({
   },
 }));
 
+import { db } from "@/lib/db/queries/base";
 // Import after mocks are set up
 import {
-  saveMessages,
-  getMessagesByChatId,
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
-} from '@/lib/db/queries/chat';
-import { db } from '@/lib/db/queries/base';
+  getMessagesByChatId,
+  saveMessages,
+} from "@/lib/db/queries/chat";
 
 // Get the mocked db functions
 const mockDb = vi.mocked(db);
 
-describe('Message Query Tests', () => {
+describe("Message Query Tests", () => {
   const mockChatId = randomUUID();
   const mockMessageId = randomUUID();
 
@@ -47,13 +47,13 @@ describe('Message Query Tests', () => {
     vi.clearAllMocks();
   });
 
-  describe('saveMessages - Message Creation', () => {
-    it('should call database insert with correct message data', async () => {
+  describe("saveMessages - Message Creation", () => {
+    it("should call database insert with correct message data", async () => {
       const mockMessage: DBMessage = {
         id: mockMessageId,
         chatId: mockChatId,
-        role: 'user',
-        parts: [{ type: 'text', text: 'Hello, AI!' }],
+        role: "user",
+        parts: [{ type: "text", text: "Hello, AI!" }],
         attachments: [],
         createdAt: new Date(),
         modelUsed: null,
@@ -72,15 +72,15 @@ describe('Message Query Tests', () => {
       expect(result).toBeDefined();
     });
 
-    it('should save multiple messages in a batch operation', async () => {
+    it("should save multiple messages in a batch operation", async () => {
       const mockMessages: DBMessage[] = [
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'user',
-          parts: [{ type: 'text', text: 'First message' }],
+          role: "user",
+          parts: [{ type: "text", text: "First message" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:00:00Z'),
+          createdAt: new Date("2024-01-01T10:00:00Z"),
           modelUsed: null,
           inputTokens: null,
           outputTokens: null,
@@ -89,14 +89,14 @@ describe('Message Query Tests', () => {
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Response message' }],
+          role: "assistant",
+          parts: [{ type: "text", text: "Response message" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:01:00Z'),
-          modelUsed: 'gemini-2.0-flash-exp',
+          createdAt: new Date("2024-01-01T10:01:00Z"),
+          modelUsed: "gemini-2.0-flash-exp",
           inputTokens: 100,
           outputTokens: 150,
-          cost: '0.000025',
+          cost: "0.000025",
         },
       ];
 
@@ -109,14 +109,17 @@ describe('Message Query Tests', () => {
       expect(mockValues).toHaveBeenCalledWith(mockMessages);
     });
 
-    it('should handle message with multimodal parts', async () => {
+    it("should handle message with multimodal parts", async () => {
       const mockMessage: DBMessage = {
         id: mockMessageId,
         chatId: mockChatId,
-        role: 'user',
+        role: "user",
         parts: [
-          { type: 'text', text: 'Look at this image' },
-          { type: 'image', inlineData: { mimeType: 'image/png', data: 'base64data' } },
+          { type: "text", text: "Look at this image" },
+          {
+            type: "image",
+            inlineData: { mimeType: "image/png", data: "base64data" },
+          },
         ],
         attachments: [],
         createdAt: new Date(),
@@ -136,12 +139,12 @@ describe('Message Query Tests', () => {
       expect(calledMessage.parts).toHaveLength(2);
     });
 
-    it('should throw error when database insert fails', async () => {
+    it("should throw error when database insert fails", async () => {
       const mockMessage: DBMessage = {
         id: mockMessageId,
         chatId: mockChatId,
-        role: 'user',
-        parts: [{ type: 'text', text: 'Test message' }],
+        role: "user",
+        parts: [{ type: "text", text: "Test message" }],
         attachments: [],
         createdAt: new Date(),
         modelUsed: null,
@@ -150,23 +153,23 @@ describe('Message Query Tests', () => {
         cost: null,
       };
 
-      const mockValues = vi.fn().mockRejectedValue(new Error('Database error'));
+      const mockValues = vi.fn().mockRejectedValue(new Error("Database error"));
       vi.mocked(mockDb.insert).mockReturnValue({ values: mockValues } as any);
 
       await expect(saveMessages({ messages: [mockMessage] })).rejects.toThrow();
     });
   });
 
-  describe('getMessagesByChatId - Message List for Chat', () => {
-    it('should retrieve all messages for a specific chat', async () => {
+  describe("getMessagesByChatId - Message List for Chat", () => {
+    it("should retrieve all messages for a specific chat", async () => {
       const mockMessages: DBMessage[] = [
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'user',
-          parts: [{ type: 'text', text: 'First message' }],
+          role: "user",
+          parts: [{ type: "text", text: "First message" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:00:00Z'),
+          createdAt: new Date("2024-01-01T10:00:00Z"),
           modelUsed: null,
           inputTokens: null,
           outputTokens: null,
@@ -175,14 +178,14 @@ describe('Message Query Tests', () => {
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Second message' }],
+          role: "assistant",
+          parts: [{ type: "text", text: "Second message" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:01:00Z'),
-          modelUsed: 'gemini-2.0-flash-exp',
+          createdAt: new Date("2024-01-01T10:01:00Z"),
+          modelUsed: "gemini-2.0-flash-exp",
           inputTokens: 50,
           outputTokens: 75,
-          cost: '0.000015',
+          cost: "0.000015",
         },
       ];
 
@@ -195,11 +198,15 @@ describe('Message Query Tests', () => {
 
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(result).toHaveLength(2);
-      expect(result[0].parts).toEqual([{ type: 'text', text: 'First message' }]);
-      expect(result[1].parts).toEqual([{ type: 'text', text: 'Second message' }]);
+      expect(result[0].parts).toEqual([
+        { type: "text", text: "First message" },
+      ]);
+      expect(result[1].parts).toEqual([
+        { type: "text", text: "Second message" },
+      ]);
     });
 
-    it('should return empty array when chat has no messages', async () => {
+    it("should return empty array when chat has no messages", async () => {
       const mockOrderBy = vi.fn().mockResolvedValue([]);
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
@@ -211,8 +218,10 @@ describe('Message Query Tests', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should throw error when database query fails', async () => {
-      const mockOrderBy = vi.fn().mockRejectedValue(new Error('Database error'));
+    it("should throw error when database query fails", async () => {
+      const mockOrderBy = vi
+        .fn()
+        .mockRejectedValue(new Error("Database error"));
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
       vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
@@ -221,22 +230,23 @@ describe('Message Query Tests', () => {
     });
   });
 
-  describe('deleteMessagesByChatIdAfterTimestamp - Message Deletion', () => {
-    it('should delete messages after specified timestamp', async () => {
-      const timestamp = new Date('2024-01-01T12:00:00Z');
-      const mockMessagesToDelete = [
-        { id: randomUUID() },
-        { id: randomUUID() },
-      ];
+  describe("deleteMessagesByChatIdAfterTimestamp - Message Deletion", () => {
+    it("should delete messages after specified timestamp", async () => {
+      const timestamp = new Date("2024-01-01T12:00:00Z");
+      const mockMessagesToDelete = [{ id: randomUUID() }, { id: randomUUID() }];
 
       // Mock select query
       const mockSelectWhere = vi.fn().mockResolvedValue(mockMessagesToDelete);
-      const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectWhere });
+      const mockSelectFrom = vi
+        .fn()
+        .mockReturnValue({ where: mockSelectWhere });
       vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom } as any);
 
       // Mock delete operations
       const mockDeleteWhere = vi.fn().mockResolvedValue([]);
-      vi.mocked(mockDb.delete).mockReturnValue({ where: mockDeleteWhere } as any);
+      vi.mocked(mockDb.delete).mockReturnValue({
+        where: mockDeleteWhere,
+      } as any);
 
       await deleteMessagesByChatIdAfterTimestamp({
         chatId: mockChatId,
@@ -247,12 +257,14 @@ describe('Message Query Tests', () => {
       expect(mockDb.delete).toHaveBeenCalled();
     });
 
-    it('should not attempt deletion when no messages match criteria', async () => {
-      const timestamp = new Date('2024-01-01T12:00:00Z');
+    it("should not attempt deletion when no messages match criteria", async () => {
+      const timestamp = new Date("2024-01-01T12:00:00Z");
 
       // Mock select query to return no messages
       const mockSelectWhere = vi.fn().mockResolvedValue([]);
-      const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectWhere });
+      const mockSelectFrom = vi
+        .fn()
+        .mockReturnValue({ where: mockSelectWhere });
       vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom });
 
       await deleteMessagesByChatIdAfterTimestamp({
@@ -265,8 +277,8 @@ describe('Message Query Tests', () => {
       expect(mockDb.delete).not.toHaveBeenCalled();
     });
 
-    it('should handle deletion of multiple messages', async () => {
-      const timestamp = new Date('2024-01-01T12:00:00Z');
+    it("should handle deletion of multiple messages", async () => {
+      const timestamp = new Date("2024-01-01T12:00:00Z");
       const mockMessagesToDelete = [
         { id: randomUUID() },
         { id: randomUUID() },
@@ -274,7 +286,9 @@ describe('Message Query Tests', () => {
       ];
 
       const mockSelectWhere = vi.fn().mockResolvedValue(mockMessagesToDelete);
-      const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectWhere });
+      const mockSelectFrom = vi
+        .fn()
+        .mockReturnValue({ where: mockSelectWhere });
       vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom });
 
       const mockDeleteWhere = vi.fn().mockResolvedValue([]);
@@ -290,21 +304,26 @@ describe('Message Query Tests', () => {
     });
   });
 
-  describe('Message Pagination', () => {
-    it('should handle retrieval of large message sets', async () => {
+  describe("Message Pagination", () => {
+    it("should handle retrieval of large message sets", async () => {
       const messageCount = 100;
-      const mockMessages: DBMessage[] = Array.from({ length: messageCount }, (_, i) => ({
-        id: randomUUID(),
-        chatId: mockChatId,
-        role: i % 2 === 0 ? 'user' : 'assistant',
-        parts: [{ type: 'text', text: `Message ${i + 1}` }],
-        attachments: [],
-        createdAt: new Date(`2024-01-01T10:${String(i).padStart(2, '0')}:00Z`),
-        modelUsed: i % 2 === 1 ? 'gemini-2.0-flash-exp' : null,
-        inputTokens: i % 2 === 1 ? 50 : null,
-        outputTokens: i % 2 === 1 ? 75 : null,
-        cost: i % 2 === 1 ? '0.000015' : null,
-      }));
+      const mockMessages: DBMessage[] = Array.from(
+        { length: messageCount },
+        (_, i) => ({
+          id: randomUUID(),
+          chatId: mockChatId,
+          role: i % 2 === 0 ? "user" : "assistant",
+          parts: [{ type: "text", text: `Message ${i + 1}` }],
+          attachments: [],
+          createdAt: new Date(
+            `2024-01-01T10:${String(i).padStart(2, "0")}:00Z`
+          ),
+          modelUsed: i % 2 === 1 ? "gemini-2.0-flash-exp" : null,
+          inputTokens: i % 2 === 1 ? 50 : null,
+          outputTokens: i % 2 === 1 ? 75 : null,
+          cost: i % 2 === 1 ? "0.000015" : null,
+        })
+      );
 
       const mockOrderBy = vi.fn().mockResolvedValue(mockMessages);
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
@@ -314,19 +333,21 @@ describe('Message Query Tests', () => {
       const result = await getMessagesByChatId({ id: mockChatId });
 
       expect(result).toHaveLength(messageCount);
-      expect(result[0].parts).toEqual([{ type: 'text', text: 'Message 1' }]);
-      expect(result[messageCount - 1].parts).toEqual([{ type: 'text', text: `Message ${messageCount}` }]);
+      expect(result[0].parts).toEqual([{ type: "text", text: "Message 1" }]);
+      expect(result[messageCount - 1].parts).toEqual([
+        { type: "text", text: `Message ${messageCount}` },
+      ]);
     });
 
-    it('should maintain correct message order (ascending by creation time)', async () => {
+    it("should maintain correct message order (ascending by creation time)", async () => {
       const mockMessages: DBMessage[] = [
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'user',
-          parts: [{ type: 'text', text: 'First' }],
+          role: "user",
+          parts: [{ type: "text", text: "First" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:00:00Z'),
+          createdAt: new Date("2024-01-01T10:00:00Z"),
           modelUsed: null,
           inputTokens: null,
           outputTokens: null,
@@ -335,22 +356,22 @@ describe('Message Query Tests', () => {
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Second' }],
+          role: "assistant",
+          parts: [{ type: "text", text: "Second" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:01:00Z'),
-          modelUsed: 'gemini-2.0-flash-exp',
+          createdAt: new Date("2024-01-01T10:01:00Z"),
+          modelUsed: "gemini-2.0-flash-exp",
           inputTokens: 50,
           outputTokens: 75,
-          cost: '0.000015',
+          cost: "0.000015",
         },
         {
           id: randomUUID(),
           chatId: mockChatId,
-          role: 'user',
-          parts: [{ type: 'text', text: 'Third' }],
+          role: "user",
+          parts: [{ type: "text", text: "Third" }],
           attachments: [],
-          createdAt: new Date('2024-01-01T10:02:00Z'),
+          createdAt: new Date("2024-01-01T10:02:00Z"),
           modelUsed: null,
           inputTokens: null,
           outputTokens: null,
@@ -366,21 +387,25 @@ describe('Message Query Tests', () => {
       const result = await getMessagesByChatId({ id: mockChatId });
 
       // Verify chronological order
-      expect(result[0].parts).toEqual([{ type: 'text', text: 'First' }]);
-      expect(result[1].parts).toEqual([{ type: 'text', text: 'Second' }]);
-      expect(result[2].parts).toEqual([{ type: 'text', text: 'Third' }]);
+      expect(result[0].parts).toEqual([{ type: "text", text: "First" }]);
+      expect(result[1].parts).toEqual([{ type: "text", text: "Second" }]);
+      expect(result[2].parts).toEqual([{ type: "text", text: "Third" }]);
 
       // Verify timestamps are in order
-      expect(result[0].createdAt.getTime()).toBeLessThan(result[1].createdAt.getTime());
-      expect(result[1].createdAt.getTime()).toBeLessThan(result[2].createdAt.getTime());
+      expect(result[0].createdAt.getTime()).toBeLessThan(
+        result[1].createdAt.getTime()
+      );
+      expect(result[1].createdAt.getTime()).toBeLessThan(
+        result[2].createdAt.getTime()
+      );
     });
 
-    it('should handle single message edge case', async () => {
+    it("should handle single message edge case", async () => {
       const mockMessage: DBMessage = {
         id: mockMessageId,
         chatId: mockChatId,
-        role: 'user',
-        parts: [{ type: 'text', text: 'Only message' }],
+        role: "user",
+        parts: [{ type: "text", text: "Only message" }],
         attachments: [],
         createdAt: new Date(),
         modelUsed: null,
@@ -401,13 +426,13 @@ describe('Message Query Tests', () => {
     });
   });
 
-  describe('getMessageById - Get Single Message', () => {
-    it('should retrieve a specific message by ID', async () => {
+  describe("getMessageById - Get Single Message", () => {
+    it("should retrieve a specific message by ID", async () => {
       const mockMessage: DBMessage = {
         id: mockMessageId,
         chatId: mockChatId,
-        role: 'user',
-        parts: [{ type: 'text', text: 'Specific message' }],
+        role: "user",
+        parts: [{ type: "text", text: "Specific message" }],
         attachments: [],
         createdAt: new Date(),
         modelUsed: null,
@@ -426,7 +451,7 @@ describe('Message Query Tests', () => {
       expect(mockDb.select).toHaveBeenCalledTimes(1);
     });
 
-    it('should return empty array when message not found', async () => {
+    it("should return empty array when message not found", async () => {
       const mockWhere = vi.fn().mockResolvedValue([]);
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
       vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });

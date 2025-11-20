@@ -3,7 +3,7 @@
  * Tests tool creation, enablement, parameter validation, and execution delegation
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatModelAgentConfig } from "@/lib/ai/core/types";
 
 // Mock server-only module before any imports
@@ -45,10 +45,10 @@ vi.mock("@/lib/logging/activity-logger", () => {
   };
 });
 
-// Import after mocking
-import { AgentToolBuilder } from "@/lib/ai/providers/google/agentToolBuilder";
 import { AgentError, ErrorCodes } from "@/lib/ai/core/errors";
 import type { AgentConfigLoader } from "@/lib/ai/providers/google/agentConfigLoader";
+// Import after mocking
+import { AgentToolBuilder } from "@/lib/ai/providers/google/agentToolBuilder";
 
 describe("AgentToolBuilder", () => {
   let mockConfigLoader: AgentConfigLoader;
@@ -234,7 +234,11 @@ describe("AgentToolBuilder", () => {
       // Arrange
       const mockMermaidAgent = {
         execute: vi.fn().mockResolvedValue({
-          output: { id: "diagram-123", title: "Test Diagram", kind: "mermaid code" },
+          output: {
+            id: "diagram-123",
+            title: "Test Diagram",
+            kind: "mermaid code",
+          },
         }),
       };
 
@@ -467,7 +471,9 @@ describe("AgentToolBuilder", () => {
         }),
       };
       const mockGitMcpAgent = {
-        execute: vi.fn().mockResolvedValue({ output: "GitHub data", success: true }),
+        execute: vi
+          .fn()
+          .mockResolvedValue({ output: "GitHub data", success: true }),
         isReady: vi.fn().mockReturnValue(true),
       };
 
@@ -842,12 +848,12 @@ describe("AgentToolBuilder", () => {
       const builder = new AgentToolBuilder(config, mockConfigLoader);
 
       // Act & Assert
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        AgentError
-      );
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        /providerToolsAgent tool description is required/
-      );
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(AgentError);
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(/providerToolsAgent tool description is required/);
     });
 
     it("should throw error when providerToolsAgent parameter description is missing", () => {
@@ -902,12 +908,12 @@ describe("AgentToolBuilder", () => {
       const builder = new AgentToolBuilder(config, mockConfigLoader);
 
       // Act & Assert
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        AgentError
-      );
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        /providerToolsAgent tool parameter description is required/
-      );
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(AgentError);
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(/providerToolsAgent tool parameter description is required/);
     });
 
     it("should throw error when documentAgent description is missing", () => {
@@ -967,12 +973,12 @@ describe("AgentToolBuilder", () => {
       const builder = new AgentToolBuilder(config, mockConfigLoader);
 
       // Act & Assert
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        AgentError
-      );
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        /documentAgent tool description is required/
-      );
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(AgentError);
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(/documentAgent tool description is required/);
     });
 
     it("should throw error when documentAgent parameter descriptions are missing", () => {
@@ -1032,12 +1038,12 @@ describe("AgentToolBuilder", () => {
       const builder = new AgentToolBuilder(config, mockConfigLoader);
 
       // Act & Assert
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        AgentError
-      );
-      expect(() => builder.buildTools(mockDataStream, mockUser, chatId)).toThrow(
-        /documentAgent tool parameter descriptions .* are required/
-      );
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(AgentError);
+      expect(() =>
+        builder.buildTools(mockDataStream, mockUser, chatId)
+      ).toThrow(/documentAgent tool parameter descriptions .* are required/);
     });
   });
 
@@ -1095,7 +1101,7 @@ describe("AgentToolBuilder", () => {
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
 
       // Act
-      const result = await tools!.providerToolsAgent.execute({
+      const result = await tools?.providerToolsAgent.execute({
         input: "test search query",
       });
 
@@ -1165,7 +1171,7 @@ describe("AgentToolBuilder", () => {
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
 
       // Act
-      const result = await tools!.documentAgent.execute({
+      const result = await tools?.documentAgent.execute({
         operation: "create",
         instruction: "Create a test document",
         documentId: undefined,
@@ -1180,7 +1186,7 @@ describe("AgentToolBuilder", () => {
         targetVersion: undefined,
         dataStream: mockDataStream,
         user: mockUser,
-        chatId: chatId,
+        chatId,
       });
       expect(result).toEqual({
         id: "doc-123",
@@ -1246,7 +1252,7 @@ describe("AgentToolBuilder", () => {
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
 
       // Act
-      const result = await tools!.gitMcpAgent.execute({
+      const result = await tools?.gitMcpAgent.execute({
         input: "get repository info",
       });
 
@@ -1313,14 +1319,16 @@ describe("AgentToolBuilder", () => {
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
 
       // Act
-      const result = await tools!.gitMcpAgent.execute({
+      const result = await tools?.gitMcpAgent.execute({
         input: "get repository info",
       });
 
       // Assert
       expect(mockGitMcpAgent.isReady).toHaveBeenCalled();
       expect(mockGitMcpAgent.execute).not.toHaveBeenCalled();
-      expect(result).toContain("Error: GitHub MCP Agent is not properly configured");
+      expect(result).toContain(
+        "Error: GitHub MCP Agent is not properly configured"
+      );
     });
   });
 
@@ -1381,7 +1389,7 @@ describe("AgentToolBuilder", () => {
 
       // Act & Assert
       await expect(
-        tools!.providerToolsAgent.execute({ input: "test query" })
+        tools?.providerToolsAgent.execute({ input: "test query" })
       ).rejects.toThrow("Provider tools execution failed");
     });
 
@@ -1444,7 +1452,7 @@ describe("AgentToolBuilder", () => {
 
       // Act & Assert
       await expect(
-        tools!.documentAgent.execute({
+        tools?.documentAgent.execute({
           operation: "create",
           instruction: "test",
         })
@@ -1508,7 +1516,7 @@ describe("AgentToolBuilder", () => {
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
 
       // Act
-      const result = await tools!.gitMcpAgent.execute({
+      const result = await tools?.gitMcpAgent.execute({
         input: "get repository info",
       });
 

@@ -3,11 +3,11 @@
  * Tests document, Python, and Mermaid streaming with interruption and resumption
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { GoogleDocumentAgentStreaming } from "@/lib/ai/providers/google/document-agent-streaming";
-import { GooglePythonAgentStreaming } from "@/lib/ai/providers/google/python-agent-streaming";
-import { GoogleMermaidAgentStreaming } from "@/lib/ai/providers/google/mermaid-agent-streaming";
 import type { UIMessageStreamWriter } from "ai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GoogleDocumentAgentStreaming } from "@/lib/ai/providers/google/document-agent-streaming";
+import { GoogleMermaidAgentStreaming } from "@/lib/ai/providers/google/mermaid-agent-streaming";
+import { GooglePythonAgentStreaming } from "@/lib/ai/providers/google/python-agent-streaming";
 import type { ChatMessage } from "@/lib/types";
 
 // Mock server-only module
@@ -17,8 +17,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/logging/activity-logger", () => ({
   logAgentActivity: vi.fn(),
   PerformanceTracker: class {
-    constructor() {}
-    getDuration() { return 100; }
+    getDuration() {
+      return 100;
+    }
   },
   createCorrelationId: vi.fn(() => "test-correlation-id"),
   AgentType: {
@@ -177,20 +178,28 @@ vi.mock("@/lib/ai/tools/document/streamTextDocument", () => ({
 
     // Write metadata
     dataStream.write({ type: "data-kind", data: "text", transient: true });
-    dataStream.write({ type: "data-id", data: "test-doc-123", transient: true });
+    dataStream.write({
+      type: "data-id",
+      data: "test-doc-123",
+      transient: true,
+    });
     dataStream.write({ type: "data-title", data: title, transient: true });
     dataStream.write({ type: "data-clear", data: null, transient: true });
 
     // Simulate streaming with chunks
-    const content = `Document: ${instruction}`;
+    const _content = `Document: ${instruction}`;
     const chunks = ["Doc", "ument", ": ", instruction];
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       streamingChunks.push(chunk);
-      dataStream.write({ type: "data-textDelta", data: chunk, transient: true });
+      dataStream.write({
+        type: "data-textDelta",
+        data: chunk,
+        transient: true,
+      });
       // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Check interruption AFTER processing at least one chunk
       if (i > 0 && streamInterrupted && !streamResumed) {
@@ -215,8 +224,12 @@ vi.mock("@/lib/ai/tools/document/streamTextDocumentUpdate", () => ({
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       streamingChunks.push(chunk);
-      dataStream.write({ type: "data-textDelta", data: chunk, transient: true });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      dataStream.write({
+        type: "data-textDelta",
+        data: chunk,
+        transient: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       if (i > 0 && streamInterrupted && !streamResumed) {
         throw new Error("Stream interrupted");
@@ -244,7 +257,7 @@ vi.mock("@/lib/ai/tools/python/streamPythonCode", () => ({
         const chunk = chunks[i];
         streamingChunks.push(chunk);
         dataStream.write({ type: "data-codeDelta", data: chunk });
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         if (i > 0 && streamInterrupted && !streamResumed) {
           throw new Error("Stream interrupted");
@@ -271,7 +284,7 @@ vi.mock("@/lib/ai/tools/python/streamPythonCodeUpdate", () => ({
       const chunk = chunks[i];
       streamingChunks.push(chunk);
       dataStream.write({ type: "data-codeDelta", data: chunk });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       if (i > 0 && streamInterrupted && !streamResumed) {
         throw new Error("Stream interrupted");
@@ -294,7 +307,7 @@ vi.mock("@/lib/ai/tools/python/streamPythonCodeFix", () => ({
     for (const chunk of chunks) {
       streamingChunks.push(chunk);
       dataStream.write({ type: "data-codeDelta", data: chunk });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
     dataStream.write({ type: "data-finish", data: null });
@@ -318,7 +331,7 @@ vi.mock("@/lib/ai/tools/mermaid/streamMermaidDiagram", () => ({
         const chunk = chunks[i];
         streamingChunks.push(chunk);
         dataStream.write({ type: "data-codeDelta", data: chunk });
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         if (i > 0 && streamInterrupted && !streamResumed) {
           throw new Error("Stream interrupted");
@@ -345,7 +358,7 @@ vi.mock("@/lib/ai/tools/mermaid/streamMermaidDiagramUpdate", () => ({
       const chunk = chunks[i];
       streamingChunks.push(chunk);
       dataStream.write({ type: "data-codeDelta", data: chunk });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       if (i > 0 && streamInterrupted && !streamResumed) {
         throw new Error("Stream interrupted");
@@ -368,7 +381,7 @@ vi.mock("@/lib/ai/tools/mermaid/streamMermaidDiagramFix", () => ({
     for (const chunk of chunks) {
       streamingChunks.push(chunk);
       dataStream.write({ type: "data-codeDelta", data: chunk });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
     dataStream.write({ type: "data-finish", data: null });
@@ -435,7 +448,7 @@ describe("Streaming Integration Tests", () => {
       );
 
       // Verify content was streamed in chunks
-      const textDeltas = writtenData.filter(d => d.type === "data-textDelta");
+      const textDeltas = writtenData.filter((d) => d.type === "data-textDelta");
       expect(textDeltas.length).toBeGreaterThan(0);
 
       // Verify finish event
@@ -467,7 +480,7 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.isUpdate).toBe(true);
 
       // Verify streaming occurred
-      const textDeltas = writtenData.filter(d => d.type === "data-textDelta");
+      const textDeltas = writtenData.filter((d) => d.type === "data-textDelta");
       expect(textDeltas.length).toBeGreaterThan(0);
     });
 
@@ -532,7 +545,7 @@ describe("Streaming Integration Tests", () => {
       );
 
       // Verify code was streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
 
       // Verify chunks were captured
@@ -561,7 +574,7 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.isUpdate).toBe(true);
 
       // Verify update streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
     });
 
@@ -587,7 +600,7 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.isFix).toBe(true);
 
       // Verify fix streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
     });
 
@@ -648,7 +661,7 @@ describe("Streaming Integration Tests", () => {
       );
 
       // Verify diagram was streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
     });
 
@@ -674,7 +687,7 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.isUpdate).toBe(true);
 
       // Verify update streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
     });
 
@@ -700,7 +713,7 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.isFix).toBe(true);
 
       // Verify fix streamed
-      const codeDeltas = writtenData.filter(d => d.type === "data-codeDelta");
+      const codeDeltas = writtenData.filter((d) => d.type === "data-codeDelta");
       expect(codeDeltas.length).toBeGreaterThan(0);
     });
 
@@ -811,7 +824,7 @@ describe("Streaming Integration Tests", () => {
 
     it("should gracefully handle network errors during streaming", async () => {
       // Mock to throw network error
-      const mockError = new Error("Network connection lost");
+      const _mockError = new Error("Network connection lost");
 
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
@@ -1009,11 +1022,11 @@ describe("Streaming Integration Tests", () => {
       expect(result.output.id).toBe("test-doc-123");
 
       // Verify all metadata was sent
-      expect(writtenData.some(d => d.type === "data-kind")).toBe(true);
-      expect(writtenData.some(d => d.type === "data-id")).toBe(true);
-      expect(writtenData.some(d => d.type === "data-title")).toBe(true);
-      expect(writtenData.some(d => d.type === "data-clear")).toBe(true);
-      expect(writtenData.some(d => d.type === "data-finish")).toBe(true);
+      expect(writtenData.some((d) => d.type === "data-kind")).toBe(true);
+      expect(writtenData.some((d) => d.type === "data-id")).toBe(true);
+      expect(writtenData.some((d) => d.type === "data-title")).toBe(true);
+      expect(writtenData.some((d) => d.type === "data-clear")).toBe(true);
+      expect(writtenData.some((d) => d.type === "data-finish")).toBe(true);
     });
   });
 });

@@ -9,18 +9,18 @@ import {
   getDocumentByIdAndVersion,
   saveDocument,
 } from "@/lib/db/queries/document";
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  logAgentActivity,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import type { ChatMessage } from "@/lib/types";
 import { streamMermaidDiagram } from "../../tools/mermaid/streamMermaidDiagram";
 import { streamMermaidDiagramFix } from "../../tools/mermaid/streamMermaidDiagramFix";
 import { streamMermaidDiagramUpdate } from "../../tools/mermaid/streamMermaidDiagramUpdate";
-import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 // Agent config interface
 type MermaidAgentConfig = {
@@ -42,10 +42,9 @@ type MermaidAgentConfig = {
  */
 export class GoogleMermaidAgentStreaming {
   private apiKey?: string;
-  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
   private readonly config: MermaidAgentConfig;
-  private toolConfigs?: {
+  private readonly toolConfigs?: {
     create?: { systemPrompt: string; enabled: boolean };
     update?: {
       systemPrompt: string;
@@ -291,7 +290,8 @@ export class GoogleMermaidAgentStreaming {
 
       const systemPrompt = toolConfig.systemPrompt;
       const title =
-        instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
+        instruction.split("\n")[0].substring(0, 100).trim() ||
+        "Mermaid Diagram";
 
       // Use streamMermaidDiagram tool with streamToUI=false
       const result = await streamMermaidDiagram({
@@ -392,7 +392,8 @@ export class GoogleMermaidAgentStreaming {
 
       // Extract title from instruction
       const title =
-        instruction.split("\n")[0].substring(0, 100).trim() || "Mermaid Diagram";
+        instruction.split("\n")[0].substring(0, 100).trim() ||
+        "Mermaid Diagram";
       const systemPrompt = toolConfig.systemPrompt;
 
       // Use streamMermaidDiagram tool

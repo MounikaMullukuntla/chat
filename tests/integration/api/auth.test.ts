@@ -17,41 +17,44 @@
  * NOTE: These tests will be skipped if Supabase is not available.
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
-import { createTestSupabaseClient, createTestUser, deleteTestUser } from '@/tests/helpers/db-helpers';
-import { testUsers } from '@/tests/fixtures/users';
-import type { User, Session } from '@supabase/supabase-js';
+import type { Session } from "@supabase/supabase-js";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  createTestSupabaseClient,
+  createTestUser,
+  deleteTestUser,
+} from "@/tests/helpers/db-helpers";
 
 /**
  * Check if Supabase is available
  */
 async function isSupabaseAvailable(): Promise<boolean> {
   try {
-    const response = await fetch('http://localhost:54321/auth/v1/health', {
-      method: 'GET',
+    const response = await fetch("http://localhost:54321/auth/v1/health", {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
     return response.ok;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
 
-describe('Authentication Integration Tests', () => {
+describe("Authentication Integration Tests", () => {
   let testUserId: string | null = null;
   const testEmail = `test-${Date.now()}@example.com`;
-  const testPassword = 'TestPassword123!';
+  const testPassword = "TestPassword123!";
   let supabaseAvailable = false;
 
   beforeAll(async () => {
     supabaseAvailable = await isSupabaseAvailable();
     if (!supabaseAvailable) {
       console.warn(
-        '\n⚠️  Supabase is not available at localhost:54321\n' +
-        '   To run these tests, start Supabase with: npx supabase start\n' +
-        '   Tests will be skipped.\n'
+        "\n⚠️  Supabase is not available at localhost:54321\n" +
+          "   To run these tests, start Supabase with: npx supabase start\n" +
+          "   Tests will be skipped.\n"
       );
     }
   });
@@ -62,17 +65,19 @@ describe('Authentication Integration Tests', () => {
       try {
         await deleteTestUser(testUserId);
       } catch (error) {
-        console.error('Failed to cleanup test user:', error);
+        console.error("Failed to cleanup test user:", error);
       }
       testUserId = null;
     }
   });
 
-  describe('User Registration', () => {
-    it('should successfully register a new user with valid credentials', async () => {
-      if (!supabaseAvailable) return;
+  describe("User Registration", () => {
+    it("should successfully register a new user with valid credentials", async () => {
       if (!supabaseAvailable) {
-        console.log('⏭️  Skipping: Supabase not available');
+        return;
+      }
+      if (!supabaseAvailable) {
+        console.log("⏭️  Skipping: Supabase not available");
         return;
       }
       const supabase = createTestSupabaseClient();
@@ -83,7 +88,7 @@ describe('Authentication Integration Tests', () => {
         password: testPassword,
         options: {
           data: {
-            role: 'user',
+            role: "user",
             isActive: true,
           },
         },
@@ -92,7 +97,7 @@ describe('Authentication Integration Tests', () => {
       expect(error).toBeNull();
       expect(data.user).toBeDefined();
       expect(data.user?.email).toBe(testEmail);
-      expect(data.user?.user_metadata?.role).toBe('user');
+      expect(data.user?.user_metadata?.role).toBe("user");
       expect(data.user?.user_metadata?.isActive).toBe(true);
 
       // Store user ID for cleanup
@@ -101,9 +106,13 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should set default user metadata on registration', async () => {
-      if (!supabaseAvailable) return;
-      if (!supabaseAvailable) return;
+    it("should set default user metadata on registration", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signUp({
@@ -111,10 +120,10 @@ describe('Authentication Integration Tests', () => {
         password: testPassword,
         options: {
           data: {
-            role: 'user',
+            role: "user",
             isActive: true,
             settings: {
-              theme: 'system',
+              theme: "system",
               notifications: true,
             },
           },
@@ -123,10 +132,10 @@ describe('Authentication Integration Tests', () => {
 
       expect(error).toBeNull();
       expect(data.user?.user_metadata).toMatchObject({
-        role: 'user',
+        role: "user",
         isActive: true,
         settings: {
-          theme: 'system',
+          theme: "system",
           notifications: true,
         },
       });
@@ -136,9 +145,13 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should fail to register with duplicate email', async () => {
-      if (!supabaseAvailable) return;
-      if (!supabaseAvailable) return;
+    it("should fail to register with duplicate email", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Create first user
@@ -166,28 +179,36 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should fail to register with invalid email format', async () => {
-      if (!supabaseAvailable) return;
-      if (!supabaseAvailable) return;
+    it("should fail to register with invalid email format", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signUp({
-        email: 'invalid-email',
+        email: "invalid-email",
         password: testPassword,
       });
 
       expect(error).toBeDefined();
-      expect(error?.message).toContain('email');
+      expect(error?.message).toContain("email");
     });
 
-    it('should fail to register with weak password', async () => {
-      if (!supabaseAvailable) return;
-      if (!supabaseAvailable) return;
+    it("should fail to register with weak password", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signUp({
         email: testEmail,
-        password: '123', // Too short
+        password: "123", // Too short
       });
 
       // Supabase requires minimum password length
@@ -196,16 +217,20 @@ describe('Authentication Integration Tests', () => {
     });
   });
 
-  describe('User Login', () => {
+  describe("User Login", () => {
     beforeEach(async () => {
-      if (!supabaseAvailable) return;
+      if (!supabaseAvailable) {
+        return;
+      }
       // Create a test user before each login test
       const user = await createTestUser(testEmail, testPassword);
       testUserId = user.id;
     });
 
-    it('should successfully login with valid credentials', async () => {
-      if (!supabaseAvailable) return;
+    it("should successfully login with valid credentials", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -221,8 +246,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.session?.refresh_token).toBeDefined();
     });
 
-    it('should return session with valid tokens on successful login', async () => {
-      if (!supabaseAvailable) return;
+    it("should return session with valid tokens on successful login", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -241,8 +268,10 @@ describe('Authentication Integration Tests', () => {
       expect(session.expires_at).toBeGreaterThan(Date.now() / 1000);
     });
 
-    it('should include user metadata in login response', async () => {
-      if (!supabaseAvailable) return;
+    it("should include user metadata in login response", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -256,51 +285,63 @@ describe('Authentication Integration Tests', () => {
     });
   });
 
-  describe('Login with Invalid Credentials', () => {
+  describe("Login with Invalid Credentials", () => {
     beforeEach(async () => {
-      if (!supabaseAvailable) return;
+      if (!supabaseAvailable) {
+        return;
+      }
       // Create a test user before each test
       const user = await createTestUser(testEmail, testPassword);
       testUserId = user.id;
     });
 
-    it('should fail to login with incorrect password', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to login with incorrect password", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: testEmail,
-        password: 'WrongPassword123!',
+        password: "WrongPassword123!",
       });
 
       expect(error).toBeDefined();
-      expect(error?.message.toLowerCase()).toMatch(/password|credentials|invalid/);
+      expect(error?.message.toLowerCase()).toMatch(
+        /password|credentials|invalid/
+      );
       expect(data.user).toBeNull();
       expect(data.session).toBeNull();
     });
 
-    it('should fail to login with non-existent email', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to login with non-existent email", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'nonexistent@example.com',
+        email: "nonexistent@example.com",
         password: testPassword,
       });
 
       expect(error).toBeDefined();
-      expect(error?.message.toLowerCase()).toMatch(/user|email|credentials|invalid/);
+      expect(error?.message.toLowerCase()).toMatch(
+        /user|email|credentials|invalid/
+      );
       expect(data.user).toBeNull();
       expect(data.session).toBeNull();
     });
 
-    it('should fail to login with empty password', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to login with empty password", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: testEmail,
-        password: '',
+        password: "",
       });
 
       expect(error).toBeDefined();
@@ -308,12 +349,14 @@ describe('Authentication Integration Tests', () => {
       expect(data.session).toBeNull();
     });
 
-    it('should fail to login with empty email', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to login with empty email", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: '',
+        email: "",
         password: testPassword,
       });
 
@@ -322,12 +365,14 @@ describe('Authentication Integration Tests', () => {
       expect(data.session).toBeNull();
     });
 
-    it('should fail to login with malformed email', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to login with malformed email", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'not-an-email',
+        email: "not-an-email",
         password: testPassword,
       });
 
@@ -337,16 +382,20 @@ describe('Authentication Integration Tests', () => {
     });
   });
 
-  describe('Logout', () => {
+  describe("Logout", () => {
     beforeEach(async () => {
-      if (!supabaseAvailable) return;
+      if (!supabaseAvailable) {
+        return;
+      }
       // Create and login a test user before each logout test
       const user = await createTestUser(testEmail, testPassword);
       testUserId = user.id;
     });
 
-    it('should successfully logout authenticated user', async () => {
-      if (!supabaseAvailable) return;
+    it("should successfully logout authenticated user", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // First, login
@@ -369,8 +418,10 @@ describe('Authentication Integration Tests', () => {
       expect(sessionAfter.session).toBeNull();
     });
 
-    it('should clear session after logout', async () => {
-      if (!supabaseAvailable) return;
+    it("should clear session after logout", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -387,8 +438,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.session).toBeNull();
     });
 
-    it('should clear user after logout', async () => {
-      if (!supabaseAvailable) return;
+    it("should clear user after logout", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -411,8 +464,10 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should not error when logging out without active session', async () => {
-      if (!supabaseAvailable) return;
+    it("should not error when logging out without active session", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Attempt to logout without being logged in
@@ -423,16 +478,20 @@ describe('Authentication Integration Tests', () => {
     });
   });
 
-  describe('Session Validation', () => {
+  describe("Session Validation", () => {
     beforeEach(async () => {
-      if (!supabaseAvailable) return;
+      if (!supabaseAvailable) {
+        return;
+      }
       // Create a test user before each test
       const user = await createTestUser(testEmail, testPassword);
       testUserId = user.id;
     });
 
-    it('should return valid session for authenticated user', async () => {
-      if (!supabaseAvailable) return;
+    it("should return valid session for authenticated user", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -451,8 +510,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.session?.user.email).toBe(testEmail);
     });
 
-    it('should return null session for unauthenticated user', async () => {
-      if (!supabaseAvailable) return;
+    it("should return null session for unauthenticated user", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Don't login - just try to get session
@@ -462,8 +523,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.session).toBeNull();
     });
 
-    it('should validate session contains required fields', async () => {
-      if (!supabaseAvailable) return;
+    it("should validate session contains required fields", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -485,8 +548,10 @@ describe('Authentication Integration Tests', () => {
       expect(session.user.email).toBe(testEmail);
     });
 
-    it('should return user with getUser() for authenticated session', async () => {
-      if (!supabaseAvailable) return;
+    it("should return user with getUser() for authenticated session", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -504,8 +569,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.user?.email).toBe(testEmail);
     });
 
-    it('should fail to get user when not authenticated', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to get user when not authenticated", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Don't login - just try to get user
@@ -519,8 +586,10 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should maintain session across multiple requests', async () => {
-      if (!supabaseAvailable) return;
+    it("should maintain session across multiple requests", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -539,21 +608,29 @@ describe('Authentication Integration Tests', () => {
       expect(session3.session).toBeDefined();
 
       // All sessions should have the same access token
-      expect(session1.session?.access_token).toBe(session2.session?.access_token);
-      expect(session2.session?.access_token).toBe(session3.session?.access_token);
+      expect(session1.session?.access_token).toBe(
+        session2.session?.access_token
+      );
+      expect(session2.session?.access_token).toBe(
+        session3.session?.access_token
+      );
     });
   });
 
-  describe('Token Refresh', () => {
+  describe("Token Refresh", () => {
     beforeEach(async () => {
-      if (!supabaseAvailable) return;
+      if (!supabaseAvailable) {
+        return;
+      }
       // Create a test user before each test
       const user = await createTestUser(testEmail, testPassword);
       testUserId = user.id;
     });
 
-    it('should successfully refresh session token', async () => {
-      if (!supabaseAvailable) return;
+    it("should successfully refresh session token", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -583,8 +660,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.session?.refresh_token).toBeTruthy();
     });
 
-    it('should return user information after token refresh', async () => {
-      if (!supabaseAvailable) return;
+    it("should return user information after token refresh", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -602,8 +681,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.user?.email).toBe(testEmail);
     });
 
-    it('should fail to refresh without active session', async () => {
-      if (!supabaseAvailable) return;
+    it("should fail to refresh without active session", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Don't login - just try to refresh
@@ -617,8 +698,10 @@ describe('Authentication Integration Tests', () => {
       }
     });
 
-    it('should maintain user metadata after token refresh', async () => {
-      if (!supabaseAvailable) return;
+    it("should maintain user metadata after token refresh", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -635,8 +718,10 @@ describe('Authentication Integration Tests', () => {
       expect(data.user?.email).toBe(testEmail);
     });
 
-    it('should update session after refresh', async () => {
-      if (!supabaseAvailable) return;
+    it("should update session after refresh", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -664,8 +749,10 @@ describe('Authentication Integration Tests', () => {
       expect(afterRefresh.session?.user.id).toBe(testUserId);
     });
 
-    it('should extend session expiration after refresh', async () => {
-      if (!supabaseAvailable) return;
+    it("should extend session expiration after refresh", async () => {
+      if (!supabaseAvailable) {
+        return;
+      }
       const supabase = createTestSupabaseClient();
 
       // Login
@@ -679,7 +766,7 @@ describe('Authentication Integration Tests', () => {
       const originalExpiration = beforeRefresh.session?.expires_at;
 
       // Wait a small amount of time
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Refresh session
       await supabase.auth.refreshSession();

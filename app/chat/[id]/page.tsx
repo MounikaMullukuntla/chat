@@ -9,12 +9,12 @@ const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";
 
 import { getCurrentUser } from "@/lib/auth/server";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
-import { convertToUIMessages } from "@/lib/utils";
 import {
+  ActivityCategory,
   logUserActivity,
   UserActivityType,
-  ActivityCategory,
 } from "@/lib/logging/activity-logger";
+import { convertToUIMessages } from "@/lib/utils";
 
 // Force dynamic rendering for authenticated pages
 export const dynamic = "force-dynamic";

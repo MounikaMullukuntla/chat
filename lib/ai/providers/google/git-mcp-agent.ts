@@ -4,12 +4,12 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { streamText, tool } from "ai";
 import { z } from "zod";
 import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
   logAgentActivity,
   PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
 } from "@/lib/logging/activity-logger";
 import type { AgentResult, GitMcpAgentConfig } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export class GoogleGitMcpAgent {
   private githubPAT?: string;
   private modelId?: string;
   private googleProvider?: any;
-  private mcpClient?: any;
+  private readonly mcpClient?: any;
 
   constructor(config: GitMcpAgentConfig) {
     this.config = config;
@@ -254,7 +254,10 @@ export class GoogleGitMcpAgent {
    * @param params Operation parameters
    * @returns Agent execution result
    */
-  async execute(params: { input: string; userId?: string }): Promise<AgentResult> {
+  async execute(params: {
+    input: string;
+    userId?: string;
+  }): Promise<AgentResult> {
     const { input, userId } = params;
     const correlationId = createCorrelationId();
     const tracker = new PerformanceTracker({
