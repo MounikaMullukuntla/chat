@@ -24,6 +24,9 @@ vi.mock("katex", () => ({
   renderToString: vi.fn(() => ""),
 }));
 
+// Mock katex CSS imports
+vi.mock("katex/dist/katex.min.css", () => ({}));
+
 // Mock mermaid to avoid CSS import issues
 vi.mock("mermaid", () => ({
   default: {
@@ -36,13 +39,43 @@ vi.mock("server-only", () => ({}));
 
 // Setup global test environment
 beforeAll(() => {
-  // Mock environment variables for testing
-  process.env.NEXT_PUBLIC_SUPABASE_URL = "http://localhost:54321";
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+  // Load environment variables from .env.test file
+  // This ensures test credentials are available
+  // NOTE: For real API testing, set GOOGLE_AI_API_KEY in your .env.test file
+
+  // Supabase configuration - use .env.test values or fallback to localhost
+  process.env.NEXT_PUBLIC_SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "test-anon-key";
+  process.env.SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || "test-service-role-key";
   process.env.POSTGRES_URL =
+    process.env.POSTGRES_URL ||
     "postgresql://postgres:postgres@localhost:54321/postgres";
-  process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
+  process.env.NEXT_PUBLIC_SITE_URL =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  // Google AI API Key for real API testing
+  // Set this in .env.test for integration/E2E tests
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    console.warn(
+      "⚠️  GOOGLE_AI_API_KEY not set - Real API tests will be skipped"
+    );
+  }
+
+  // Log configuration for debugging (without exposing secrets)
+  console.log("Test Environment Configuration:");
+  console.log(
+    `  - Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`
+  );
+  console.log(
+    `  - Has Supabase Anon Key: ${!!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+  );
+  console.log(
+    `  - Has Service Role Key: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`
+  );
+  console.log(`  - Has Google AI Key: ${!!process.env.GOOGLE_AI_API_KEY}`);
 
   // Mock Next.js router
   vi.mock("next/navigation", () => ({

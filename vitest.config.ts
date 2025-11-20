@@ -1,6 +1,10 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vitest/config";
+import { config as dotenvConfig } from "dotenv";
+
+// Load .env.test file for test environment variables
+dotenvConfig({ path: ".env.test" });
 
 // Plugin to handle CSS imports in tests
 const cssPlugin = (): Plugin => ({
