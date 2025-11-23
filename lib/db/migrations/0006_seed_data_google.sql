@@ -152,7 +152,7 @@ INSERT INTO admin_config (config_key, config_data) VALUES
     },
     "urlContext": {
       "description": "Fetch and analyze content from web pages and documents",
-      "enabled": false
+      "enabled": true
     },
     "codeExecution": {
       "description": "Execute Python code and return results with output",
