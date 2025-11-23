@@ -15,10 +15,10 @@ import {
   logApiError,
 } from "@/lib/errors/logger";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging";
 
 // Validation schema for model updates

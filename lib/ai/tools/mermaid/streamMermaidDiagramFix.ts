@@ -6,14 +6,14 @@ import type { UIMessageStreamWriter } from "ai";
 import { streamObject } from "ai";
 import { z } from "zod";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
-import type { ChatMessage } from "@/lib/types";
 import {
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
   AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
 } from "@/lib/logging/activity-logger";
+import type { ChatMessage } from "@/lib/types";
 
 /**
  * Validate Mermaid syntax (basic validation)

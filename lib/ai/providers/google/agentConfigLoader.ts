@@ -2,12 +2,11 @@ import "server-only";
 
 import { getAdminConfig } from "@/lib/db/queries/admin";
 import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
   AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
 } from "@/lib/logging/activity-logger";
 import { GoogleDocumentAgentStreaming } from "./document-agent-streaming";
 import { GoogleGitMcpAgent } from "./git-mcp-agent";
@@ -22,16 +21,16 @@ import { GooglePythonAgentStreaming } from "./python-agent-streaming";
 export class AgentConfigLoader {
   private apiKey?: string;
   private githubPAT?: string;
-  private providerToolsAgent?: GoogleProviderToolsAgent;
-  private providerToolsConfig?: any;
-  private documentAgentStreaming?: GoogleDocumentAgentStreaming;
-  private documentAgentConfig?: any;
-  private mermaidAgentStreaming?: GoogleMermaidAgentStreaming;
-  private mermaidAgentConfig?: any;
-  private pythonAgentStreaming?: GooglePythonAgentStreaming;
-  private pythonAgentConfig?: any;
-  private gitMcpAgent?: GoogleGitMcpAgent;
-  private gitMcpAgentConfig?: any;
+  private readonly providerToolsAgent?: GoogleProviderToolsAgent;
+  private readonly providerToolsConfig?: any;
+  private readonly documentAgentStreaming?: GoogleDocumentAgentStreaming;
+  private readonly documentAgentConfig?: any;
+  private readonly mermaidAgentStreaming?: GoogleMermaidAgentStreaming;
+  private readonly mermaidAgentConfig?: any;
+  private readonly pythonAgentStreaming?: GooglePythonAgentStreaming;
+  private readonly pythonAgentConfig?: any;
+  private readonly gitMcpAgent?: GoogleGitMcpAgent;
+  private readonly gitMcpAgentConfig?: any;
 
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;

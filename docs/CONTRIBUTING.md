@@ -442,4 +442,4 @@ When making changes, update relevant documentation:
 
 We appreciate your contributions to making this project better. Every contribution, no matter how small, helps improve the AI Code Chatbot for everyone.
 
-Happy coding! 🚀
+Happy coding! 🚀...

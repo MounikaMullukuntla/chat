@@ -14,10 +14,10 @@ import {
   logPermissionError,
 } from "@/lib/errors/logger";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging";
 
 export async function GET(request: Request) {
@@ -206,7 +206,9 @@ export async function POST(request: Request) {
     await logUserActivity({
       user_id: user.id,
       correlation_id: correlationId,
-      activity_type: isUpdate ? UserActivityType.DOCUMENT_UPDATE : UserActivityType.DOCUMENT_CREATE,
+      activity_type: isUpdate
+        ? UserActivityType.DOCUMENT_UPDATE
+        : UserActivityType.DOCUMENT_CREATE,
       activity_category: ActivityCategory.DOCUMENT,
       activity_metadata: {
         document_kind: kind,

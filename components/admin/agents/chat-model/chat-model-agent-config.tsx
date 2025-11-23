@@ -146,11 +146,8 @@ export function ChatModelAgentConfig({
 
       // Log successful configuration update
       try {
-        const {
-          logUserActivity,
-          UserActivityType,
-          ActivityCategory,
-        } = await import("@/lib/logging");
+        const { logUserActivity, UserActivityType, ActivityCategory } =
+          await import("@/lib/logging");
 
         void logUserActivity({
           user_id: "", // Will be populated from session
@@ -179,11 +176,9 @@ export function ChatModelAgentConfig({
 
       // Log configuration save error
       try {
-        const {
-          logAdminError,
-          ErrorCategory,
-          ErrorSeverity,
-        } = await import("@/lib/errors/logger");
+        const { logAdminError, ErrorCategory, ErrorSeverity } = await import(
+          "@/lib/errors/logger"
+        );
 
         void logAdminError(
           ErrorCategory.CONFIG_UPDATE_FAILED,
@@ -343,7 +338,7 @@ export function ChatModelAgentConfig({
             </div>
             <Switch
               checked={config.enabled}
-              onCheckedChange={(enabled) =>
+              onCheckedChange={(enabled: boolean) =>
                 setConfig((prev) => ({ ...prev, enabled }))
               }
             />
@@ -467,7 +462,7 @@ export function ChatModelAgentConfig({
               </div>
               <Switch
                 checked={config.capabilities.fileInput}
-                onCheckedChange={(fileInput) =>
+                onCheckedChange={(fileInput: boolean) =>
                   setConfig((prev) => ({
                     ...prev,
                     capabilities: { ...prev.capabilities, fileInput },
@@ -637,7 +632,7 @@ export function ChatModelAgentConfig({
                           </span>
                           <Switch
                             checked={tool.enabled}
-                            onCheckedChange={(enabled) =>
+                            onCheckedChange={(enabled: boolean) =>
                               updateTool(toolName, { enabled })
                             }
                           />

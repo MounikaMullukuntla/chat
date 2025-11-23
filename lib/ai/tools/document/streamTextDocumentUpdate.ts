@@ -5,15 +5,15 @@ import type { User } from "@supabase/supabase-js";
 import type { UIMessageStreamWriter } from "ai";
 import { streamText } from "ai";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import type { ChatMessage } from "@/lib/types";
 import { stripMarkdownCodeFences } from "@/lib/utils";
-import {
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 /**
  * Stream document update in real-time using AI SDK's streamText

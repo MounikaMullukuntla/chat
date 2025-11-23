@@ -8,16 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ErrorCategory, ErrorSeverity, logAppError } from "@/lib/errors/logger";
 import type {
   GitHubContextState,
   GitHubRepo,
   GitHubSearchResponse,
 } from "@/lib/types";
-import {
-  logAppError,
-  ErrorCategory,
-  ErrorSeverity,
-} from "@/lib/errors/logger";
 import { Checkbox } from "./ui/checkbox";
 
 type GitHubContextIntegrationProps = {
@@ -104,7 +100,10 @@ export function GitHubContextIntegration({
       if (errorMessage.includes("401")) {
         errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
         severity = ErrorSeverity.WARNING;
-      } else if (errorMessage.includes("403") || errorMessage.includes("rate limit")) {
+      } else if (
+        errorMessage.includes("403") ||
+        errorMessage.includes("rate limit")
+      ) {
         errorCategory = ErrorCategory.API_RATE_LIMIT;
         severity = ErrorSeverity.WARNING;
       }
@@ -116,7 +115,8 @@ export function GitHubContextIntegration({
         {
           operation: "fetchUserRepositories",
           error: errorMessage,
-          errorType: error instanceof Error ? error.constructor.name : "Unknown",
+          errorType:
+            error instanceof Error ? error.constructor.name : "Unknown",
           stack: error instanceof Error ? error.stack : undefined,
           timestamp: new Date().toISOString(),
         },
@@ -191,10 +191,16 @@ export function GitHubContextIntegration({
         let errorCategory = ErrorCategory.EXTERNAL_SERVICE_ERROR;
         let severity = ErrorSeverity.ERROR;
 
-        if (errorMessage.includes("Invalid GitHub Personal Access Token") || errorMessage.includes("401")) {
+        if (
+          errorMessage.includes("Invalid GitHub Personal Access Token") ||
+          errorMessage.includes("401")
+        ) {
           errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
           severity = ErrorSeverity.WARNING;
-        } else if (errorMessage.includes("rate limit") || errorMessage.includes("403")) {
+        } else if (
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("403")
+        ) {
           errorCategory = ErrorCategory.API_RATE_LIMIT;
           severity = ErrorSeverity.WARNING;
         } else if (errorMessage.includes("404")) {
@@ -208,9 +214,10 @@ export function GitHubContextIntegration({
           `Failed to search GitHub repositories: ${errorMessage}`,
           {
             operation: "searchRepositories",
-            query: query,
+            query,
             error: errorMessage,
-            errorType: error instanceof Error ? error.constructor.name : "Unknown",
+            errorType:
+              error instanceof Error ? error.constructor.name : "Unknown",
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString(),
           },

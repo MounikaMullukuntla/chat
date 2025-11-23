@@ -18,10 +18,10 @@ export const chat = pgTable("Chat", {
   user_id: uuid("user_id").notNull(),
   visibility: text("visibility").notNull(),
   lastContext: json("lastContext"),
-  totalInputTokens: integer("total_input_tokens"),
-  totalOutputTokens: integer("total_output_tokens"),
-  totalCost: text("total_cost"),
-  updatedAt: timestamp("updated_at"),
+  totalInputTokens: integer("total_input_tokens").default(0),
+  totalOutputTokens: integer("total_output_tokens").default(0),
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }).default("0"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Message table
@@ -35,7 +35,7 @@ export const message = pgTable("Message_v2", {
   modelUsed: text("model_used"),
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
-  cost: text("cost"),
+  cost: decimal("cost", { precision: 10, scale: 6 }),
 });
 
 // Vote table
@@ -123,9 +123,9 @@ export const usageLogs = pgTable("usage_logs", {
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
   totalTokens: integer("total_tokens"),
-  inputCost: text("input_cost"),
-  outputCost: text("output_cost"),
-  totalCost: text("total_cost"),
+  inputCost: decimal("input_cost", { precision: 10, scale: 6 }),
+  outputCost: decimal("output_cost", { precision: 10, scale: 6 }),
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }),
   requestTimestamp: timestamp("request_timestamp").defaultNow(),
   responseTimestamp: timestamp("response_timestamp"),
   durationMs: integer("duration_ms"),

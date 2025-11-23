@@ -7,6 +7,10 @@ node_modules
 
 # testing
 coverage
+test-results/
+playwright-report/
+.vitest-cache/
+coverage-summary.json
 
 # next.js
 .next/
@@ -26,6 +30,7 @@ yarn-error.log*
 # local env files
 .env.local
 .env.development.local
+.env.test
 .env.test.local
 .env.production.local
 
@@ -36,8 +41,6 @@ yarn-error.log*
 .vercel
 .env*.local
 
-# Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/*
+# TypeScript build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo

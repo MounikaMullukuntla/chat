@@ -10,10 +10,10 @@ import {
   logApiError,
 } from "@/lib/errors/logger";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging";
 
 // POST /api/admin/models/[modelId]/set-default - Set a model as default for its provider

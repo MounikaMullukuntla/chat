@@ -6,15 +6,15 @@ import type { UIMessageStreamWriter } from "ai";
 import { streamObject } from "ai";
 import { z } from "zod";
 import { saveDocument } from "@/lib/db/queries";
+import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
+} from "@/lib/logging/activity-logger";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
-import {
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
-} from "@/lib/logging/activity-logger";
 
 /**
  * Validate Python code (basic validation)

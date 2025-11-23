@@ -7,10 +7,10 @@ import {
 import { ChatSDKError } from "@/lib/errors";
 import { ErrorCategory, ErrorSeverity, logApiError } from "@/lib/errors/logger";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging";
 
 // Valid agent types and providers

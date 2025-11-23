@@ -4,10 +4,10 @@ import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import { deleteAllChatsByUserId, getChatsByUserId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 import {
-  logUserActivity,
-  createCorrelationId,
-  UserActivityType,
   ActivityCategory,
+  createCorrelationId,
+  logUserActivity,
+  UserActivityType,
 } from "@/lib/logging";
 
 export async function GET(request: NextRequest) {

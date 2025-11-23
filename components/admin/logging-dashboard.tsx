@@ -1,6 +1,14 @@
 "use client";
 
-import { ArrowLeft, Database, Save, Trash2, AlertCircle, Activity, Bot } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  ArrowLeft,
+  Bot,
+  Database,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -12,11 +20,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 
-interface LoggingSettings {
+type LoggingSettings = {
   error_logging_enabled: boolean;
   user_activity_logging_enabled: boolean;
   agent_activity_logging_enabled: boolean;
@@ -51,7 +59,7 @@ interface LoggingSettings {
     log_user_agent: boolean;
     exclude_sensitive_paths: string[];
   };
-}
+};
 
 export function LoggingDashboard() {
   const router = useRouter();
@@ -86,7 +94,9 @@ export function LoggingDashboard() {
   }, []);
 
   const handleSave = async () => {
-    if (!settings) return;
+    if (!settings) {
+      return;
+    }
 
     try {
       setSaving(true);
@@ -104,14 +114,22 @@ export function LoggingDashboard() {
       }
     } catch (error) {
       console.error("Failed to save logging settings:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save logging settings");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save logging settings"
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handlePurge = async () => {
-    if (!confirm("Are you sure you want to purge old logs? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to purge old logs? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
@@ -123,7 +141,9 @@ export function LoggingDashboard() {
 
       if (response.ok) {
         const result = await response.json();
-        toast.success(`Purged ${result.user_logs_deleted} user logs, ${result.agent_logs_deleted} agent logs, and ${result.error_logs_deleted} error logs`);
+        toast.success(
+          `Purged ${result.user_logs_deleted} user logs, ${result.agent_logs_deleted} agent logs, and ${result.error_logs_deleted} error logs`
+        );
       } else {
         throw new Error("Failed to purge logs");
       }
@@ -161,18 +181,18 @@ export function LoggingDashboard() {
             </Button>
             <div className="flex gap-2">
               <Button
-                onClick={handlePurge}
-                disabled={purging}
-                variant="outline"
                 className="flex items-center gap-2"
+                disabled={purging}
+                onClick={handlePurge}
+                variant="outline"
               >
                 <Trash2 className="h-4 w-4" />
                 {purging ? "Purging..." : "Purge Old Logs"}
               </Button>
               <Button
-                onClick={handleSave}
-                disabled={saving}
                 className="flex items-center gap-2"
+                disabled={saving}
+                onClick={handleSave}
               >
                 <Save className="h-4 w-4" />
                 {saving ? "Saving..." : "Save Settings"}
@@ -186,7 +206,8 @@ export function LoggingDashboard() {
                 Logging Configuration
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Configure error logging, user activity logging, and agent activity logging
+                Configure error logging, user activity logging, and agent
+                activity logging
               </p>
             </div>
           </div>
@@ -205,14 +226,14 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <AlertCircle className="h-5 w-5 text-red-600" />
-                  <Label htmlFor="error-logging" className="text-base">
+                  <Label className="text-base" htmlFor="error-logging">
                     Error Logging
                   </Label>
                 </div>
                 <Switch
-                  id="error-logging"
                   checked={settings.error_logging_enabled}
-                  onCheckedChange={(checked) =>
+                  id="error-logging"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({ ...settings, error_logging_enabled: checked })
                   }
                 />
@@ -220,30 +241,36 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Activity className="h-5 w-5 text-blue-600" />
-                  <Label htmlFor="user-logging" className="text-base">
+                  <Label className="text-base" htmlFor="user-logging">
                     User Activity Logging
                   </Label>
                 </div>
                 <Switch
-                  id="user-logging"
                   checked={settings.user_activity_logging_enabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, user_activity_logging_enabled: checked })
+                  id="user-logging"
+                  onCheckedChange={(checked: boolean) =>
+                    setSettings({
+                      ...settings,
+                      user_activity_logging_enabled: checked,
+                    })
                   }
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bot className="h-5 w-5 text-purple-600" />
-                  <Label htmlFor="agent-logging" className="text-base">
+                  <Label className="text-base" htmlFor="agent-logging">
                     Agent Activity Logging
                   </Label>
                 </div>
                 <Switch
-                  id="agent-logging"
                   checked={settings.agent_activity_logging_enabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, agent_activity_logging_enabled: checked })
+                  id="agent-logging"
+                  onCheckedChange={(checked: boolean) =>
+                    setSettings({
+                      ...settings,
+                      agent_activity_logging_enabled: checked,
+                    })
                   }
                 />
               </div>
@@ -264,54 +291,64 @@ export function LoggingDashboard() {
                   <Label htmlFor="error-retention">Error Logs (days)</Label>
                   <Input
                     id="error-retention"
-                    type="number"
                     min="1"
-                    value={settings.log_retention_days.error_logs}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         log_retention_days: {
                           ...settings.log_retention_days,
-                          error_logs: parseInt(e.target.value),
+                          error_logs: Number.parseInt(e.target.value, 10),
                         },
                       })
                     }
+                    type="number"
+                    value={settings.log_retention_days.error_logs}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="user-retention">User Activity Logs (days)</Label>
+                  <Label htmlFor="user-retention">
+                    User Activity Logs (days)
+                  </Label>
                   <Input
                     id="user-retention"
-                    type="number"
                     min="1"
-                    value={settings.log_retention_days.user_activity_logs}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         log_retention_days: {
                           ...settings.log_retention_days,
-                          user_activity_logs: parseInt(e.target.value),
+                          user_activity_logs: Number.parseInt(
+                            e.target.value,
+                            10
+                          ),
                         },
                       })
                     }
+                    type="number"
+                    value={settings.log_retention_days.user_activity_logs}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="agent-retention">Agent Activity Logs (days)</Label>
+                  <Label htmlFor="agent-retention">
+                    Agent Activity Logs (days)
+                  </Label>
                   <Input
                     id="agent-retention"
-                    type="number"
                     min="1"
-                    value={settings.log_retention_days.agent_activity_logs}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         log_retention_days: {
                           ...settings.log_retention_days,
-                          agent_activity_logs: parseInt(e.target.value),
+                          agent_activity_logs: Number.parseInt(
+                            e.target.value,
+                            10
+                          ),
                         },
                       })
                     }
+                    type="number"
+                    value={settings.log_retention_days.agent_activity_logs}
                   />
                 </div>
               </div>
@@ -328,26 +365,34 @@ export function LoggingDashboard() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {Object.entries(settings.category_toggles).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <Label htmlFor={key} className="text-sm">
-                      {key.replace(/^log_/, "").replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </Label>
-                    <Switch
-                      id={key}
-                      checked={value}
-                      onCheckedChange={(checked) =>
-                        setSettings({
-                          ...settings,
-                          category_toggles: {
-                            ...settings.category_toggles,
-                            [key]: checked,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                ))}
+                {Object.entries(settings.category_toggles).map(
+                  ([key, value]) => (
+                    <div
+                      className="flex items-center justify-between"
+                      key={key}
+                    >
+                      <Label className="text-sm" htmlFor={key}>
+                        {key
+                          .replace(/^log_/, "")
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (l) => l.toUpperCase())}
+                      </Label>
+                      <Switch
+                        checked={value}
+                        id={key}
+                        onCheckedChange={(checked: boolean) =>
+                          setSettings({
+                            ...settings,
+                            category_toggles: {
+                              ...settings.category_toggles,
+                              [key]: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>
@@ -364,9 +409,9 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="batch-writes">Batch Writes</Label>
                 <Switch
-                  id="batch-writes"
                   checked={settings.performance_settings.batch_writes}
-                  onCheckedChange={(checked) =>
+                  id="batch-writes"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       performance_settings: {
@@ -382,45 +427,48 @@ export function LoggingDashboard() {
                   <Label htmlFor="batch-size">Batch Size</Label>
                   <Input
                     id="batch-size"
-                    type="number"
                     min="1"
-                    value={settings.performance_settings.batch_size}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         performance_settings: {
                           ...settings.performance_settings,
-                          batch_size: parseInt(e.target.value),
+                          batch_size: Number.parseInt(e.target.value, 10),
                         },
                       })
                     }
+                    type="number"
+                    value={settings.performance_settings.batch_size}
                   />
                 </div>
                 <div>
                   <Label htmlFor="batch-interval">Batch Interval (ms)</Label>
                   <Input
                     id="batch-interval"
-                    type="number"
                     min="1000"
-                    value={settings.performance_settings.batch_interval_ms}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         performance_settings: {
                           ...settings.performance_settings,
-                          batch_interval_ms: parseInt(e.target.value),
+                          batch_interval_ms: Number.parseInt(
+                            e.target.value,
+                            10
+                          ),
                         },
                       })
                     }
+                    type="number"
+                    value={settings.performance_settings.batch_interval_ms}
                   />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="async-logging">Async Logging</Label>
                 <Switch
-                  id="async-logging"
                   checked={settings.performance_settings.async_logging}
-                  onCheckedChange={(checked) =>
+                  id="async-logging"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       performance_settings: {
@@ -446,9 +494,9 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="anonymize-ip">Anonymize IP Addresses</Label>
                 <Switch
-                  id="anonymize-ip"
                   checked={settings.privacy_settings.anonymize_ip}
-                  onCheckedChange={(checked) =>
+                  id="anonymize-ip"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {
@@ -462,9 +510,9 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="hash-email">Hash Email Addresses</Label>
                 <Switch
-                  id="hash-email"
                   checked={settings.privacy_settings.hash_email}
-                  onCheckedChange={(checked) =>
+                  id="hash-email"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {
@@ -478,9 +526,9 @@ export function LoggingDashboard() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="log-user-agent">Log User Agent</Label>
                 <Switch
-                  id="log-user-agent"
                   checked={settings.privacy_settings.log_user_agent}
-                  onCheckedChange={(checked) =>
+                  id="log-user-agent"
+                  onCheckedChange={(checked: boolean) =>
                     setSettings({
                       ...settings,
                       privacy_settings: {

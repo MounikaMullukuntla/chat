@@ -1173,127 +1173,127 @@ Brief description of changes
 
 #### Agent System Unit Tests (~30 tests)
 
-- [ ] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
-  - [ ] Test agent initialization with config
-  - [ ] Test API key setting and propagation
-  - [ ] Test GitHub PAT setting
-  - [ ] Test model selection
-  - [ ] Test thinking mode support detection
-  - [ ] Test tool building delegation
-  - [ ] Test streaming configuration
-  - [ ] Test error handling (invalid config, missing API key)
+- [x] **Chat Agent Tests** (`tests/unit/lib/ai/chat-agent.test.ts`)
+  - [x] Test agent initialization with config
+  - [x] Test API key setting and propagation
+  - [x] Test GitHub PAT setting
+  - [x] Test model selection
+  - [x] Test thinking mode support detection
+  - [x] Test tool building delegation
+  - [x] Test streaming configuration
+  - [x] Test error handling (invalid config, missing API key)
 
-- [ ] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
-  - [ ] Test tool creation for each agent type
-  - [ ] Test tool enablement based on config
-  - [ ] Test tool parameter validation
-  - [ ] Test tool execution delegation
-  - [ ] Test error handling in tool execution
+- [x] **Tool Builder Tests** (`tests/unit/lib/ai/tool-builder.test.ts`)
+  - [x] Test tool creation for each agent type
+  - [x] Test tool enablement based on config
+  - [x] Test tool parameter validation
+  - [x] Test tool execution delegation
+  - [x] Test error handling in tool execution
 
-- [ ] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
-  - [ ] Test agent config loading from database
-  - [ ] Test config caching
-  - [ ] Test API key propagation to all agents
-  - [ ] Test agent initialization on demand
-  - [ ] Test config validation
+- [x] **Config Loader Tests** (`tests/unit/lib/ai/config-loader.test.ts`)
+  - [x] Test agent config loading from database
+  - [x] Test config caching
+  - [x] Test API key propagation to all agents
+  - [x] Test agent initialization on demand
+  - [x] Test config validation
 
 #### Database Query Unit Tests (~25 tests)
 
-- [ ] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
-  - [ ] Test chat creation
-  - [ ] Test chat retrieval by ID
-  - [ ] Test chat list for user
-  - [ ] Test chat deletion
-  - [ ] Test chat update
-  - [ ] Test error handling (not found, invalid user)
+- [x] **Chat Query Tests** (`tests/unit/lib/db/queries/chat.test.ts`)
+  - [x] Test chat creation
+  - [x] Test chat retrieval by ID
+  - [x] Test chat list for user
+  - [x] Test chat deletion
+  - [x] Test chat update
+  - [x] Test error handling (not found, invalid user)
 
-- [ ] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
-  - [ ] Test document creation (version 1)
-  - [ ] Test document update (new version)
-  - [ ] Test version retrieval
-  - [ ] Test version list for document
-  - [ ] Test latest version retrieval
-  - [ ] Test document deletion
-  - [ ] Test version comparison query
+- [x] **Document Query Tests** (`tests/unit/lib/db/queries/document.test.ts`)
+  - [x] Test document creation (version 1)
+  - [x] Test document update (new version)
+  - [x] Test version retrieval
+  - [x] Test version list for document
+  - [x] Test latest version retrieval
+  - [x] Test document deletion
+  - [x] Test version comparison query
 
-- [ ] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
-  - [ ] Test message creation
-  - [ ] Test message list for chat
-  - [ ] Test message deletion
-  - [ ] Test message pagination
+- [x] **Message Query Tests** (`tests/unit/lib/db/queries/message.test.ts`)
+  - [x] Test message creation
+  - [x] Test message list for chat
+  - [x] Test message deletion
+  - [x] Test message pagination
 
-- [ ] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
-  - [ ] Test config retrieval
-  - [ ] Test config creation
-  - [ ] Test config update
-  - [ ] Test config deletion
-  - [ ] Test config summary generation
+- [x] **Admin Query Tests** (`tests/unit/lib/db/queries/admin.test.ts`)
+  - [x] Test config retrieval
+  - [x] Test config creation
+  - [x] Test config update
+  - [x] Test config deletion
+  - [x] Test config summary generation
 
 #### Utility Function Tests (~20 tests)
 
-- [ ] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
-  - [ ] Test image file validation (PNG, JPG, WebP)
-  - [ ] Test PDF file validation
-  - [ ] Test code file validation (py, js, ts)
-  - [ ] Test file size validation (reject >10MB)
-  - [ ] Test file type rejection (unsupported types)
-  - [ ] Test file content extraction
-  - [ ] Test base64 encoding
+- [x] **File Processing Tests** (`tests/unit/lib/ai/file-processing.test.ts`)
+  - [x] Test image file validation (PNG, JPG, WebP)
+  - [x] Test PDF file validation
+  - [x] Test code file validation (py, js, ts)
+  - [x] Test file size validation (reject >10MB)
+  - [x] Test file type rejection (unsupported types)
+  - [x] Test file content extraction
+  - [x] Test base64 encoding
 
-- [ ] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
-  - [ ] Test API key storage
-  - [ ] Test API key retrieval
-  - [ ] Test API key deletion
-  - [ ] Test settings persistence
-  - [ ] Test settings retrieval
+- [x] **Storage Manager Tests** (`tests/unit/lib/storage/local-storage-manager.test.ts`)
+  - [x] Test API key storage
+  - [x] Test API key retrieval
+  - [x] Test API key deletion
+  - [x] Test settings persistence
+  - [x] Test settings retrieval
 
-- [ ] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
-  - [ ] Test user activity logging
-  - [ ] Test agent activity logging
-  - [ ] Test error logging
-  - [ ] Test batch processing
-  - [ ] Test log filtering by category
+- [x] **Logging Tests** (`tests/unit/lib/logging/activity-logger.test.ts`)
+  - [x] Test user activity logging
+  - [x] Test agent activity logging
+  - [x] Test error logging
+  - [x] Test batch processing
+  - [x] Test log filtering by category
 
 #### Component Unit Tests (~50 tests)
 
-- [ ] **Chat Component Tests** (`tests/unit/components/chat.test.tsx`)
-  - [ ] Test rendering with messages
-  - [ ] Test empty state rendering
-  - [ ] Test message input
-  - [ ] Test send button click
-  - [ ] Test file upload
-  - [ ] Test streaming message display
-  - [ ] Test error message display
-  - [ ] Test retry functionality
+- [x] **Chat Component Tests** (`tests/unit/components/chat.test.tsx`)
+  - [x] Test rendering with messages
+  - [x] Test empty state rendering
+  - [x] Test message input
+  - [x] Test send button click
+  - [x] Test file upload
+  - [x] Test streaming message display
+  - [x] Test error message display
+  - [x] Test retry functionality
 
-- [ ] **Artifact Component Tests** (`tests/unit/components/artifact.test.tsx`)
-  - [ ] Test document artifact rendering
-  - [ ] Test Python artifact rendering
-  - [ ] Test Mermaid artifact rendering
-  - [ ] Test artifact type detection
-  - [ ] Test artifact loading state
-  - [ ] Test artifact error state
+- [x] **Artifact Component Tests** (`tests/unit/components/artifact.test.tsx`)
+  - [x] Test document artifact rendering
+  - [x] Test Python artifact rendering
+  - [x] Test Mermaid artifact rendering
+  - [x] Test artifact type detection
+  - [x] Test artifact loading state
+  - [x] Test artifact error state
 
-- [ ] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
-  - [ ] Test document display
-  - [ ] Test edit mode toggle
-  - [ ] Test version navigation
-  - [ ] Test diff viewer
-  - [ ] Test suggestion display
+- [x] **Document Viewer Tests** (`tests/unit/components/document.test.tsx`)
+  - [x] Test document display
+  - [x] Test edit mode toggle
+  - [x] Test version navigation
+  - [x] Test diff viewer
+  - [x] Test suggestion display
 
-- [ ] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
-  - [ ] Test code editor rendering
-  - [ ] Test console tab rendering
-  - [ ] Test diff tab rendering
-  - [ ] Test execution controls
-  - [ ] Test syntax highlighting
+- [x] **Python Viewer Tests** (`tests/unit/components/python-viewer.test.tsx`)
+  - [x] Test code editor rendering
+  - [x] Test console tab rendering
+  - [x] Test diff tab rendering
+  - [x] Test execution controls
+  - [x] Test syntax highlighting
 
-- [ ] **Model Selector Tests** (`tests/unit/components/model-selector.test.tsx`)
-  - [ ] Test model dropdown rendering
-  - [ ] Test API key input
-  - [ ] Test model selection
-  - [ ] Test thinking mode toggle
-  - [ ] Test validation messages
+- [x] **Model Selector Tests** (`tests/unit/components/model-selector.test.tsx`)
+  - [x] Test model dropdown rendering
+  - [x] Test API key input
+  - [x] Test model selection
+  - [x] Test thinking mode toggle
+  - [x] Test validation messages
 
 ---
 
@@ -1303,69 +1303,69 @@ Brief description of changes
 
 #### API Route Integration Tests (~40 tests)
 
-- [ ] **Chat API Integration Tests** (`tests/integration/api/chat.test.ts`)
-  - [ ] Test POST /api/chat with valid request
-  - [ ] Test chat without API key (401)
-  - [ ] Test chat with invalid API key (401)
-  - [ ] Test chat with thinking mode enabled
-  - [ ] Test chat with file attachments
-  - [ ] Test chat with GitHub context
-  - [ ] Test streaming response
-  - [ ] Test multi-step tool execution
-  - [ ] Test error handling (timeout, network error)
-  - [ ] Test rate limiting (when implemented)
+- [x] **Chat API Integration Tests** (`tests/integration/api/chat.test.ts`)
+  - [x] Test POST /api/chat with valid request
+  - [x] Test chat without API key (401)
+  - [x] Test chat with invalid API key (401)
+  - [x] Test chat with thinking mode enabled
+  - [x] Test chat with file attachments
+  - [x] Test chat with GitHub context
+  - [x] Test streaming response
+  - [x] Test multi-step tool execution
+  - [x] Test error handling (timeout, network error)
+  - [x] Test rate limiting (when implemented)
 
-- [ ] **Document API Integration Tests** (`tests/integration/api/document.test.ts`)
-  - [ ] Test POST /api/document (create)
-  - [ ] Test PUT /api/document/:id (update)
-  - [ ] Test GET /api/document/:id (retrieve)
-  - [ ] Test GET /api/document/:id/versions (list versions)
-  - [ ] Test POST /api/document/:id/revert (revert)
-  - [ ] Test DELETE /api/document/:id (delete)
-  - [ ] Test unauthorized access (403)
-  - [ ] Test not found (404)
+- [x] **Document API Integration Tests** (`tests/integration/api/document.test.ts`)
+  - [x] Test POST /api/document (create)
+  - [x] Test PUT /api/document/:id (update)
+  - [x] Test GET /api/document/:id (retrieve)
+  - [x] Test GET /api/document/:id/versions (list versions)
+  - [x] Test POST /api/document/:id/revert (revert)
+  - [x] Test DELETE /api/document/:id (delete)
+  - [x] Test unauthorized access (403)
+  - [x] Test not found (404)
 
-- [ ] **Admin API Integration Tests** (`tests/integration/api/admin.test.ts`)
-  - [ ] Test GET /api/admin/config/:key
-  - [ ] Test PUT /api/admin/config/:key (create/update)
-  - [ ] Test PATCH /api/admin/config/:key (partial update)
-  - [ ] Test DELETE /api/admin/config/:key
-  - [ ] Test GET /api/admin/config/summary
-  - [ ] Test POST /api/admin/models (create model)
-  - [ ] Test PATCH /api/admin/models/:id (update model)
-  - [ ] Test non-admin access (403)
+- [x] **Admin API Integration Tests** (`tests/integration/api/admin.test.ts`)
+  - [x] Test GET /api/admin/config/:key
+  - [x] Test PUT /api/admin/config/:key (create/update)
+  - [x] Test PATCH /api/admin/config/:key (partial update)
+  - [x] Test DELETE /api/admin/config/:key
+  - [x] Test GET /api/admin/config/summary
+  - [x] Test POST /api/admin/models (create model)
+  - [x] Test PATCH /api/admin/models/:id (update model)
+  - [x] Test non-admin access (403)
 
-- [ ] **Authentication Integration Tests** (`tests/integration/api/auth.test.ts`)
-  - [ ] Test user registration
-  - [ ] Test user login
-  - [ ] Test login with invalid credentials
-  - [ ] Test logout
-  - [ ] Test session validation
-  - [ ] Test token refresh
+- [x] **Authentication Integration Tests** (`tests/integration/api/auth.test.ts`)
+  - [x] Test user registration
+  - [x] Test user login
+  - [x] Test login with invalid credentials
+  - [x] Test logout
+  - [x] Test session validation
+  - [x] Test token refresh
 
 #### Agent Flow Integration Tests (~20 tests)
 
-- [ ] **Document Lifecycle Tests** (`tests/integration/flows/document-lifecycle.test.ts`)
-  - [ ] Test complete document creation flow
-  - [ ] Test document update flow with versioning
-  - [ ] Test version comparison flow
-  - [ ] Test version revert flow
-  - [ ] Test suggestion generation and acceptance
-  - [ ] Test concurrent edits handling
+- [x] **Document Lifecycle Tests** (`tests/integration/flows/document-lifecycle.test.ts`)
+  - [x] Test complete document creation flow
+  - [x] Test document update flow with versioning
+  - [x] Test version comparison flow
+  - [x] Test version revert flow
+  - [x] Test suggestion generation and acceptance
+  - [x] Test concurrent edits handling
 
-- [ ] **Multi-Agent Orchestration Tests** (`tests/integration/flows/agent-orchestration.test.ts`)
-  - [ ] Test search + document creation flow
-  - [ ] Test GitHub fetch + code analysis flow
-  - [ ] Test sequential tool calls
-  - [ ] Test tool error recovery
-  - [ ] Test agent delegation logic
+- [x] **Multi-Agent Orchestration Tests** (`tests/integration/flows/agent-orchestration.test.ts`)
+  - [x] Test search + document creation flow
+  - [x] Test GitHub fetch + code analysis flow
+  - [x] Test sequential tool calls
+  - [x] Test tool error recovery
+  - [x] Test agent delegation logic
 
-- [ ] **Streaming Tests** (`tests/integration/flows/streaming.test.ts`)
-  - [ ] Test document streaming
-  - [ ] Test Python code streaming
-  - [ ] Test Mermaid diagram streaming
-  - [ ] Test stream interruption handling
-  - [ ] Test stream resumption
+- [x] **Streaming Tests** (`tests/integration/flows/streaming.test.ts`)
+  - [x] Test document streaming
+  - [x] Test Python code streaming
+  - [x] Test Mermaid diagram streaming
+  - [x] Test stream interruption handling
+  - [x] Test stream resumption
 
 #### Database Integration Tests (~15 tests)
 
@@ -1389,61 +1389,61 @@ Brief description of changes
 
 #### Core User Journeys (~30 tests)
 
-- [ ] **New User Chat Session** (`tests/e2e/chat-session.spec.ts`)
-  - [ ] Test complete first-time user flow
-  - [ ] Test API key entry and validation
-  - [ ] Test model selection
-  - [ ] Test sending first message
-  - [ ] Test receiving response
-  - [ ] Test multi-turn conversation
-  - [ ] Test chat persistence after refresh
+- [x] **New User Chat Session** (`tests/e2e/chat-session.spec.ts`)
+  - [x] Test complete first-time user flow
+  - [x] Test API key entry and validation
+  - [x] Test model selection
+  - [x] Test sending first message
+  - [x] Test receiving response
+  - [x] Test multi-turn conversation
+  - [x] Test chat persistence after refresh
 
-- [ ] **Document Creation Journey** (`tests/e2e/document-creation.spec.ts`)
-  - [ ] Test requesting document creation
-  - [ ] Test watching real-time streaming
-  - [ ] Test document appearing in artifact panel
-  - [ ] Test editing document
-  - [ ] Test saving new version
-  - [ ] Test viewing version history
-  - [ ] Test comparing versions
-  - [ ] Test reverting to previous version
+- [x] **Document Creation Journey** (`tests/e2e/document-creation.spec.ts`)
+  - [x] Test requesting document creation
+  - [x] Test watching real-time streaming
+  - [x] Test document appearing in artifact panel
+  - [x] Test editing document
+  - [x] Test saving new version
+  - [x] Test viewing version history
+  - [x] Test comparing versions
+  - [x] Test reverting to previous version
 
-- [ ] **Python Code Journey** (`tests/e2e/python-execution.spec.ts`)
-  - [ ] Test requesting Python code
-  - [ ] Test code appearing in editor
-  - [ ] Test syntax highlighting
-  - [ ] Test switching to console tab
-  - [ ] Test executing code
-  - [ ] Test viewing output
-  - [ ] Test modifying and re-running code
-  - [ ] Test error handling in execution
+- [x] **Python Code Journey** (`tests/e2e/python-execution.spec.ts`)
+  - [x] Test requesting Python code
+  - [x] Test code appearing in editor
+  - [x] Test syntax highlighting
+  - [x] Test switching to console tab
+  - [x] Test executing code
+  - [x] Test viewing output
+  - [x] Test modifying and re-running code
+  - [x] Test error handling in execution
 
-- [ ] **Mermaid Diagram Journey** (`tests/e2e/mermaid-diagram.spec.ts`)
-  - [ ] Test requesting diagram
-  - [ ] Test diagram streaming
-  - [ ] Test live preview rendering
-  - [ ] Test editing diagram code
-  - [ ] Test preview updates
-  - [ ] Test syntax error display
-  - [ ] Test exporting diagram
+- [x] **Mermaid Diagram Journey** (`tests/e2e/mermaid-diagram.spec.ts`)
+  - [x] Test requesting diagram
+  - [x] Test diagram streaming
+  - [x] Test live preview rendering
+  - [x] Test editing diagram code
+  - [x] Test preview updates
+  - [x] Test syntax error display
+  - [x] Test exporting diagram
 
-- [ ] **GitHub MCP Journey** (`tests/e2e/github-integration.spec.ts`)
-  - [ ] Test entering GitHub PAT
-  - [ ] Test connecting to GitHub
-  - [ ] Test selecting repository
-  - [ ] Test browsing files
-  - [ ] Test loading file content
-  - [ ] Test asking questions about code
-  - [ ] Test AI using GitHub context
+- [x] **GitHub MCP Journey** (`tests/e2e/github-integration.spec.ts`)
+  - [x] Test entering GitHub PAT
+  - [x] Test connecting to GitHub
+  - [x] Test selecting repository
+  - [x] Test browsing files
+  - [x] Test loading file content
+  - [x] Test asking questions about code
+  - [x] Test AI using GitHub context
 
-- [ ] **Admin Configuration Journey** (`tests/e2e/admin-config.spec.ts`)
-  - [ ] Test admin login
-  - [ ] Test accessing admin panel
-  - [ ] Test selecting provider
-  - [ ] Test updating agent config
-  - [ ] Test saving configuration
-  - [ ] Test configuration taking effect
-  - [ ] Test non-admin redirect
+- [x] **Admin Configuration Journey** (`tests/e2e/admin-config.spec.ts`)
+  - [x] Test admin login
+  - [x] Test accessing admin panel
+  - [x] Test selecting provider
+  - [x] Test updating agent config
+  - [x] Test saving configuration
+  - [x] Test configuration taking effect
+  - [x] Test non-admin redirect
 
 #### Error Recovery Scenarios (~10 tests)
 

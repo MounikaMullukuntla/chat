@@ -3,12 +3,11 @@ import "server-only";
 import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import {
-  logAgentActivity,
-  PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
   AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
+  PerformanceTracker,
 } from "@/lib/logging/activity-logger";
 import type { ProviderToolsAgentConfig } from "../../core/types";
 
@@ -18,7 +17,6 @@ import type { ProviderToolsAgentConfig } from "../../core/types";
  * Implements Google Search, URL Context, and Code Execution tools
  */
 export class GoogleProviderToolsAgent {
-  private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
 

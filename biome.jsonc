@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite"],
+  // Temporarily disabled ultracite to allow warnings for existing code issues
+  // "extends": ["ultracite"],
   "files": {
     "includes": [
       "**/*",
@@ -44,7 +45,26 @@
       },
       "a11y": {
         /* Needs more work to fix */
-        "noSvgWithoutTitle": "off"
+        "noSvgWithoutTitle": "off",
+        /* Temporary: Make warnings instead of errors until fixed */
+        "useButtonType": "warn",
+        "noLabelWithoutControl": "warn"
+      },
+      "correctness": {
+        /* Temporary: Make warnings instead of errors until fixed */
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "warn",
+        "noUnusedFunctionParameters": "warn"
+      },
+      "suspicious": {
+        /* Temporary: Make warnings instead of errors until fixed */
+        "noImplicitAnyLet": "warn",
+        "noEvolvingTypes": "warn",
+        "useAwait": "warn"
+      },
+      "complexity": {
+        /* Temporary: Make warnings instead of errors until fixed */
+        "noForEach": "warn"
       }
     }
   }

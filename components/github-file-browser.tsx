@@ -19,12 +19,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ErrorCategory, ErrorSeverity, logAppError } from "@/lib/errors/logger";
 import type { GitHubFile, GitHubFolder, GitHubRepo } from "@/lib/types";
-import {
-  logAppError,
-  ErrorCategory,
-  ErrorSeverity,
-} from "@/lib/errors/logger";
 import { Checkbox } from "./ui/checkbox";
 
 type GitHubFileBrowserProps = {
@@ -175,10 +171,16 @@ export function GitHubFileBrowser({
         if (errorMessage.includes("not found")) {
           errorCategory = ErrorCategory.API_REQUEST_FAILED;
           severity = ErrorSeverity.WARNING;
-        } else if (errorMessage.includes("rate limit") || errorMessage.includes("403")) {
+        } else if (
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("403")
+        ) {
           errorCategory = ErrorCategory.API_RATE_LIMIT;
           severity = ErrorSeverity.WARNING;
-        } else if (errorMessage.includes("401") || errorMessage.includes("permissions")) {
+        } else if (
+          errorMessage.includes("401") ||
+          errorMessage.includes("permissions")
+        ) {
           errorCategory = ErrorCategory.UNAUTHORIZED_ACCESS;
           severity = ErrorSeverity.WARNING;
         }
@@ -189,10 +191,11 @@ export function GitHubFileBrowser({
           `Failed to load GitHub directory: ${errorMessage}`,
           {
             repo: repo.full_name,
-            path: path,
-            isRoot: isRoot,
+            path,
+            isRoot,
             error: errorMessage,
-            errorType: error instanceof Error ? error.constructor.name : "Unknown",
+            errorType:
+              error instanceof Error ? error.constructor.name : "Unknown",
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString(),
           },

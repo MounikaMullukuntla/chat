@@ -3,12 +3,12 @@ import "server-only";
 import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import type { LanguageModel } from "ai";
 import {
+  AgentOperationCategory,
+  AgentOperationType,
+  AgentType,
+  createCorrelationId,
   logAgentActivity,
   PerformanceTracker,
-  createCorrelationId,
-  AgentType,
-  AgentOperationType,
-  AgentOperationCategory,
 } from "@/lib/logging/activity-logger";
 import { AgentError, ErrorCodes } from "../../core/errors";
 import type { ChatModelAgentConfig, ChatParams } from "../../core/types";
@@ -37,7 +37,6 @@ type ModelConfig = {
  */
 export class GoogleChatAgent {
   private readonly config: ChatModelAgentConfig;
-  private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly configLoader: AgentConfigLoader;
   private readonly toolBuilder: AgentToolBuilder;
