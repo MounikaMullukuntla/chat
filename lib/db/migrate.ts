@@ -43,6 +43,7 @@ const runMigrate = async () => {
       "0006_seed_data_openai.sql",
       "0006_seed_data_anthropic.sql",
       "0007_seed_data_model_config.sql",
+      "0013_storage_setup.sql",
     ];
 
     for (const file of migrationFiles) {

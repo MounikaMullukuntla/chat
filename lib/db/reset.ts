@@ -16,6 +16,16 @@ const resetDatabase = async () => {
   console.log("📋 Dropping existing tables...");
 
   try {
+    // Drop storage bucket first (before tables)
+    console.log("🪣 Dropping storage bucket...");
+    try {
+      await connection`DELETE FROM storage.objects WHERE bucket_id = 'chat-attachments'`;
+      await connection`DELETE FROM storage.buckets WHERE id = 'chat-attachments'`;
+      console.log("✅ Storage bucket dropped");
+    } catch (storageError) {
+      console.log("ℹ️  Storage bucket not found or already dropped");
+    }
+
     // Drop all tables in reverse dependency order
     await connection`DROP TABLE IF EXISTS error_logs CASCADE`;
     await connection`DROP TABLE IF EXISTS github_repositories CASCADE`;

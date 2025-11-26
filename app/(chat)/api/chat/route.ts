@@ -5,6 +5,10 @@ import {
   extractFileContent,
   validateFileAttachment,
 } from "@/lib/ai/file-processing";
+import {
+  buildFileContext,
+  getFileContextSummary,
+} from "@/lib/ai/file-context-builder";
 import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import {
   deleteChatById,
@@ -91,6 +95,14 @@ export async function POST(request: Request) {
     const lastDocument = await getLastDocumentInChat({ chatId: id });
     const artifactContext = buildArtifactContext(allArtifacts, lastDocument);
 
+    // Build file context from ALL messages (cached files from previous uploads)
+    // This retrieves files from cache or storage and builds formatted context
+    const fileContext = await buildFileContext(messagesFromDb, id, user.id);
+
+    // Get file summary for logging
+    const fileSummary = getFileContextSummary(messagesFromDb);
+
+    // Process new file attachments in current message
     const fileContexts: string[] = [];
     const fileParts = message.parts.filter((part) => part.type === "file");
 
@@ -117,9 +129,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const fileContext =
+    // Combine new files with existing file context
+    const newFileContext =
       fileContexts.length > 0
-        ? `\n\nAttached files:\n${fileContexts.join("\n\n")}`
+        ? `\n\nNewly Attached Files:\n${fileContexts.join("\n\n")}`
         : "";
 
     // Get API key and validate
@@ -131,6 +144,16 @@ export async function POST(request: Request) {
     // Get GitHub PAT (optional - for GitHub MCP agent)
     const githubPAT = request.headers.get("x-github-pat");
 
+    // Extract file attachments for database storage
+    const fileAttachments = fileParts.map((filePart: any) => ({
+      url: filePart.url,
+      name: filePart.name ?? "file",
+      contentType: filePart.mediaType ?? "application/octet-stream",
+      size: 0, // Size not available from filePart
+      uploadedAt: new Date().toISOString(),
+      storagePath: filePart.storagePath || "", // Use storagePath if provided
+    }));
+
     // Save user message
     await saveMessages({
       messages: [
@@ -139,7 +162,7 @@ export async function POST(request: Request) {
           id: message.id,
           role: "user",
           parts: message.parts,
-          attachments: [],
+          attachments: fileAttachments,
           createdAt: new Date(),
           modelUsed: null,
           inputTokens: null,
@@ -162,10 +185,13 @@ export async function POST(request: Request) {
         model_selected: selectedChatModel,
         thinking_enabled: thinkingEnabled,
         file_count: fileParts.length,
+        total_files_in_context: fileSummary.fileCount,
+        total_file_size: fileSummary.totalSize,
         message_length: message.parts
           .filter((p: any) => p.type === "text")
           .reduce((sum: number, p: any) => sum + (p.text?.length || 0), 0),
         has_artifact_context: allArtifacts.length > 0,
+        has_file_context: fileSummary.fileCount > 0,
       },
       resource_id: id,
       resource_type: "chat",
@@ -207,9 +233,9 @@ export async function POST(request: Request) {
         content:
           msg.parts
             .map((part: any) => (part.type === "text" ? part.text : ""))
-            .join("\n") + fileContext,
+            .join("\n") + newFileContext,
       })),
-      artifactContext,
+      artifactContext: artifactContext + fileContext,
       thinkingMode: thinkingEnabled,
       user,
       generateId: generateUUID,

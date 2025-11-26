@@ -372,6 +372,7 @@ function PureMultimodalInput({
   const uploadFile = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("chatId", chatId);
 
     try {
       const response = await fetch("/api/files/upload", {
@@ -381,12 +382,13 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+        const { url, name, contentType, storagePath } = data;
 
         return {
           url,
-          name: pathname,
+          name: name,
           contentType,
+          storagePath, // Include storagePath for deletion
         };
       }
       const { error } = await response.json();
@@ -394,7 +396,29 @@ function PureMultimodalInput({
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
     }
-  }, []);
+  }, [chatId]);
+
+  const deleteFile = useCallback(async (storagePath: string) => {
+    try {
+      const response = await fetch("/api/files/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          storagePath,
+          chatId,
+        }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        console.error("Failed to delete file:", error);
+      }
+    } catch (error) {
+      console.error("Failed to delete file:", error);
+    }
+  }, [chatId]);
 
   const contextProps = useMemo(
     () => ({
@@ -487,9 +511,16 @@ function PureMultimodalInput({
                 attachment={attachment}
                 key={attachment.url}
                 onRemove={() => {
+                  // Remove from UI immediately
                   setAttachments((currentAttachments) =>
                     currentAttachments.filter((a) => a.url !== attachment.url)
                   );
+
+                  // Delete from storage if storagePath exists
+                  if (attachment.storagePath) {
+                    deleteFile(attachment.storagePath);
+                  }
+
                   if (fileInputRef.current) {
                     fileInputRef.current.value = "";
                   }

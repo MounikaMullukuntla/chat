@@ -32,6 +32,7 @@ export type Attachment = {
   name: string;
   url: string;
   contentType: string;
+  storagePath?: string; // Path in Supabase Storage for deletion
 };
 
 // Enhanced admin configuration interfaces for chat input enhancements

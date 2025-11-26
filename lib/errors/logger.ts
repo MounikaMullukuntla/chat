@@ -60,6 +60,17 @@ export enum ErrorCategory {
   NETWORK_ERROR = "network_error",
   FILE_SYSTEM_ERROR = "file_system_error",
   EXTERNAL_SERVICE_ERROR = "external_service_error",
+
+  // File upload/storage related
+  FILE_UPLOAD_FAILED = "file_upload_failed",
+  FILE_TOO_LARGE = "file_too_large",
+  FILE_TYPE_NOT_SUPPORTED = "file_type_not_supported",
+  FILE_PROCESSING_FAILED = "file_processing_failed",
+  STORAGE_ACCESS_DENIED = "storage_access_denied",
+  SIGNED_URL_GENERATION_FAILED = "signed_url_generation_failed",
+  SIGNED_URL_EXPIRED = "signed_url_expired",
+  CACHE_WRITE_FAILED = "cache_write_failed",
+  CACHE_READ_FAILED = "cache_read_failed",
 }
 
 // Interface for error log entry

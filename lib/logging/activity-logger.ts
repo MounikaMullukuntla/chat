@@ -26,6 +26,8 @@ export enum UserActivityType {
   VOTE_MESSAGE = "vote_message",
   SUGGESTION_VIEW = "suggestion_view",
   FILE_UPLOAD = "file_upload",
+  FILE_DOWNLOAD = "file_download",
+  FILE_DELETE = "file_delete",
   ARTIFACT_CREATE = "artifact_create",
   ARTIFACT_EXECUTE = "artifact_execute",
   MODEL_SELECTION = "model_selection",

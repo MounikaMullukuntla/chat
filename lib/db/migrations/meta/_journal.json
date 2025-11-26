@@ -71,6 +71,13 @@
       "when": 1730426137040,
       "tag": "0007_seed_data_model_config",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1732096200000,
+      "tag": "0013_storage_setup",
+      "breakpoints": true
     }
   ]
 }
