@@ -75,7 +75,15 @@ pnpm install
 
 #### 3. Configure Environment Variables
 
-Create `.env.local` in project root:
+The application supports two configuration modes:
+
+**Option A: Shared Docker Configuration (Recommended for webroot setup)**
+
+If you're using the [Model.Earth webroot structure](https://model.earth/webroot/), the application will automatically load environment variables from `../webroot/docker/.env`. This allows centralized configuration across multiple projects.
+
+**Option B: Local Configuration**
+
+Create `.env` or `.env.local` in project root:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://[YOUR-PROJECT].supabase.co
@@ -84,6 +92,11 @@ SUPABASE_SERVICE_ROLE_KEY=[YOUR-SERVICE-KEY]
 POSTGRES_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+The application will automatically:
+1. Check for `../webroot/docker/.env` first
+2. Fall back to local `.env` if docker/.env doesn't exist
+3. Use system environment variables if no .env file is found
 
 #### 4. Run Database Migrations
 
