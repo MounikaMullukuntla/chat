@@ -44,3 +44,8 @@ yarn-error.log*
 # TypeScript build info
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
