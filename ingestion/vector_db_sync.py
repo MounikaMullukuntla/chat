@@ -47,6 +47,7 @@ from llama_chunker import LlamaChunker
 # Constants
 MAX_TOKENS = 8192
 INDEX_NAME = "repo-chunks"
+DEFAULT_NAMESPACE = ""  # Empty string = Pinecone default namespace (recommended for single consolidated namespace)
 DIMENSION = 1536
 METRIC = "cosine"
 BATCH_SIZE = 10
@@ -321,7 +322,7 @@ def safe_delete_vectors(file_path: str, repo_name: str) -> None:
     try:
         _ = index.delete(
             filter={"repo_name": repo_name, "file_path": file_path},
-            namespace=repo_name
+            namespace=DEFAULT_NAMESPACE
         )
         print(f"[info] Deleted vectors for: {file_path}")
     except Exception as e:
@@ -338,7 +339,7 @@ def safe_upsert_batch(batch: List[dict], repo_name: str) -> int:
         md = entry.get("metadata", {})
         if md.get("chunk_type") == "content" and not entry.get("values"):
             raise RuntimeError(f"Attempted to upsert empty embedding: {md.get('file_path')}")
-    index.upsert(vectors=batch, namespace=repo_name)
+    index.upsert(vectors=batch, namespace=DEFAULT_NAMESPACE)
     return len(batch)
 
 
@@ -592,7 +593,7 @@ def main_entry():
 
 
 def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
-    # Environment context
+    # Environment context - repo_name used for metadata tagging
     repo_name = os.getenv("GITHUB_REPOSITORY", "unknown").split("/")[-1]
     commit_sha = os.getenv("GITHUB_SHA", "unknown")
 
@@ -668,6 +669,9 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
 
     print(f"[info] Starting VectorDB sync for {repo_name} (commit: {commit_sha[:8]})")
     print(f"[info] Using LlamaIndex for intelligent code-aware chunking")
+    print(f"[info] Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"[info] Namespace: '{DEFAULT_NAMESPACE}'")
+    print(f"[info] Metadata tag: repo_name='{repo_name}'")
+
 
     to_upsert: List[dict] = []
     delete_operations: List[str] = []
@@ -726,6 +730,7 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
                     append_error(errors_out, fp or "<unknown>", "upsert", str(e), status=st or "M")
 
     print(f"\n[info] Sync Complete for {repo_name}:")
+    print(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
     print(f"  - Files processed: {file_stats['processed']}")
     print(f"  - Files skipped: {file_stats['skipped']}")
     print(f"  - Files with errors: {file_stats['errors']}")
@@ -739,7 +744,7 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
             print(
                 f"  - failure: op={f.get('operation')} status={f.get('status')} file={f.get('file_path')} message={f.get('message')}")
         raise SystemExit(1)
-    return {"namespace": repo_name, "upserted_ids": upserted_ids}
+    return {"namespace": DEFAULT_NAMESPACE, "repo_name": repo_name, "upserted_ids": upserted_ids}
 
 
 if __name__ == "__main__":
