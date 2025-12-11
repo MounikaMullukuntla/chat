@@ -9,6 +9,9 @@ Invocation modes
 - commit range replay (recommended):
   python chat/ingestion/vector_db_sync.py --from-commit <rev> [--to-commit HEAD] [--repo-root .]
   Expands submodule pointer changes into file-level A/M/D across changed submodules.
+- full re-index (wipe and rebuild):
+  python chat/ingestion/vector_db_sync.py --reindex-all [--repo-root .]
+  Wipes all vectors and re-indexes the entire repository from scratch.
 
 Behavior
 - A/M: pre-delete vectors for the path (idempotent), then chunk + embed + upsert
@@ -48,6 +51,7 @@ from llama_chunker import LlamaChunker
 MAX_TOKENS = 8192
 INDEX_NAME = "repo-chunks"
 DEFAULT_NAMESPACE = ""  # Empty string = Pinecone default namespace (recommended for single consolidated namespace)
+GIT_EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"  # Git's empty tree SHA - used for full reindex
 DIMENSION = 1536
 METRIC = "cosine"
 BATCH_SIZE = 10
@@ -406,6 +410,9 @@ def parse_args():
     parser.add_argument("--to-commit", dest="to_commit", default="HEAD", help="End commit/ref for diff (default: HEAD)")
     parser.add_argument("--repo-root", dest="repo_root", default=".",
                         help="Path to the git superproject root (default: current dir)")
+    parser.add_argument("--reindex-all", action="store_true",
+                        help="Wipe all vectors and re-index the entire repository from scratch. "
+                             "Automatically handles the empty-tree comparison.")
     parser.add_argument("--skip-on-missing-keys", action="store_true",
                         help="Exit gracefully (code 0) if API keys are missing instead of raising an error")
     return parser.parse_args()
@@ -524,6 +531,10 @@ def main_entry():
     errors_out = args.errors_out
     files_to_process: List[Tuple[str, str]] = []
 
+    # Validate --reindex-all is not combined with other input modes
+    if args.reindex_all and (args.files or args.retry_errors or args.changed_files):
+        raise RuntimeError("--reindex-all cannot be combined with --files, --retry-errors, or changed_files")
+
     if args.files:
         def parse_token(tok: str) -> tuple:
             if ":" in tok:
@@ -556,6 +567,11 @@ def main_entry():
         from_commit = args.from_commit
         to_commit = args.to_commit or "HEAD"
 
+        # Handle --reindex-all: wipe everything and index from scratch
+        if args.reindex_all:
+            from_commit = GIT_EMPTY_TREE
+            print(f"[info] --reindex-all: Will wipe all vectors and re-index everything")
+
         # Auto-detect commit range from GitHub Actions if not explicitly provided
         if not from_commit and not args.changed_files:
             from_commit, to_commit = detect_github_commit_range()
@@ -587,12 +603,12 @@ def main_entry():
                     if fp:
                         files_to_process.append((status, fp))
         else:
-            raise RuntimeError("Usage: provide one of: --files, --retry-errors, --from-commit, or changed_files path")
+            raise RuntimeError("Usage: provide one of: --files, --retry-errors, --from-commit, --reindex-all, or changed_files path")
 
-    run_sync(files_to_process, errors_out)
+    run_sync(files_to_process, errors_out, wipe_first=args.reindex_all)
 
 
-def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
+def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_first: bool = False):
     # Environment context - repo_name used for metadata tagging
     repo_name = os.getenv("GITHUB_REPOSITORY", "unknown").split("/")[-1]
     commit_sha = os.getenv("GITHUB_SHA", "unknown")
@@ -672,6 +688,18 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str):
     print(f"[info] Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"[info] Namespace: '{DEFAULT_NAMESPACE}'")
     print(f"[info] Metadata tag: repo_name='{repo_name}'")
 
+    # Wipe all vectors before syncing (used by --reindex-all)
+    if wipe_first:
+        print(f"[warn] !!! WIPING ALL VECTORS IN NAMESPACE '{DEFAULT_NAMESPACE or '(default)'}' !!!")
+        try:
+            index.delete(delete_all=True, namespace=DEFAULT_NAMESPACE)
+            print(f"[info] Namespace wiped successfully.")
+        except Exception as e:
+            # Handle case where namespace doesn't exist yet
+            if "namespace not found" in str(e).lower():
+                print(f"[info] Namespace was empty, nothing to wipe.")
+            else:
+                raise RuntimeError(f"Failed to wipe namespace: {e}")
 
     to_upsert: List[dict] = []
     delete_operations: List[str] = []
