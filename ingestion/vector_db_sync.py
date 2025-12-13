@@ -36,6 +36,7 @@ import sys
 import uuid
 import re
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
 import tiktoken
@@ -268,7 +269,7 @@ def get_accurate_line_range(chunk: str, full_text: str) -> str:
         return "L1-L1"
 
 
-def process_file(filepath: str, status: str, repo_name: str):
+def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
     try:
         if not Path(filepath).exists():
             print(f"[warn] File not found: {filepath}")
@@ -309,7 +310,9 @@ def process_file(filepath: str, status: str, repo_name: str):
                     "embedded": bool(vector),
                     "should_embed": bool(should_embed),
                     "status": status,
-                    "token_count": count_tokens(chunk)
+                    "token_count": count_tokens(chunk),
+                    "commit_sha": commit_sha,
+                    "indexed_at": datetime.utcnow().isoformat() + "Z"
                 }
             }
             chunk_entries.append(chunk_entry)
@@ -721,7 +724,7 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_firs
                 raise FileNotFoundError(f"File marked as {status} but not found: {filepath}")
             if status in ("A", "M"):
                 delete_operations.append(filepath)
-            chunks = process_file(filepath, status, repo_name)
+            chunks = process_file(filepath, status, repo_name, commit_sha)
             to_upsert.extend(chunks)
             file_stats["processed"] += 1
         except Exception as e:
