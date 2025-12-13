@@ -38,21 +38,22 @@ import re
 import json
 from pathlib import Path
 from typing import List, Tuple, Optional
-from openai import OpenAI
 import tiktoken
 from tqdm import tqdm
 import argparse
 import subprocess
 
-# Import unified chunker (same directory)
+# LlamaIndex imports
 from llama_chunker import LlamaChunker
+from llama_index.embeddings.voyageai import VoyageEmbedding
 
 # Constants
 MAX_TOKENS = 8192
 INDEX_NAME = "repo-chunks"
 DEFAULT_NAMESPACE = ""  # Empty string = Pinecone default namespace (recommended for single consolidated namespace)
 GIT_EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"  # Git's empty tree SHA - used for full reindex
-DIMENSION = 1536
+EMBEDDING_MODEL = "voyage-code-3"  # SOTA code embedding model
+DIMENSION = 1024  # voyage-code-3 dimension
 METRIC = "cosine"
 BATCH_SIZE = 10
 
@@ -75,7 +76,7 @@ except Exception:
 
 # Clients are initialized in main() to avoid import-time failures
 index = None
-openai_client = None
+embed_model = None  # VoyageEmbedding instance
 tokenizer = None
 chunker = None  # LlamaChunker instance
 
@@ -218,14 +219,12 @@ def dispatch_chunking(filepath: Path):
 
 
 def get_embedding(text: str) -> List[float]:
+    """Generate embedding using Voyage AI's voyage-code-3 model"""
     if not text or not text.strip():
         raise RuntimeError("Empty text provided for embedding")
     try:
-        response = openai_client.embeddings.create(
-            input=text,
-            model="text-embedding-3-small"
-        )
-        embedding = response.data[0].embedding
+        # Use LlamaIndex VoyageEmbedding - get_text_embedding for documents
+        embedding = embed_model.get_text_embedding(text)
         if not embedding:
             raise RuntimeError("Received empty embedding from API")
         return embedding
@@ -518,8 +517,8 @@ def main_entry():
     missing_keys = []
     if not os.environ.get("PINECONE_API_KEY"):
         missing_keys.append("PINECONE_API_KEY")
-    if not os.environ.get("OPENAI_API_KEY"):
-        missing_keys.append("OPENAI_API_KEY")
+    if not os.environ.get("VOYAGE_API_KEY"):
+        missing_keys.append("VOYAGE_API_KEY")
 
     if missing_keys:
         if args.skip_on_missing_keys:
@@ -673,10 +672,15 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_firs
             print(f"[warn] Could not verify/create classic index '{index_name}': {e}")
         index = pinecone_client.Index(index_name)
 
-    oai_key = os.environ.get("OPENAI_API_KEY", "")
-    if not oai_key:
-        raise RuntimeError("OPENAI_API_KEY not set")
-    openai_client = OpenAI(api_key=oai_key)
+    # Initialize Voyage AI embedding model via LlamaIndex
+    voyage_key = os.environ.get("VOYAGE_API_KEY", "")
+    if not voyage_key:
+        raise RuntimeError("VOYAGE_API_KEY not set")
+    global embed_model
+    embed_model = VoyageEmbedding(
+        model_name=EMBEDDING_MODEL,
+        voyage_api_key=voyage_key
+    )
     tokenizer = tiktoken.get_encoding("cl100k_base")
 
     # Initialize LlamaChunker for unified chunking
@@ -764,7 +768,7 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_firs
     print(f"  - Files with errors: {file_stats['errors']}")
     print(f"  - Vectors deleted: {len(delete_operations)} files")
     print(f"  - Chunks upserted: {total_upserted}")
-    print(f"  - Embedding model: text-embedding-3-small")
+    print(f"  - Embedding model: {EMBEDDING_MODEL}")
     if failures:
         print(
             f"[error] {len(failures)} failures encountered. See {errors_out} for details. Use --retry-errors to re-run.")
