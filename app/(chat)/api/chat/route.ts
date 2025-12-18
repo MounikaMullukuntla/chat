@@ -223,18 +223,36 @@ export async function POST(request: Request) {
       console.log("🐙 [GITHUB-PAT] GitHub PAT provided for MCP agent");
     }
 
+      const baseMessages = uiMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role as "user" | "assistant" | "system",
+      content: msg.parts
+        .map((part: any) => (part.type === "text" ? part.text : ""))
+        .join("\n"),
+    }));
+
+    if (newFileContext && baseMessages.length > 0) {
+      const lastIndex = baseMessages.length - 1;
+      baseMessages[lastIndex] = {
+        ...baseMessages[lastIndex],
+        content: baseMessages[lastIndex].content + newFileContext,
+      };
+    }
+
+    const messagesForAgent = baseMessages.filter(
+      (msg) => msg.content && msg.content.trim().length > 0
+    );
+
+    console.log(
+      "🧪 [/api/chat] messages passed into chatAgent.chat:",
+      JSON.stringify(messagesForAgent, null, 2)
+    );
+
     // Use chat agent to generate streaming response with all provider-specific logic
     const response = await chatAgent.chat({
       chatId: id,
       modelId: selectedChatModel,
-      messages: uiMessages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as "user" | "assistant" | "system",
-        content:
-          msg.parts
-            .map((part: any) => (part.type === "text" ? part.text : ""))
-            .join("\n") + newFileContext,
-      })),
+      messages: messagesForAgent,
       artifactContext: artifactContext + fileContext,
       thinkingMode: thinkingEnabled,
       user,
@@ -256,6 +274,31 @@ export async function POST(request: Request) {
             messages: assistantMessages.map((msg) => {
               console.log("🔍 [FINISH] Message has", msg.parts.length, "parts");
 
+              const hasMeaningfulPart = msg.parts && msg.parts.some((part: any) => {
+                if (part.type === "text") return (part.text ?? "").trim().length > 0;
+
+                return true;
+              });
+
+              let parts = msg.parts;
+
+              if (!hasMeaningfulPart) {
+                const text = thinkingEnabled ? "The selected model does not support thinking mode. Please choose a different model or disable thinking mode."
+                : "The model was unable to generate a response. Please try again with a different prompt or model.";
+
+                console.warn(
+                  "🔍 [FINISH] Replacing empty assistant message with fallback text:",
+                  text
+                );
+
+                parts = [
+                  {
+                    type: "text",
+                    text,
+                  } as any
+                ]
+              }
+
               // Log message parts for debugging
               msg.parts.forEach((part: any, index: number) => {
                 console.log(`🔍 [FINISH] Part ${index}: type=${part.type}`);
@@ -273,7 +316,7 @@ export async function POST(request: Request) {
                 id: msg.id,
                 chatId: id,
                 role: "assistant",
-                parts: msg.parts,
+                parts: parts,
                 attachments: [],
                 createdAt: new Date(),
                 modelUsed: selectedChatModel,
