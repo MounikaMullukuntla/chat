@@ -77,6 +77,7 @@ export function Chat({
     stop,
     regenerate,
     resumeStream,
+    clearError
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
@@ -139,6 +140,68 @@ export function Chat({
         stack: error.stack,
       });
 
+      const messageText = error instanceof Error ? error.message : String(error);
+
+      if (messageText.includes("thinking is not supported by this model")) {
+        const thinkingNotSupportedMessage = "The selected model does not support thinking mode. Please choose a different model or disable thinking mode.";
+
+        setMessages((prev) => {
+          if (prev.length === 0) {
+            return [
+              ...prev,
+              {
+                id: generateUUID(),
+                role: "assistant",
+                parts: [{ type: "text", text: thinkingNotSupportedMessage }],
+              } as ChatMessage
+            ];
+          }
+
+          let idx = prev.length - 1;
+          while (idx >= 0 && prev[idx].role !== "assistant") {
+            idx--;
+          }
+
+          if (idx < 0) {
+            return [
+              ...prev,
+              {
+                id: generateUUID(),
+                role: "assistant",
+                parts: [{ type: "text", text: thinkingNotSupportedMessage }],
+              } as ChatMessage
+            ];
+          }
+
+          const last = prev[idx];
+
+          const hasMeaningfulPart = last.parts && last.parts.some(
+            (part: any) => {
+              if (part.type === "text") {
+                return (part.text ?? "").trim().length > 0;
+              }
+
+              return true;
+            }
+          );
+
+          if (hasMeaningfulPart) {
+            return prev;
+          }
+
+          const updatedLast: ChatMessage = {
+            ...last,
+            parts: [
+              { type: "text", text: thinkingNotSupportedMessage },
+            ]
+          };
+
+          const next = [...prev];
+          next[idx] = updatedLast;
+          return next;
+        });
+      }
+
       if (error instanceof ChatSDKError) {
         console.log("🔍 [DEBUG] ChatSDKError details:", {
           message: error.message,
@@ -181,6 +244,9 @@ export function Chat({
           description: "An unexpected error occurred",
         });
       }
+
+      setDataStream([]);
+      clearError();
     },
   });
 
