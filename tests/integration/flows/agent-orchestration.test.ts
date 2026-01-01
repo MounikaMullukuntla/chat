@@ -254,7 +254,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Verify both tools are available
       expect(tools).toBeDefined();
@@ -288,7 +288,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Mock search failure
       const providerToolsAgent = configLoader.getProviderToolsAgent();
@@ -314,7 +314,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       const executionOrder: string[] = [];
 
@@ -355,7 +355,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Verify GitHub and Python agents are available
       expect(tools.gitMcpAgent).toBeDefined();
@@ -402,7 +402,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Mock rate limit error
       const gitMcpAgent = configLoader.getGitMcpAgent();
@@ -430,7 +430,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // All tools should be available
       expect(tools.providerToolsAgent).toBeDefined();
@@ -487,7 +487,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // First tool call generates context
       const searchResult = await tools.providerToolsAgent.execute({
@@ -515,7 +515,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       const executionLog: Array<{ tool: string; timestamp: number }> = [];
 
@@ -579,7 +579,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Mock error on first call, success on retry
       let callCount = 0;
@@ -616,7 +616,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Mock search failure
       const providerToolsAgent = configLoader.getProviderToolsAgent();
@@ -652,7 +652,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Mock timeout
       const providerToolsAgent = configLoader.getProviderToolsAgent();
@@ -677,7 +677,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       const results: Array<{ tool: string; success: boolean }> = [];
 
@@ -742,7 +742,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Verify all agents are available
       expect(tools.providerToolsAgent).toBeDefined();
@@ -797,7 +797,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Test different document operations
       const operations = ["create", "edit", "suggest"];
@@ -820,7 +820,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       const searchQueries = [
         "search for Python tutorials",
@@ -839,17 +839,17 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
       const selectiveConfig: ChatModelAgentConfig = {
         ...validConfig,
         tools: {
-          ...validConfig.tools,
+          ...validConfig.tools!,
           providerToolsAgent: {
-            ...validConfig.tools?.providerToolsAgent,
+            ...validConfig.tools!.providerToolsAgent!,
             enabled: true,
           },
           documentAgent: {
-            ...validConfig.tools?.documentAgent,
+            ...validConfig.tools!.documentAgent!,
             enabled: false, // Disabled
           },
           pythonAgent: {
-            ...validConfig.tools?.pythonAgent,
+            ...validConfig.tools!.pythonAgent!,
             enabled: true,
           },
         },
@@ -868,7 +868,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Provider tools and Python should be available
       expect(tools.providerToolsAgent).toBeDefined();
@@ -885,7 +885,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Test with valid parameters
       const validResult = await tools.documentAgent.execute({
@@ -931,7 +931,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         email: "test@example.com",
       };
 
-      const tools = toolBuilder.buildTools(null, testUser, "test-chat-id");
+      const tools = toolBuilder.buildTools(null, testUser, "test-chat-id")!;
 
       // Execute with user context
       const result = await tools.documentAgent.execute({
@@ -957,7 +957,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Step 1: Search
       const searchResult = await tools.providerToolsAgent.execute({
@@ -992,7 +992,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Fetch from GitHub
       const githubResult = await tools.gitMcpAgent.execute({
@@ -1019,7 +1019,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       // Execute multiple independent operations concurrently
       const results = await Promise.all([
@@ -1076,7 +1076,7 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
         null,
         { id: "test-user" },
         "test-chat-id"
-      );
+      )!;
 
       const startTime = Date.now();
 

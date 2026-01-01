@@ -427,8 +427,8 @@ describe("Admin Config Queries", () => {
 
       const result = await adminQueries.updateAdminConfig(updateData);
 
-      expect(result.configData.rateLimit.perMinute).toBe(100);
-      expect(result.configData.rateLimit.perHour).toBe(5000);
+      expect((result.configData as any).rateLimit.perMinute).toBe(100);
+      expect((result.configData as any).rateLimit.perHour).toBe(5000);
     });
 
     it("should throw ChatSDKError on database error", async () => {

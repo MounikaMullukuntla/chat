@@ -349,7 +349,7 @@ describe("Document API Integration Tests", () => {
     });
 
     it("should handle different document kinds (text, code, mermaid)", async () => {
-      const kinds: ArtifactKind[] = ["text", "code", "python", "mermaid"];
+      const kinds: ArtifactKind[] = ["text", "code", "python code", "mermaid code"];
 
       for (const kind of kinds) {
         (getDocumentsById as any).mockResolvedValue([]);

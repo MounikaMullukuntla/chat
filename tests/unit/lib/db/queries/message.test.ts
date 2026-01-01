@@ -265,7 +265,7 @@ describe("Message Query Tests", () => {
       const mockSelectFrom = vi
         .fn()
         .mockReturnValue({ where: mockSelectWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom } as any);
 
       await deleteMessagesByChatIdAfterTimestamp({
         chatId: mockChatId,
@@ -289,10 +289,10 @@ describe("Message Query Tests", () => {
       const mockSelectFrom = vi
         .fn()
         .mockReturnValue({ where: mockSelectWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockSelectFrom } as any);
 
       const mockDeleteWhere = vi.fn().mockResolvedValue([]);
-      vi.mocked(mockDb.delete).mockReturnValue({ where: mockDeleteWhere });
+      vi.mocked(mockDb.delete).mockReturnValue({ where: mockDeleteWhere } as any);
 
       await deleteMessagesByChatIdAfterTimestamp({
         chatId: mockChatId,
@@ -328,7 +328,7 @@ describe("Message Query Tests", () => {
       const mockOrderBy = vi.fn().mockResolvedValue(mockMessages);
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await getMessagesByChatId({ id: mockChatId });
 
@@ -382,7 +382,7 @@ describe("Message Query Tests", () => {
       const mockOrderBy = vi.fn().mockResolvedValue(mockMessages);
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await getMessagesByChatId({ id: mockChatId });
 
@@ -417,7 +417,7 @@ describe("Message Query Tests", () => {
       const mockOrderBy = vi.fn().mockResolvedValue([mockMessage]);
       const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await getMessagesByChatId({ id: mockChatId });
 
@@ -443,7 +443,7 @@ describe("Message Query Tests", () => {
 
       const mockWhere = vi.fn().mockResolvedValue([mockMessage]);
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await getMessageById({ id: mockMessageId });
 
@@ -454,7 +454,7 @@ describe("Message Query Tests", () => {
     it("should return empty array when message not found", async () => {
       const mockWhere = vi.fn().mockResolvedValue([]);
       const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom });
+      vi.mocked(mockDb.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await getMessageById({ id: mockMessageId });
 

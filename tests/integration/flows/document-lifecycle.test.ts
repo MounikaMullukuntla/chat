@@ -93,7 +93,7 @@ describe("Document Lifecycle Integration Tests", () => {
       const pythonDoc = {
         id: `${testDocumentId}-python`,
         title: "Hello World Script",
-        kind: "python" as const,
+        kind: "python code" as const,
         content: 'print("Hello, World!")',
         userId: testUserId,
         chatId: testChatId,
@@ -103,7 +103,7 @@ describe("Document Lifecycle Integration Tests", () => {
       const result = await saveDocument(pythonDoc);
 
       // Assert
-      expect(result[0].kind).toBe("python");
+      expect(result[0].kind).toBe("python code");
       expect(result[0].content).toBe('print("Hello, World!")');
       expect(result[0].version_number).toBe(1);
     });
@@ -113,7 +113,7 @@ describe("Document Lifecycle Integration Tests", () => {
       const mermaidDoc = {
         id: `${testDocumentId}-mermaid`,
         title: "System Architecture",
-        kind: "mermaid" as const,
+        kind: "mermaid code" as const,
         content: "graph TD\n  A[Client] --> B[Server]\n  B --> C[Database]",
         userId: testUserId,
         chatId: testChatId,
@@ -123,7 +123,7 @@ describe("Document Lifecycle Integration Tests", () => {
       const result = await saveDocument(mermaidDoc);
 
       // Assert
-      expect(result[0].kind).toBe("mermaid");
+      expect(result[0].kind).toBe("mermaid code");
       expect(result[0].version_number).toBe(1);
     });
   });
@@ -362,7 +362,7 @@ describe("Document Lifecycle Integration Tests", () => {
         id: testDocumentId,
         title: "Revert Test",
         kind: "text" as const,
-        content: version1.content,
+        content: version1.content ?? "",
         userId: testUserId,
         chatId: testChatId,
         metadata: { reverted_from: 1 },
@@ -390,7 +390,7 @@ describe("Document Lifecycle Integration Tests", () => {
         id: testDocumentId,
         title: "Revert Test",
         kind: "text" as const,
-        content: version2.content,
+        content: version2.content ?? "",
         userId: testUserId,
         chatId: testChatId,
       });
@@ -447,20 +447,26 @@ describe("Document Lifecycle Integration Tests", () => {
       // Arrange
       const suggestions = [
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt,
           originalText: "quick brown fox",
           suggestedText: "swift red fox",
           description: "More vivid description",
           user_id: testUserId,
+          isResolved: false,
         },
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt,
           originalText: "lazy dog",
           suggestedText: "sleeping hound",
           description: "Better imagery",
           user_id: testUserId,
+          isResolved: false,
         },
       ];
 
@@ -482,12 +488,15 @@ describe("Document Lifecycle Integration Tests", () => {
       // Arrange - Create suggestion
       const suggestions = [
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt,
           originalText: "quick brown fox",
           suggestedText: "swift red fox",
           description: "Better description",
           user_id: testUserId,
+          isResolved: false,
         },
       ];
       await saveSuggestions({ suggestions });
@@ -495,7 +504,7 @@ describe("Document Lifecycle Integration Tests", () => {
       const currentDoc = await getDocumentById({ id: testDocumentId });
 
       // Act - Accept suggestion by creating new version with suggested content
-      const updatedContent = currentDoc.content.replace(
+      const updatedContent = (currentDoc.content ?? "").replace(
         "quick brown fox",
         "swift red fox"
       );
@@ -522,20 +531,26 @@ describe("Document Lifecycle Integration Tests", () => {
       // Arrange
       const suggestions = [
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt,
           originalText: "quick",
           suggestedText: "fast",
           description: "Synonym",
           user_id: testUserId,
+          isResolved: false,
         },
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt,
           originalText: "lazy",
           suggestedText: "sleepy",
           description: "Better word",
           user_id: testUserId,
+          isResolved: false,
         },
       ];
 
@@ -640,7 +655,7 @@ describe("Document Lifecycle Integration Tests", () => {
       await saveDocument({
         id: `${testDocumentId}-2`,
         title: "Document 2",
-        kind: "python" as const,
+        kind: "python code" as const,
         content: 'print("test")',
         userId: testUserId,
         chatId: testChatId,
@@ -689,7 +704,7 @@ describe("Document Lifecycle Integration Tests", () => {
 
       // Assert
       const textDocs = allDocuments.filter((d) => d.kind === "text");
-      const pythonDocs = allDocuments.filter((d) => d.kind === "python");
+      const pythonDocs = allDocuments.filter((d) => d.kind === "python code");
 
       expect(textDocs.length).toBeGreaterThanOrEqual(2); // Doc 1 v1 and v2
       expect(pythonDocs).toHaveLength(1); // Doc 2
@@ -761,12 +776,15 @@ describe("Document Lifecycle Integration Tests", () => {
       // Step 3: Generate suggestions
       const suggestions = [
         {
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
           documentId: testDocumentId,
           documentCreatedAt: currentDoc.createdAt,
           originalText: "Beautiful",
           suggestedText: "Amazing",
           description: "More impactful",
           user_id: testUserId,
+          isResolved: false,
         },
       ];
       await saveSuggestions({ suggestions });
@@ -798,7 +816,7 @@ describe("Document Lifecycle Integration Tests", () => {
         id: testDocumentId,
         title: "Complete Journey",
         kind: "text" as const,
-        content: version1.content,
+        content: version1.content ?? "",
         userId: testUserId,
         chatId: testChatId,
         metadata: { reverted_from: 1 },

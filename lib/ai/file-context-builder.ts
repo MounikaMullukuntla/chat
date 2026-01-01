@@ -7,12 +7,11 @@
  * @module lib/ai/file-context-builder
  */
 
-import type { Message } from "@/lib/db/schema";
+import type { DBMessage } from "@/lib/db/drizzle-schema";
 import { getFileCache, formatFileSize } from "@/lib/cache/file-cache";
 import { createAdminClient } from "@/lib/db/supabase-client";
 import { extractFileContent } from "@/lib/ai/file-processing";
-import { logError } from "@/lib/errors/logger";
-import { ErrorCategory } from "@/lib/errors/logger";
+import { logError, ErrorCategory, ErrorType } from "@/lib/errors/logger";
 
 /**
  * File attachment metadata from database
@@ -54,7 +53,7 @@ export interface FileWithContent {
  * @returns Formatted file context string
  */
 export async function buildFileContext(
-	messages: Message[],
+	messages: DBMessage[],
 	chatId: string,
 	userId: string,
 ): Promise<string> {
@@ -121,11 +120,12 @@ export async function buildFileContext(
 				);
 
 				await logError({
-					category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
-					message:
+					error_type: ErrorType.SYSTEM,
+					error_category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
+					error_message:
 						signedUrlError?.message || "Failed to generate signed URL",
-					userId,
-					metadata: {
+					user_id: userId,
+					error_details: {
 						chatId,
 						storagePath: attachment.storagePath,
 						error: signedUrlError,
@@ -152,10 +152,11 @@ export async function buildFileContext(
 				);
 
 				await logError({
-					category: ErrorCategory.FILE_PROCESSING_FAILED,
-					message: error instanceof Error ? error.message : "Unknown error",
-					userId,
-					metadata: {
+					error_type: ErrorType.SYSTEM,
+					error_category: ErrorCategory.FILE_PROCESSING_FAILED,
+					error_message: error instanceof Error ? error.message : "Unknown error",
+					user_id: userId,
+					error_details: {
 						chatId,
 						storagePath: attachment.storagePath,
 						fileId,
@@ -314,7 +315,7 @@ function getFileExtension(fileName: string, contentType: string): string {
  * @param messages - All messages in chat
  * @returns File count and total size
  */
-export function getFileContextSummary(messages: Message[]): {
+export function getFileContextSummary(messages: DBMessage[]): {
 	fileCount: number;
 	totalSize: number;
 } {

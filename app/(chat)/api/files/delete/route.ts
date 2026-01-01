@@ -9,7 +9,7 @@ import {
 	UserActivityType,
 	ActivityCategory,
 } from "@/lib/logging/activity-logger";
-import { ErrorCategory } from "@/lib/errors/logger";
+import { ErrorCategory, ErrorType } from "@/lib/errors/logger";
 
 // Request validation schema
 const DeleteSchema = z.object({
@@ -64,10 +64,11 @@ export async function DELETE(request: Request) {
 	// 4. Verify file belongs to user
 	if (!storagePath.startsWith(`${userId}/`)) {
 		await logError({
-			category: ErrorCategory.STORAGE_ACCESS_DENIED,
-			message: "Attempted to delete file not owned by user",
-			userId,
-			metadata: { storagePath, chatId },
+			error_type: ErrorType.SYSTEM,
+			error_category: ErrorCategory.STORAGE_ACCESS_DENIED,
+			error_message: "Attempted to delete file not owned by user",
+			user_id: userId,
+			error_details: { storagePath, chatId },
 		});
 
 		return NextResponse.json(
@@ -88,10 +89,11 @@ export async function DELETE(request: Request) {
 			console.error("[FileDelete] Delete error:", deleteError);
 
 			await logError({
-				category: ErrorCategory.FILE_SYSTEM_ERROR,
-				message: deleteError.message,
-				userId,
-				metadata: { storagePath, chatId, error: deleteError },
+				error_type: ErrorType.SYSTEM,
+				error_category: ErrorCategory.FILE_SYSTEM_ERROR,
+				error_message: deleteError.message,
+				user_id: userId,
+				error_details: { storagePath, chatId, error: deleteError },
 			});
 
 			return NextResponse.json(
@@ -133,10 +135,11 @@ export async function DELETE(request: Request) {
 		console.error("[FileDelete] Unexpected error:", error);
 
 		await logError({
-			category: ErrorCategory.FILE_SYSTEM_ERROR,
-			message: error instanceof Error ? error.message : "Unknown error",
-			userId,
-			metadata: { storagePath, chatId },
+			error_type: ErrorType.SYSTEM,
+			error_category: ErrorCategory.FILE_SYSTEM_ERROR,
+			error_message: error instanceof Error ? error.message : "Unknown error",
+			user_id: userId,
+			error_details: { storagePath, chatId },
 		});
 
 		return NextResponse.json(

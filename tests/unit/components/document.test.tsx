@@ -73,6 +73,10 @@ describe("Document Viewer (Text Artifact)", () => {
     metadata: {
       suggestions: [] as Suggestion[],
     },
+    title: "Test Document",
+    isInline: false,
+    suggestions: [] as Suggestion[],
+    setMetadata: mockSetMetadata,
   };
 
   beforeEach(() => {
@@ -373,6 +377,9 @@ describe("Document Viewer (Text Artifact)", () => {
         documentCreatedAt: new Date(),
         selectionStart: 0,
         selectionEnd: 8,
+        isResolved: false,
+        user_id: "test-user",
+        createdAt: new Date(),
       } as Suggestion,
       {
         id: "sugg-2",
@@ -383,6 +390,9 @@ describe("Document Viewer (Text Artifact)", () => {
         documentCreatedAt: new Date(),
         selectionStart: 10,
         selectionEnd: 22,
+        isResolved: false,
+        user_id: "test-user",
+        createdAt: new Date(),
       } as Suggestion,
     ];
 
@@ -627,6 +637,9 @@ describe("Document Viewer (Text Artifact)", () => {
           documentCreatedAt: new Date(),
           selectionStart: 0,
           selectionEnd: 7,
+          isResolved: false,
+          user_id: "test-user",
+          createdAt: new Date(),
         } as Suggestion,
       ];
 

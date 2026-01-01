@@ -147,6 +147,7 @@ describe("Chat API Integration Tests", () => {
         app_metadata: {},
         user_metadata: testUsers.regularUser.raw_user_meta_data,
       } as any,
+      session: null as any,
     });
 
     // Mock database queries
@@ -155,7 +156,7 @@ describe("Chat API Integration Tests", () => {
     vi.mocked(saveMessages).mockResolvedValue(undefined as any);
     vi.mocked(getMessagesByChatId).mockResolvedValue([]);
     vi.mocked(getLatestDocumentVersionsByChat).mockResolvedValue([]);
-    vi.mocked(getLastDocumentInChat).mockResolvedValue(null);
+    vi.mocked(getLastDocumentInChat).mockResolvedValue(null as any);
     vi.mocked(generateTitleFromUserMessage).mockResolvedValue("Test Chat");
   });
 
@@ -619,7 +620,7 @@ describe("Chat API Integration Tests", () => {
     describe("Multi-step Tool Execution Tests", () => {
       it("should handle chat with tool calls", async () => {
         // Mock chat agent response with tool calls
-        mockChatAgent.chat.mockImplementation(({ onFinish }) => {
+        mockChatAgent.chat.mockImplementation(({ onFinish }: { onFinish: any }) => {
           // Simulate tool execution and message saving
           setTimeout(async () => {
             await onFinish({

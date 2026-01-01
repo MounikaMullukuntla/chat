@@ -292,7 +292,7 @@ describe("GoogleChatAgent", () => {
       // Verify the API key is set by getting a model
       const model = agent.getModel("gemini-2.0-flash-exp");
       expect(model).toBeDefined();
-      expect(model.apiKey).toBe(apiKey);
+      expect((model as any).apiKey).toBe(apiKey);
     });
 
     it("should propagate API key to config loader", () => {
@@ -314,7 +314,7 @@ describe("GoogleChatAgent", () => {
       // Don't set API key, should fallback to environment
       const model = agent.getModel("gemini-2.0-flash-exp");
       expect(model).toBeDefined();
-      expect(model.apiKey).toBe("env-api-key");
+      expect((model as any).apiKey).toBe("env-api-key");
     });
   });
 
@@ -348,9 +348,9 @@ describe("GoogleChatAgent", () => {
       const model = agent.getModel("gemini-2.0-flash-exp");
 
       expect(model).toBeDefined();
-      expect(model.modelId).toBe("gemini-2.0-flash-exp");
-      expect(model.provider).toBe("google");
-      expect(model.apiKey).toBe(apiKey);
+      expect((model as any).modelId).toBe("gemini-2.0-flash-exp");
+      expect((model as any).provider).toBe("google");
+      expect((model as any).apiKey).toBe(apiKey);
     });
 
     it("should get model with environment API key", () => {
@@ -359,8 +359,8 @@ describe("GoogleChatAgent", () => {
       const model = agent.getModel("gemini-1.5-pro");
 
       expect(model).toBeDefined();
-      expect(model.modelId).toBe("gemini-1.5-pro");
-      expect(model.apiKey).toBe("env-api-key");
+      expect((model as any).modelId).toBe("gemini-1.5-pro");
+      expect((model as any).apiKey).toBe("env-api-key");
     });
 
     it("should return available models (enabled only)", () => {

@@ -86,7 +86,7 @@ describe("Chat Query Tests", () => {
       // Suppress console.error during this test
       const consoleErrorSpy = vi
         .spyOn(console, "error")
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       await expect(saveChat(chatData)).rejects.toThrow(ChatSDKError);
       const error = await saveChat(chatData).catch((e) => e);
@@ -277,7 +277,7 @@ describe("Chat Query Tests", () => {
       // Suppress console.error during this test
       const consoleErrorSpy = vi
         .spyOn(console, "error")
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       const result = await getChatsByUserId({
         id: userId,
@@ -527,6 +527,7 @@ describe("Chat Query Tests", () => {
       const context = {
         inputTokens: 100,
         outputTokens: 200,
+        totalTokens: 300,
         cost: 0.003,
       };
       const mockUpdateResult = { rowCount: 1 };
@@ -549,6 +550,7 @@ describe("Chat Query Tests", () => {
       const context = {
         inputTokens: 100,
         outputTokens: 200,
+        totalTokens: 300,
         cost: 0.003,
       };
       const dbError = new Error("Update failed");

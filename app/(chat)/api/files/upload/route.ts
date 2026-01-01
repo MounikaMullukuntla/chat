@@ -10,7 +10,7 @@ import {
 	UserActivityType,
 	ActivityCategory,
 } from "@/lib/logging/activity-logger";
-import { ErrorCategory } from "@/lib/errors/logger";
+import { ErrorCategory, ErrorType } from "@/lib/errors/logger";
 
 // Get max file size from env or default to 10MB
 const MAX_FILE_SIZE =
@@ -130,10 +130,11 @@ export async function POST(request: Request) {
 			.join(", ");
 
 		await logError({
-			category: ErrorCategory.FILE_TYPE_NOT_SUPPORTED,
-			message: errorMessage,
-			userId,
-			metadata: { chatId, fileType: file.type, fileSize: file.size },
+			error_type: ErrorType.USER,
+			error_category: ErrorCategory.FILE_TYPE_NOT_SUPPORTED,
+			error_message: errorMessage,
+			user_id: userId,
+			error_details: { chatId, fileType: file.type, fileSize: file.size },
 		});
 
 		return NextResponse.json({ error: errorMessage }, { status: 400 });
@@ -160,10 +161,11 @@ export async function POST(request: Request) {
 			console.error("[FileUpload] Upload error:", uploadError);
 
 			await logError({
-				category: ErrorCategory.FILE_UPLOAD_FAILED,
-				message: uploadError.message,
-				userId,
-				metadata: { chatId, storagePath, error: uploadError },
+				error_type: ErrorType.SYSTEM,
+				error_category: ErrorCategory.FILE_UPLOAD_FAILED,
+				error_message: uploadError.message,
+				user_id: userId,
+				error_details: { chatId, storagePath, error: uploadError },
 			});
 
 			return NextResponse.json(
@@ -182,10 +184,11 @@ export async function POST(request: Request) {
 			console.error("[FileUpload] Signed URL error:", signedUrlError);
 
 			await logError({
-				category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
-				message: signedUrlError?.message || "Failed to generate signed URL",
-				userId,
-				metadata: { chatId, storagePath, error: signedUrlError },
+				error_type: ErrorType.SYSTEM,
+				error_category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
+				error_message: signedUrlError?.message || "Failed to generate signed URL",
+				user_id: userId,
+				error_details: { chatId, storagePath, error: signedUrlError },
 			});
 
 			return NextResponse.json(
@@ -208,10 +211,11 @@ export async function POST(request: Request) {
 			console.error("[FileUpload] Content extraction error:", error);
 
 			await logError({
-				category: ErrorCategory.FILE_PROCESSING_FAILED,
-				message: error instanceof Error ? error.message : "Unknown error",
-				userId,
-				metadata: { chatId, storagePath, filename },
+				error_type: ErrorType.SYSTEM,
+				error_category: ErrorCategory.FILE_PROCESSING_FAILED,
+				error_message: error instanceof Error ? error.message : "Unknown error",
+				user_id: userId,
+				error_details: { chatId, storagePath, filename },
 			});
 
 			// Don't fail upload if extraction fails
@@ -269,10 +273,11 @@ export async function POST(request: Request) {
 		console.error("[FileUpload] Unexpected error:", error);
 
 		await logError({
-			category: ErrorCategory.FILE_UPLOAD_FAILED,
-			message: error instanceof Error ? error.message : "Unknown error",
-			userId,
-			metadata: { chatId, filename },
+			error_type: ErrorType.SYSTEM,
+			error_category: ErrorCategory.FILE_UPLOAD_FAILED,
+			error_message: error instanceof Error ? error.message : "Unknown error",
+			user_id: userId,
+			error_details: { chatId, filename },
 		});
 
 		return NextResponse.json(

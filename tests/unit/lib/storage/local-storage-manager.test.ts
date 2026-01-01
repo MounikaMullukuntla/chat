@@ -51,7 +51,7 @@ Object.defineProperty(global, "localStorage", {
 });
 
 // Import after mocking
-let _LocalStorageManager: any;
+
 let localStorageManager: any;
 
 describe("LocalStorageManager", () => {
@@ -64,7 +64,6 @@ describe("LocalStorageManager", () => {
 
     // Import fresh module
     const module = await import("@/lib/storage/local-storage-manager");
-    _LocalStorageManager = module.default || module;
     localStorageManager = (module as any).localStorageManager;
   });
 

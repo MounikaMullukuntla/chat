@@ -43,8 +43,9 @@ type MermaidAgentConfig = {
 export class GoogleMermaidAgentStreaming {
   private apiKey?: string;
   private modelId?: string;
+  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly config: MermaidAgentConfig;
-  private readonly toolConfigs?: {
+  private toolConfigs?: {
     create?: { systemPrompt: string; enabled: boolean };
     update?: {
       systemPrompt: string;

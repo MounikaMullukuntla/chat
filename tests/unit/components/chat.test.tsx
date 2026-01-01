@@ -62,6 +62,7 @@ vi.mock("@/lib/storage", () => ({
 vi.mock("@/components/data-stream-provider", () => ({
   useDataStream: vi.fn(() => ({
     setDataStream: vi.fn(),
+    clearError: vi.fn(),
   })),
 }));
 
@@ -156,6 +157,7 @@ describe("Chat Component", () => {
   const mockRegenerate = vi.fn();
   const mockStop = vi.fn();
   const mockResumeStream = vi.fn();
+  const mockClearError = vi.fn();
 
   const defaultProps = {
     id: "test-chat-id",
@@ -178,6 +180,7 @@ describe("Chat Component", () => {
       stop: mockStop,
       regenerate: mockRegenerate,
       resumeStream: mockResumeStream,
+      clearError: mockClearError,
     });
   });
 
@@ -635,6 +638,7 @@ describe("Chat Component", () => {
           stop: mockStop,
           regenerate: mockRegenerate,
           resumeStream: mockResumeStream,
+          clearError: mockClearError,
         };
       });
 
@@ -663,6 +667,7 @@ describe("Chat Component", () => {
           stop: mockStop,
           regenerate: mockRegenerate,
           resumeStream: mockResumeStream,
+          clearError: mockClearError,
         };
       });
 
@@ -692,6 +697,7 @@ describe("Chat Component", () => {
           stop: mockStop,
           regenerate: mockRegenerate,
           resumeStream: mockResumeStream,
+          clearError: mockClearError,
         };
       });
 

@@ -2,7 +2,7 @@
  * Google AI testing helpers for real API calls
  */
 
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText, streamText } from "ai";
 
 /**
@@ -31,9 +31,10 @@ export function getGoogleModel(modelId: string = "gemini-2.5-flash") {
     throw new Error("GOOGLE_AI_API_KEY is required for real API tests");
   }
 
-  return google(modelId, {
+  const googleProvider = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_AI_API_KEY,
   });
+  return googleProvider(modelId);
 }
 
 /**
@@ -133,7 +134,7 @@ export async function testThinkingMode(
   });
 
   return {
-    hasThinkingTokens: result.usage.promptTokens > prompt.length / 4,
+    hasThinkingTokens: (result.usage.inputTokens ?? 0) > prompt.length / 4,
     result,
   };
 }

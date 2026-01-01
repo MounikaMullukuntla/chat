@@ -18,7 +18,7 @@ export class GoogleGitMcpAgent {
   private githubPAT?: string;
   private modelId?: string;
   private googleProvider?: any;
-  private readonly mcpClient?: any;
+  private mcpClient?: any;
 
   constructor(config: GitMcpAgentConfig) {
     this.config = config;

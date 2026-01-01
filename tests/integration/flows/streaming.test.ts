@@ -419,7 +419,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -461,7 +461,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -488,7 +488,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -754,7 +754,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -829,7 +829,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -858,7 +858,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");
@@ -988,7 +988,7 @@ describe("Streaming Integration Tests", () => {
       const agent = new GoogleDocumentAgentStreaming({
         enabled: true,
         systemPrompt: "Test prompt",
-      });
+      } as any);
 
       agent.setApiKey("test-api-key");
       agent.setModel("gemini-2.0-flash-exp");

@@ -34,8 +34,9 @@ import { streamTextDocumentUpdate } from "../../tools/document/streamTextDocumen
 export class GoogleDocumentAgentStreaming {
   private apiKey?: string;
   private modelId?: string;
+  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly config: DocumentAgentConfig;
-  private readonly toolConfigs?: {
+  private toolConfigs?: {
     create?: {
       systemPrompt: string;
       userPromptTemplate: string;

@@ -17,6 +17,7 @@ import type { ProviderToolsAgentConfig } from "../../core/types";
  * Implements Google Search, URL Context, and Code Execution tools
  */
 export class GoogleProviderToolsAgent {
+  private apiKey?: string;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private modelId?: string;
 

@@ -10,7 +10,7 @@ import {
 	UserActivityType,
 	ActivityCategory,
 } from "@/lib/logging/activity-logger";
-import { ErrorCategory } from "@/lib/errors/logger";
+import { ErrorCategory, ErrorType } from "@/lib/errors/logger";
 
 // Request validation schema
 const RetrieveSchema = z.object({
@@ -116,10 +116,11 @@ export async function POST(request: Request) {
 				);
 
 				await logError({
-					category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
-					message: signedUrlError?.message || "Failed to generate signed URL",
-					userId,
-					metadata: { chatId, storagePath, error: signedUrlError },
+					error_type: ErrorType.SYSTEM,
+					error_category: ErrorCategory.SIGNED_URL_GENERATION_FAILED,
+					error_message: signedUrlError?.message || "Failed to generate signed URL",
+					user_id: userId,
+					error_details: { chatId, storagePath, error: signedUrlError },
 				});
 
 				errors.push({
@@ -170,10 +171,11 @@ export async function POST(request: Request) {
 				);
 
 				await logError({
-					category: ErrorCategory.FILE_PROCESSING_FAILED,
-					message: error instanceof Error ? error.message : "Unknown error",
-					userId,
-					metadata: { chatId, storagePath, fileId },
+					error_type: ErrorType.SYSTEM,
+					error_category: ErrorCategory.FILE_PROCESSING_FAILED,
+					error_message: error instanceof Error ? error.message : "Unknown error",
+					user_id: userId,
+					error_details: { chatId, storagePath, fileId },
 				});
 
 				content = `[Failed to extract content from ${fileId}]`;

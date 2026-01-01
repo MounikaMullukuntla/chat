@@ -43,8 +43,9 @@ type PythonAgentConfig = {
 export class GooglePythonAgentStreaming {
   private apiKey?: string;
   private modelId?: string;
+  private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly config: PythonAgentConfig;
-  private readonly toolConfigs?: {
+  private toolConfigs?: {
     create?: { systemPrompt: string; enabled: boolean };
     update?: {
       systemPrompt: string;

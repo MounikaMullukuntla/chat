@@ -36,6 +36,7 @@ type ModelConfig = {
  * This is the main orchestrator agent that communicates with users
  */
 export class GoogleChatAgent {
+  private apiKey?: string;
   private readonly config: ChatModelAgentConfig;
   private googleProvider?: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly configLoader: AgentConfigLoader;
