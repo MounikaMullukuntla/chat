@@ -2,6 +2,11 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   // Temporarily disabled ultracite to allow warnings for existing code issues
   // "extends": ["ultracite"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "files": {
     "includes": [
       "**/*",
