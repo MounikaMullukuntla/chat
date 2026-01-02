@@ -87,7 +87,7 @@ export async function buildFileContext(
 			}
 
 			// Check cache first
-			let cachedFile = cache.get(userId, chatId, fileId);
+			const cachedFile = cache.get(userId, chatId, fileId);
 
 			if (cachedFile) {
 				// Found in cache
