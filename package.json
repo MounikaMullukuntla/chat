@@ -7,7 +7,7 @@
     "build": "tsx lib/db/migrate && next build",
     "start": "next start",
     "lint": "npx @biomejs/biome check .",
-    "format": "npx @biomejs/biome check --write .",
+    "format": "npx @biomejs/biome format --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "npx tsx lib/db/migrate.ts",
     "db:verify": "npx tsx lib/db/verify-migration.ts",
