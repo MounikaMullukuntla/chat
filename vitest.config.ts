@@ -29,7 +29,8 @@ export default defineConfig({
     css: false,
     server: {
       deps: {
-        external: ["katex"],
+        external: ["katex", "mermaid", /katex\/dist/],
+        inline: [/^(?!.*katex).*$/],
       },
     },
     include: [
@@ -63,6 +64,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./"),
+      // Mock katex CSS to prevent import errors in tests
+      "katex/dist/katex.min.css": path.resolve(__dirname, "./tests/mocks/empty.css"),
     },
   },
 });
