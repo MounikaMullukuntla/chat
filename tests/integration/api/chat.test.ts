@@ -42,14 +42,15 @@ vi.mock("@/app/(chat)/actions", () => ({
 }));
 
 vi.mock("@/lib/logging", () => {
-  const mockPerformanceTracker = vi.fn(() => ({
-    end: vi.fn().mockResolvedValue(undefined),
-  }));
+  // Create a proper class mock for PerformanceTracker
+  class MockPerformanceTracker {
+    end = vi.fn().mockResolvedValue(undefined);
+  }
 
   return {
     logUserActivity: vi.fn().mockResolvedValue(undefined),
     logAgentActivity: vi.fn().mockResolvedValue(undefined),
-    PerformanceTracker: mockPerformanceTracker,
+    PerformanceTracker: MockPerformanceTracker,
     createCorrelationId: vi.fn(() => "test-correlation-id"),
     UserActivityType: {
       CHAT_CREATE: "chat.create",
