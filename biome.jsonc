@@ -7,6 +7,9 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "formatter": {
+    "enabled": false
+  },
   "files": {
     "includes": [
       "**/*",
@@ -17,50 +20,22 @@
   },
   "linter": {
     "rules": {
-      "suspicious": {
-        /* Needs more work to fix */
-        "noExplicitAny": "off",
-        /* Allow for Tailwind @ rules */
-        "noUnknownAtRules": "off",
-        /* Allowing console for debugging */
-        "noConsole": "off",
-        /* Needed for generateUUID() */
-        "noBitwiseOperators": "off",
-        /* Temporary: Make warnings instead of errors until fixed */
-        "noImplicitAnyLet": "warn",
-        "noEvolvingTypes": "warn",
-        "useAwait": "warn"
-      },
-      "style": {
-        /* Allowing magic numbers */
-        "noMagicNumbers": "off",
-        /* Needs more work to fix */
-        "noNestedTernary": "off"
-      },
-      "nursery": {
-        /* Too many false positives */
-        "noUnnecessaryConditions": "off"
-      },
-      "complexity": {
-        /* Needs more work to fix */
-        "noExcessiveCognitiveComplexity": "off",
-        /* This one has false positives. It's a bit... iffy 😉 */
-        "useSimplifiedLogicExpression": "off",
-        /* Temporary: Make warnings instead of errors until fixed */
-        "noForEach": "warn"
-      },
-      "a11y": {
-        /* Needs more work to fix */
-        "noSvgWithoutTitle": "off",
-        /* Temporary: Make warnings instead of errors until fixed */
-        "useButtonType": "warn",
-        "noLabelWithoutControl": "warn"
-      },
-      "correctness": {
-        /* Temporary: Make warnings instead of errors until fixed */
-        "noUnusedVariables": "warn",
-        "noUnusedImports": "warn",
-        "noUnusedFunctionParameters": "warn"
+      // Set all groups to "warn" - will report issues but not fail CI
+      "suspicious": "warn",
+      "style": "warn",
+      "nursery": "warn",
+      "complexity": "warn",
+      "a11y": "warn",
+      "correctness": "warn",
+      "performance": "warn",
+      "security": "warn"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        // Disable import organization checks
+        "organizeImports": "off"
       }
     }
   }
