@@ -14,11 +14,12 @@ vi.mock("server-only", () => ({}));
 
 // Mock activity logger
 vi.mock("@/lib/logging/activity-logger", () => ({
-  logAgentActivity: vi.fn(),
-  PerformanceTracker: vi.fn(() => ({
-    end: vi.fn(),
-    getDuration: vi.fn(() => 100),
-  })),
+  logAgentActivity: vi.fn(() => Promise.resolve()),
+  PerformanceTracker: class MockPerformanceTracker {
+    end = vi.fn(() => Promise.resolve());
+    getDuration = vi.fn(() => 100);
+    getCorrelationId = vi.fn(() => "test-correlation-id");
+  },
   createCorrelationId: vi.fn(() => "test-correlation-id"),
   AgentType: {
     CHAT_MODEL_AGENT: "chat_model_agent",
