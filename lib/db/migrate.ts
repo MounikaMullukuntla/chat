@@ -16,9 +16,10 @@ const runMigrate = async () => {
 
   // Skip migrations during Vercel build phase
   // Database is not accessible during build, only at runtime
-  if (process.env.VERCEL || process.env.CI) {
-    console.log("⚠️  Running in CI/build environment - skipping migrations");
-    console.log("ℹ️  Migrations should be run manually or during deployment");
+  // Exception: Allow migrations in CI when POSTGRES_URL is explicitly set (e.g., with Supabase)
+  if ((process.env.VERCEL || process.env.CI) && !process.env.RUN_MIGRATIONS) {
+    console.log("⚠️  Running in CI/build environment - skipping migrations by default");
+    console.log("ℹ️  Set RUN_MIGRATIONS=true to force migrations in CI");
     console.log("ℹ️  Use 'npm run db:migrate' to run migrations manually");
     return;
   }

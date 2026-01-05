@@ -68,20 +68,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
-    services:
-      postgres:
-        image: supabase/postgres:15.1.0.147
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 54321:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -97,21 +83,45 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local stack
+        run: |
+          supabase start 2>/dev/null
+          # Wait for services to be ready
+          sleep 10
+
+      - name: Get Supabase credentials
+        id: supabase
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status --output json | jq -r '.API_URL')" >> $GITHUB_OUTPUT
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')" >> $GITHUB_OUTPUT
+          echo "POSTGRES_URL=$(supabase status --output json | jq -r '.DB_URL')" >> $GITHUB_OUTPUT
+
       - name: Run database migrations
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:54321/postgres
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_MIGRATIONS: true
         run: pnpm db:migrate
 
       - name: Run integration tests
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:54321/postgres
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm test:integration
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -125,20 +135,6 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests]
-
-    services:
-      postgres:
-        image: supabase/postgres:15.1.0.147
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 54321:5432
 
     steps:
       - name: Checkout code
@@ -158,30 +154,54 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local stack
+        run: |
+          supabase start 2>/dev/null
+          # Wait for services to be ready
+          sleep 10
+
+      - name: Get Supabase credentials
+        id: supabase
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status --output json | jq -r '.API_URL')" >> $GITHUB_OUTPUT
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')" >> $GITHUB_OUTPUT
+          echo "POSTGRES_URL=$(supabase status --output json | jq -r '.DB_URL')" >> $GITHUB_OUTPUT
+
       - name: Run database migrations
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:54321/postgres
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_MIGRATIONS: true
         run: pnpm db:migrate
 
       - name: Build application
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:54321/postgres
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm build
 
       - name: Run E2E tests
         env:
-          POSTGRES_URL: postgresql://postgres:postgres@localhost:54321/postgres
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
         run: pnpm test:e2e
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -212,8 +232,45 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase local stack
+        run: |
+          supabase start 2>/dev/null
+          # Wait for services to be ready
+          sleep 10
+
+      - name: Get Supabase credentials
+        id: supabase
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status --output json | jq -r '.API_URL')" >> $GITHUB_OUTPUT
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')" >> $GITHUB_OUTPUT
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')" >> $GITHUB_OUTPUT
+          echo "POSTGRES_URL=$(supabase status --output json | jq -r '.DB_URL')" >> $GITHUB_OUTPUT
+
+      - name: Run database migrations
+        env:
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
+          RUN_MIGRATIONS: true
+        run: pnpm db:migrate
+
       - name: Generate coverage report
+        env:
+          POSTGRES_URL: ${{ steps.supabase.outputs.POSTGRES_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.supabase.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.supabase.outputs.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm test:coverage
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -225,5 +282,4 @@ jobs:
       - name: Check coverage thresholds
         run: |
           echo "Checking coverage thresholds..."
-          pnpm test:coverage --reporter=json --outputFile=coverage-summary.json
-          # Add threshold checking logic here if needed
+          # Coverage already generated above, just check thresholds if needed
