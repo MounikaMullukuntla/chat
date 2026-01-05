@@ -1,5 +1,11 @@
 /**
+ * @vitest-environment node
+ *
  * Authentication Integration Tests
+ *
+ * Uses Node environment (not happy-dom) because this test makes real HTTP
+ * requests to Supabase. Node's native fetch properly passes Authorization
+ * headers, while happy-dom's fetch polyfill does not.
  *
  * Tests the authentication flow using Supabase Auth:
  * - User registration
@@ -53,8 +59,8 @@ describe("Authentication Integration Tests", () => {
     if (!supabaseAvailable) {
       console.warn(
         "\n⚠️  Supabase is not available at localhost:54321\n" +
-          "   To run these tests, start Supabase with: npx supabase start\n" +
-          "   Tests will be skipped.\n"
+        "   To run these tests, start Supabase with: npx supabase start\n" +
+        "   Tests will be skipped.\n"
       );
     }
   });

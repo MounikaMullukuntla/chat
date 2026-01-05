@@ -1,5 +1,11 @@
 /**
+ * @vitest-environment node
+ *
  * Integration Tests: Document Lifecycle
+ *
+ * Uses Node environment (not happy-dom) because this test makes real HTTP
+ * requests to Supabase. Node's native fetch properly passes Authorization
+ * headers, while happy-dom's fetch polyfill does not.
  *
  * Tests complete document workflows including:
  * - Document creation
