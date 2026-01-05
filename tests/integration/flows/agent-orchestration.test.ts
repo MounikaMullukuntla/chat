@@ -113,6 +113,11 @@ vi.mock("@/lib/db/queries/admin", () => ({
           enabled: true,
           modelId: "gemini-2.0-flash-exp",
           systemPrompt: "Git MCP agent prompt",
+          rateLimit: {
+            perMinute: 60,
+            perHour: 1000,
+            perDay: 10000,
+          },
         },
       },
     };
