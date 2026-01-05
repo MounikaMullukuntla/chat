@@ -1107,7 +1107,8 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
       const duration = endTime - startTime;
 
       // Workflow should complete in reasonable time
-      expect(duration).toBeGreaterThan(0);
+      // Note: mocked tests may complete in 0ms, so we use >= 0
+      expect(duration).toBeGreaterThanOrEqual(0);
       expect(duration).toBeLessThan(10_000); // Less than 10 seconds
     });
   });
