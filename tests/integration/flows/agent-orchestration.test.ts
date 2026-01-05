@@ -402,6 +402,14 @@ describe("Multi-Agent Orchestration Integration Tests", () => {
     });
 
     it("should handle GitHub API rate limiting", async () => {
+      // Skip test if GOOGLE_AI_API_KEY not available - GitMcpAgent requires it
+      if (!process.env.GOOGLE_AI_API_KEY) {
+        console.warn(
+          "\u26a0\ufe0f  Skipping 'should handle GitHub API rate limiting' - requires GOOGLE_AI_API_KEY"
+        );
+        return;
+      }
+
       await configLoader.loadGitMcpAgentConfig();
 
       const tools = toolBuilder.buildTools(
