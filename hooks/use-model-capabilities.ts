@@ -22,7 +22,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/admin/config/summary", {
+      const response = await fetch("/api/models/capabilities", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -67,7 +67,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
           errorCategory,
           errorMessage,
           {
-            endpoint: "/api/admin/config/summary",
+            endpoint: "/api/models/capabilities",
             statusCode: response.status,
             statusText: response.statusText,
             method: "GET",
@@ -116,7 +116,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
           errorCategory,
           `Unexpected error fetching model capabilities: ${errorMessage}`,
           {
-            endpoint: "/api/admin/config/summary",
+            endpoint: "/api/models/capabilities",
             error: errorMessage,
             errorType: err instanceof Error ? err.constructor.name : "Unknown",
             stack: err instanceof Error ? err.stack : undefined,
