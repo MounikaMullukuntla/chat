@@ -31,6 +31,9 @@ const PUBLIC_ROUTES = [
   "/login", // Login page - accessible to unauthenticated users
   "/register", // Registration page - accessible to unauthenticated users
   "/ping", // Health check endpoint for testing
+  "/features", // Features page - accessible to all users
+  "/agents", // Agents page - accessible to all users
+  "/faq", // FAQ page - accessible to all users
   "/about", // About page (if implemented)
   "/privacy", // Privacy policy (if implemented)
   "/terms", // Terms of service (if implemented)
