@@ -252,8 +252,12 @@ export function Chat({
 
   const searchParams = useSearchParams();
   const query = searchParams.get("query");
+  const dataParam = searchParams.get("data");
+  const targetParam = searchParams.get("target");
+  const commonParam = searchParams.get("common");
 
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
+  const [hasInjectedPrompt, setHasInjectedPrompt] = useState(false);
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
@@ -266,6 +270,54 @@ export function Chat({
       window.history.replaceState({}, "", `/chat/${id}`);
     }
   }, [query, sendMessage, hasAppendedQuery, id]);
+
+  useEffect(() => {
+    if (hasInjectedPrompt) {
+      return;
+    }
+
+    const normalizeList = (value: string | null) =>
+      value
+        ? value
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        : [];
+
+    const dataSources = normalizeList(dataParam);
+    const targets = normalizeList(targetParam);
+    const commonColumns = normalizeList(commonParam);
+
+    if (
+      dataSources.length === 0 ||
+      targets.length === 0 ||
+      commonColumns.length === 0
+    ) {
+      return;
+    }
+
+    if (input.trim().length > 0) {
+      return;
+    }
+
+    const injectedPrompt =
+      `I have loaded data from ${dataSources.join(",")}. ` +
+      `These datasets are linked by ${commonColumns.join(",")}. ` +
+      `I would like you to analyze this information to predict ${targets.join(",")}. ` +
+      "Please explain your methodology before proceeding.";
+
+    setInput(injectedPrompt);
+    setHasInjectedPrompt(true);
+    window.history.replaceState({}, "", `/chat/${id}`);
+  }, [
+    dataParam,
+    targetParam,
+    commonParam,
+    hasInjectedPrompt,
+    input,
+    id,
+    setInput,
+  ]);
 
   const { data: votes } = useSWR<Vote[]>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,

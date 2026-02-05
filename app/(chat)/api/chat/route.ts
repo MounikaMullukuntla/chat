@@ -137,8 +137,16 @@ export async function POST(request: Request) {
 
     // Get API key and validate
     const apiKey = request.headers.get("x-google-api-key");
-    if (!apiKey?.trim()) {
-      return new ChatSDKError("bad_request:api").toResponse();
+    const serverApiKey =
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.GEMINI_API_KEY;
+
+    if (!apiKey?.trim() && !serverApiKey?.trim()) {
+      return new ChatSDKError(
+        "bad_request:api",
+        "Missing Google AI API key. Add one in Settings > API Keys or set GOOGLE_GENERATIVE_AI_API_KEY on the server."
+      ).toResponse();
     }
 
     // Get GitHub PAT (optional - for GitHub MCP agent)
@@ -215,7 +223,11 @@ export async function POST(request: Request) {
 
     // Create chat agent using simple resolver
     const chatAgent = await ChatAgentResolver.createChatAgent();
-    chatAgent.setApiKey(apiKey);
+    if (apiKey?.trim()) {
+      chatAgent.setApiKey(apiKey);
+    } else if (serverApiKey?.trim()) {
+      chatAgent.setApiKey(serverApiKey);
+    }
 
     // Set GitHub PAT if provided (for GitHub MCP agent)
     if (githubPAT?.trim()) {
