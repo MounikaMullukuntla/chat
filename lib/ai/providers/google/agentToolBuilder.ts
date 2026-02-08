@@ -2,6 +2,7 @@ import "server-only";
 
 import { tool } from "ai";
 import { z } from "zod";
+import { buildRagContext } from "@/lib/ai/rag-context-builder";
 import {
   AgentOperationCategory,
   AgentOperationType,
@@ -600,6 +601,51 @@ export class AgentToolBuilder {
         },
       });
       enabledTools.push("gitMcpAgent");
+    }
+
+    // Retrieval context tool (optional; enabled only when credentials are present)
+    const ragToolEnabled =
+      process.env.RAG_TOOL_ENABLED?.toLowerCase() !== "false" &&
+      Boolean(process.env.PINECONE_API_KEY?.trim()) &&
+      Boolean(process.env.VOYAGE_API_KEY?.trim());
+
+    if (ragToolEnabled) {
+      tools.retrieveContext = tool({
+        description:
+          "Retrieve relevant repository snippets from the vector index for the user query. Use when extra codebase context is needed.",
+        inputSchema: z.object({
+          query: z
+            .string()
+            .min(1)
+            .max(2000)
+            .describe("Focused retrieval query for repository context"),
+        }),
+        execute: async (params: { query: string }) => {
+          const ragResult = await buildRagContext({
+            queryText: params.query,
+          });
+
+          if (ragResult.sourceCount === 0 || !ragResult.context) {
+            return {
+              found: false,
+              sourceCount: 0,
+              skippedReason: ragResult.skippedReason || "no_matches",
+            };
+          }
+
+          return {
+            found: true,
+            sourceCount: ragResult.sourceCount,
+            context: ragResult.context,
+            sources: ragResult.sources.map((source) => ({
+              filePath: source.filePath,
+              lineRange: source.lineRange || null,
+              score: Number(source.score.toFixed(3)),
+            })),
+          };
+        },
+      });
+      enabledTools.push("retrieveContext");
     }
 
     if (enabledTools.length > 0) {

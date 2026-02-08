@@ -14,6 +14,11 @@ vi.mock("ai", () => ({
   tool: vi.fn((config) => config),
 }));
 
+// Mock RAG context builder
+vi.mock("@/lib/ai/rag-context-builder", () => ({
+  buildRagContext: vi.fn(),
+}));
+
 // Mock dependencies
 vi.mock("@/lib/logging/activity-logger", () => {
   class MockPerformanceTracker {
@@ -46,9 +51,24 @@ vi.mock("@/lib/logging/activity-logger", () => {
 });
 
 import { AgentError, ErrorCodes } from "@/lib/ai/core/errors";
+import { buildRagContext } from "@/lib/ai/rag-context-builder";
 import type { AgentConfigLoader } from "@/lib/ai/providers/google/agentConfigLoader";
 // Import after mocking
 import { AgentToolBuilder } from "@/lib/ai/providers/google/agentToolBuilder";
+
+const ORIGINAL_RAG_ENV = {
+  PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+  VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,
+  RAG_TOOL_ENABLED: process.env.RAG_TOOL_ENABLED,
+};
+
+function restoreEnvVar(name: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = value;
+}
 
 describe("AgentToolBuilder", () => {
   let mockConfigLoader: AgentConfigLoader;
@@ -59,6 +79,11 @@ describe("AgentToolBuilder", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
+
+    // Ensure the optional RAG tool does not leak into tests unless explicitly enabled.
+    delete process.env.PINECONE_API_KEY;
+    delete process.env.VOYAGE_API_KEY;
+    delete process.env.RAG_TOOL_ENABLED;
 
     // Mock data stream
     mockDataStream = {
@@ -89,6 +114,9 @@ describe("AgentToolBuilder", () => {
   });
 
   afterEach(() => {
+    restoreEnvVar("PINECONE_API_KEY", ORIGINAL_RAG_ENV.PINECONE_API_KEY);
+    restoreEnvVar("VOYAGE_API_KEY", ORIGINAL_RAG_ENV.VOYAGE_API_KEY);
+    restoreEnvVar("RAG_TOOL_ENABLED", ORIGINAL_RAG_ENV.RAG_TOOL_ENABLED);
     vi.restoreAllMocks();
   });
 
@@ -786,6 +814,151 @@ describe("AgentToolBuilder", () => {
       };
 
       const builder = new AgentToolBuilder(config, mockConfigLoader);
+
+      // Act
+      const tools = builder.buildTools(mockDataStream, mockUser, chatId);
+
+      // Assert
+      expect(tools).toBeUndefined();
+    });
+  });
+
+  describe("Retrieval Context Tool", () => {
+    const baseConfig: ChatModelAgentConfig = {
+      enabled: true,
+      systemPrompt: "Test prompt",
+      rateLimit: { perMinute: 10, perHour: 100, perDay: 1000 },
+      availableModels: [],
+      tools: {
+        providerToolsAgent: {
+          description: "Provider tools",
+          enabled: false,
+          tool_input: {},
+        },
+        documentAgent: {
+          description: "Document tool",
+          enabled: false,
+          tool_input: {},
+        },
+        pythonAgent: {
+          description: "Python tool",
+          enabled: false,
+          tool_input: {},
+        },
+        mermaidAgent: {
+          description: "Mermaid tool",
+          enabled: false,
+          tool_input: {},
+        },
+        gitMcpAgent: {
+          description: "GitHub tool",
+          enabled: false,
+          tool_input: {},
+        },
+      },
+    };
+
+    it("should create retrieveContext tool when credentials are present", async () => {
+      // Arrange
+      process.env.PINECONE_API_KEY = "test-pinecone";
+      process.env.VOYAGE_API_KEY = "test-voyage";
+
+      vi.mocked(buildRagContext).mockResolvedValueOnce({
+        context: "CTX",
+        sourceCount: 2,
+        sources: [
+          {
+            id: "chunk-1",
+            score: 0.91234,
+            filePath: "a/b.ts",
+            lineRange: "10-20",
+            content: "const x = 1;",
+          },
+          {
+            id: "chunk-2",
+            score: 0.5,
+            filePath: "c/d.ts",
+            content: "const y = 2;",
+          },
+        ],
+      });
+
+      const builder = new AgentToolBuilder(baseConfig, mockConfigLoader);
+
+      // Act
+      const tools: any = builder.buildTools(mockDataStream, mockUser, chatId);
+
+      // Assert
+      expect(tools).toBeDefined();
+      expect(tools.retrieveContext).toBeDefined();
+      expect(Object.keys(tools)).toHaveLength(1);
+
+      const result = await tools.retrieveContext.execute({
+        query: "Find relevant code context",
+      });
+
+      expect(buildRagContext).toHaveBeenCalledWith({
+        queryText: "Find relevant code context",
+      });
+
+      expect(result).toEqual({
+        found: true,
+        sourceCount: 2,
+        context: "CTX",
+        sources: [
+          {
+            filePath: "a/b.ts",
+            lineRange: "10-20",
+            score: 0.912,
+          },
+          {
+            filePath: "c/d.ts",
+            lineRange: null,
+            score: 0.5,
+          },
+        ],
+      });
+    });
+
+    it("should return found=false when no matches exist", async () => {
+      // Arrange
+      process.env.PINECONE_API_KEY = "test-pinecone";
+      process.env.VOYAGE_API_KEY = "test-voyage";
+
+      vi.mocked(buildRagContext).mockResolvedValueOnce({
+        context: "",
+        sourceCount: 0,
+        sources: [],
+        skippedReason: "no_matches",
+      });
+
+      const builder = new AgentToolBuilder(baseConfig, mockConfigLoader);
+
+      // Act
+      const tools: any = builder.buildTools(mockDataStream, mockUser, chatId);
+
+      // Assert
+      expect(tools).toBeDefined();
+      expect(tools.retrieveContext).toBeDefined();
+
+      const result = await tools.retrieveContext.execute({
+        query: "Find relevant code context",
+      });
+
+      expect(result).toEqual({
+        found: false,
+        sourceCount: 0,
+        skippedReason: "no_matches",
+      });
+    });
+
+    it("should not create retrieveContext tool when RAG_TOOL_ENABLED is false", () => {
+      // Arrange
+      process.env.PINECONE_API_KEY = "test-pinecone";
+      process.env.VOYAGE_API_KEY = "test-voyage";
+      process.env.RAG_TOOL_ENABLED = "false";
+
+      const builder = new AgentToolBuilder(baseConfig, mockConfigLoader);
 
       // Act
       const tools = builder.buildTools(mockDataStream, mockUser, chatId);
