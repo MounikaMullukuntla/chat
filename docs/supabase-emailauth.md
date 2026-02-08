@@ -38,3 +38,6 @@ When **Confirm email** is enabled:
 - Users cannot sign in until they click the confirmation link
 - The confirmation link verifies the user's email address
 - Once verified, users can sign in normally
+
+
+![alt text](image.png)
