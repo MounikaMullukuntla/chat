@@ -37,6 +37,10 @@ vi.mock("@/lib/ai/file-processing", () => ({
   extractFileContent: vi.fn(),
 }));
 
+vi.mock("@/lib/ai/rag-context-builder", () => ({
+  buildRagContext: vi.fn(),
+}));
+
 vi.mock("@/app/(chat)/actions", () => ({
   generateTitleFromUserMessage: vi.fn(),
 }));
@@ -114,6 +118,7 @@ import {
   extractFileContent,
   validateFileAttachment,
 } from "@/lib/ai/file-processing";
+import { buildRagContext } from "@/lib/ai/rag-context-builder";
 import { requireAuth } from "@/lib/auth/server";
 import {
   deleteChatById,
@@ -180,6 +185,12 @@ describe("Chat API Integration Tests", () => {
     vi.mocked(getLatestDocumentVersionsByChat).mockResolvedValue([]);
     vi.mocked(getLastDocumentInChat).mockResolvedValue(null as any);
     vi.mocked(generateTitleFromUserMessage).mockResolvedValue("Test Chat");
+    vi.mocked(buildRagContext).mockResolvedValue({
+      context: "",
+      sourceCount: 0,
+      sources: [],
+      skippedReason: "missing_credentials",
+    });
   });
 
   afterEach(() => {
@@ -233,6 +244,61 @@ describe("Chat API Integration Tests", () => {
           })
         );
         expect(saveMessages).toHaveBeenCalled();
+      });
+
+      it("should append retrieved RAG context when available", async () => {
+        const chatId = "660e8400-e29b-41d4-a716-446655440001";
+        const messageId = "770e8400-e29b-41d4-a716-446655440001";
+
+        vi.mocked(buildRagContext).mockResolvedValueOnce({
+          context:
+            "\n\n## Retrieved Repository Context\n[1] chat/lib/example.ts L1-L10 (score: 0.876)\nconst demo = true;",
+          sourceCount: 1,
+          sources: [
+            {
+              id: "match-1",
+              score: 0.876,
+              filePath: "chat/lib/example.ts",
+              lineRange: "L1-L10",
+              content: "const demo = true;",
+            },
+          ],
+        });
+
+        const requestBody = {
+          id: chatId,
+          message: {
+            id: messageId,
+            role: "user" as const,
+            parts: [
+              {
+                type: "text" as const,
+                text: "Where is demo declared?",
+              },
+            ],
+          },
+          selectedChatModel: "gemini-2.0-flash-exp",
+          selectedVisibilityType: "private" as const,
+          thinkingEnabled: false,
+        };
+
+        mockRequest = new Request("http://localhost:3000/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-google-api-key": "test-api-key",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const response = await POST(mockRequest);
+        expect(response.status).toBe(200);
+
+        const chatCallArgs = mockChatAgent.chat.mock.calls[0]?.[0];
+        expect(chatCallArgs).toBeDefined();
+        expect(chatCallArgs.artifactContext).toContain(
+          "Retrieved Repository Context"
+        );
       });
     });
 

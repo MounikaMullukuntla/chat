@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 // Import simple chat agent resolver
 import { ChatAgentResolver } from "@/lib/ai/chat-agent-resolver";
+import { buildRagContext } from "@/lib/ai/rag-context-builder";
 import {
   extractFileContent,
   validateFileAttachment,
@@ -99,6 +100,19 @@ export async function POST(request: Request) {
     // This retrieves files from cache or storage and builds formatted context
     const fileContext = await buildFileContext(messagesFromDb, id, user.id);
 
+    // Build retrieval-augmented context from vector index using latest user text
+    const latestUserText = message.parts
+      .filter((part: any) => part.type === "text")
+      .map((part: any) => part.text || "")
+      .join("\n")
+      .trim();
+
+    const ragContextResult = await buildRagContext({
+      queryText: latestUserText,
+    });
+
+    const ragContext = ragContextResult.context;
+
     // Get file summary for logging
     const fileSummary = getFileContextSummary(messagesFromDb);
 
@@ -192,6 +206,9 @@ export async function POST(request: Request) {
           .reduce((sum: number, p: any) => sum + (p.text?.length || 0), 0),
         has_artifact_context: allArtifacts.length > 0,
         has_file_context: fileSummary.fileCount > 0,
+        has_rag_context: ragContextResult.sourceCount > 0,
+        rag_source_count: ragContextResult.sourceCount,
+        rag_skipped_reason: ragContextResult.skippedReason || null,
       },
       resource_id: id,
       resource_type: "chat",
@@ -223,7 +240,7 @@ export async function POST(request: Request) {
       console.log("🐙 [GITHUB-PAT] GitHub PAT provided for MCP agent");
     }
 
-      const baseMessages = uiMessages.map((msg) => ({
+    const baseMessages = uiMessages.map((msg) => ({
       id: msg.id,
       role: msg.role as "user" | "assistant" | "system",
       content: msg.parts
@@ -248,12 +265,22 @@ export async function POST(request: Request) {
       JSON.stringify(messagesForAgent, null, 2)
     );
 
+    if (ragContextResult.sourceCount > 0) {
+      console.log(
+        `[RAG] Retrieved ${ragContextResult.sourceCount} vector sources for chat ${id}`
+      );
+    } else if (ragContextResult.skippedReason) {
+      console.log(
+        `[RAG] Skipped retrieval (${ragContextResult.skippedReason}) for chat ${id}`
+      );
+    }
+
     // Use chat agent to generate streaming response with all provider-specific logic
     const response = await chatAgent.chat({
       chatId: id,
       modelId: selectedChatModel,
       messages: messagesForAgent,
-      artifactContext: artifactContext + fileContext,
+      artifactContext: artifactContext + fileContext + ragContext,
       thinkingMode: thinkingEnabled,
       user,
       generateId: generateUUID,
