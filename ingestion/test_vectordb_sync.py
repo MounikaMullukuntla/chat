@@ -1,7 +1,7 @@
 ﻿"""
 End-to-end test for chat/ingestion/vector_db_sync.py.
 
-This runs real API calls (OpenAI + Pinecone) and cleans up vectors.
+This runs real API calls (Voyage + Pinecone) and cleans up vectors.
 
 Scenarios:
 - Add (A) -> index file
@@ -9,7 +9,7 @@ Scenarios:
 - Rename (D+M) -> delete old, index new
 - Delete (D) -> remove vectors
 
-Run: python chat/ingestion/test_vectordb_sync.py
+Run (from repo root): python chat/ingestion/test_vectordb_sync.py
 """
 
 import os
@@ -20,8 +20,6 @@ from pathlib import Path
 from typing import Tuple, List
 
 from dotenv import load_dotenv
-from openai import OpenAI
-
 # Path calculations based on test file location
 THIS_DIR = Path(__file__).parent  # chat/ingestion/
 CHAT_ROOT = THIS_DIR.parent  # chat/
@@ -32,9 +30,9 @@ import vector_db_sync  # type: ignore
 
 def ensure_env() -> Tuple[str, str, str]:
     api = os.getenv("PINECONE_API_KEY")
-    oai = os.getenv("OPENAI_API_KEY")
-    if not api or not oai:
-        raise SystemExit("PINECONE_API_KEY and OPENAI_API_KEY must be set in chat/.env or environment")
+    voy = os.getenv("VOYAGE_API_KEY")
+    if not api or not voy:
+        raise SystemExit("PINECONE_API_KEY and VOYAGE_API_KEY must be set in chat/.env.local or environment")
 
     # Generate unique repo_name for metadata tagging (not used as namespace anymore)
     repo_name = f"vector-sync-test-{uuid.uuid4().hex[:8]}"
@@ -123,8 +121,14 @@ def wait_for_count(index, query_vec, expect_path: str, expect_min: int, attempts
 
 
 def main() -> None:
-    # Load local env file from chat/.env
-    load_dotenv(dotenv_path=str(CHAT_ROOT / ".env"), override=True)
+    # Load local env file (prefer .env.local for secrets)
+    env_path = CHAT_ROOT / ".env.local"
+    if not env_path.exists():
+        env_path = CHAT_ROOT / ".env"
+    load_dotenv(dotenv_path=str(env_path), override=True)
+
+    # vector_db_sync expects paths relative to repo root (like `chat/...`).
+    os.chdir(REPO_ROOT)
     repo_name, index_name, env = ensure_env()
 
     # Test artifacts
@@ -134,8 +138,6 @@ def main() -> None:
 
     # Index handle obtained after first sync (index may be created there)
     index = None
-    # OpenAI client for query embeddings
-    oai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     created_files = []
     try:
@@ -144,22 +146,20 @@ def main() -> None:
         test_file_1.write_text(content_add, encoding="utf-8")
         created_files.append(test_file_1)
         # Add via run_sync (capture ids for fetch-by-id verification)
-        res = vector_db_sync.run_sync([("A", f"chat/{test_file_1.name}")], str(errors_file))
+        res = vector_db_sync.run_sync([("A", f"chat/{test_file_1.name}")], str(errors_file), repo_root=str(REPO_ROOT))
         index = get_index_handle(index_name)
         add_ids = res.get("upserted_ids", [])
-        ns = res.get("namespace", repo_name)
         if not add_ids:
             # Force a follow-up modify upsert to ensure IDs are available
-            res2 = vector_db_sync.run_sync([("M", f"chat/{test_file_1.name}")], str(errors_file))
+            res2 = vector_db_sync.run_sync([("M", f"chat/{test_file_1.name}")], str(errors_file), repo_root=str(REPO_ROOT))
             add_ids = res2.get("upserted_ids", [])
-            ns = res2.get("namespace", ns)
         if not add_ids or not wait_fetch_by_ids(index, add_ids):
             raise AssertionError("No vectors found after Add (fetch-by-id)")
 
         # 2) Modify
         content_mod = "# Vector Sync Test\n\nModified content."
         test_file_1.write_text(content_mod, encoding="utf-8")
-        res = vector_db_sync.run_sync([("M", f"chat/{test_file_1.name}")], str(errors_file))
+        res = vector_db_sync.run_sync([("M", f"chat/{test_file_1.name}")], str(errors_file), repo_root=str(REPO_ROOT))
         mod_ids = res.get("upserted_ids", [])
         if not mod_ids or not wait_fetch_by_ids(index, mod_ids, attempts=15, delay=1.0):
             raise AssertionError("No vectors found after Modify (fetch-by-id)")
@@ -171,7 +171,7 @@ def main() -> None:
         res = vector_db_sync.run_sync([
             ("D", f"chat/{test_file_1.name}"),
             ("M", f"chat/{test_file_2.name}")
-        ], str(errors_file))
+        ], str(errors_file), repo_root=str(REPO_ROOT))
         # Old ids should be gone (from previous mod_ids), new ids should be present
         if 'mod_ids' in locals() and mod_ids:
             if not wait_ids_gone(index, mod_ids, attempts=20, delay=1.0):
@@ -183,10 +183,8 @@ def main() -> None:
         # 4) Delete
         if test_file_2.exists():
             test_file_2.unlink()
-        res = vector_db_sync.run_sync([("D", f"chat/{test_file_2.name}")], str(errors_file))
-        fetched_del = index.fetch(ids=new_ids, namespace=vector_db_sync.DEFAULT_NAMESPACE)
-        vecs_del = fetched_del.get("vectors", {}) if isinstance(fetched_del, dict) else getattr(fetched_del, "vectors", {})
-        if vecs_del:
+        _ = vector_db_sync.run_sync([("D", f"chat/{test_file_2.name}")], str(errors_file), repo_root=str(REPO_ROOT))
+        if not wait_ids_gone(index, new_ids, attempts=20, delay=1.0):
             raise AssertionError("Vectors still present after Delete")
 
         print("[ok] Vector sync e2e test passed.")

@@ -4,7 +4,7 @@ Vector DB sync for the webroot superproject and its submodules.
 Invocation modes
 - changed_files.txt: python chat/ingestion/vector_db_sync.py <changed_files.txt>
   (lines from `git diff --name-status`)
-- explicit files: python codechat/vectordb_sync.py --files A:path M:path D:path â€¦
+- explicit files: python chat/ingestion/vector_db_sync.py --files A:path M:path D:path ...
   (status prefix optional; default is M if omitted)
 - commit range replay (recommended):
   python chat/ingestion/vector_db_sync.py --from-commit <rev> [--to-commit HEAD] [--repo-root .]
@@ -22,7 +22,7 @@ Behavior
 
 Env vars
 - PINECONE_API_KEY (required)
-- OPENAI_API_KEY (required)
+- VOYAGE_API_KEY (required)
 - PINECONE_CLOUD (serverless; default: aws)
 - PINECONE_REGION (serverless; default: us-east-1)
 - PINECONE_ENV (classic fallback; default: us-west1-gcp)
@@ -57,6 +57,48 @@ EMBEDDING_MODEL = "voyage-code-3"  # SOTA code embedding model
 DIMENSION = 1024  # voyage-code-3 dimension
 METRIC = "cosine"
 BATCH_SIZE = 10
+
+# Extensions we should not attempt to parse/chunk as text. We index them as a single metadata summary.
+# This avoids embedding binary gibberish (images, archives, etc.) which is slow and error-prone.
+BINARY_EXTS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".ico",
+    ".psd",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tar",
+    ".7z",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".wav",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+}
+
+# Files we don't want to chunk/embed as full content (lockfiles, etc).
+# These are typically huge and low-value for code RAG, and can stall ingestion.
+SUMMARY_ONLY_BASENAMES = {
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "cargo.lock",
+    "poetry.lock",
+    "pipfile.lock",
+    "gemfile.lock",
+    "composer.lock",
+}
 
 # Prefer serverless Pinecone SDK; fallback to classic client if not available
 USE_SERVERLESS = False
@@ -166,7 +208,8 @@ First 20 lines preview:
         return re_chunk_if_oversize([summary]), True
 
     except Exception as e:
-        return [f"Error reading CSV {filepath}: {e}"], False
+        # Keep should_embed=True to avoid upserting empty vectors.
+        return [f"Error reading CSV {filepath}: {e}"], True
 
 
 def chunk_as_summary(filepath: Path):
@@ -192,7 +235,8 @@ Type: {file_type}
         return re_chunk_if_oversize([summary]), True
 
     except Exception as e:
-        return [f"Error accessing {filepath}: {e}"], False
+        # Keep should_embed=True to avoid upserting empty vectors.
+        return [f"Error accessing {filepath}: {e}"], True
 
 
 def dispatch_chunking(filepath: Path):
@@ -200,9 +244,20 @@ def dispatch_chunking(filepath: Path):
     path = Path(filepath)
     ext = path.suffix.lower()
 
+    # Lockfiles and similar artifacts: index as a single summary chunk.
+    if path.name.lower() in SUMMARY_ONLY_BASENAMES:
+        chunks, _ = chunk_as_summary(path)
+        return chunks, True, "summary"
+
+    # Binary-ish assets: index a single summary chunk instead of trying to parse/chunk file bytes as text.
+    if ext in BINARY_EXTS:
+        chunks, _ = chunk_as_summary(path)
+        return chunks, True, "summary"
+
     # CSV/TSV: simple preview (no pandas needed)
     if ext in {".csv", ".tsv"}:
-        return chunk_csv_tsv(path)
+        chunks, _ = chunk_csv_tsv(path)
+        return chunks, True, "summary"
 
     # LlamaIndex handles: py, js, ts, java, cpp, go, rust, etc. (code)
     #                     md, txt, rst (markdown)
@@ -211,12 +266,15 @@ def dispatch_chunking(filepath: Path):
     try:
         chunks = chunker.chunk_file(str(filepath))
         if chunks:
-            return chunks, True
+            # Some formats (large JSON, lockfiles) can still exceed our embed token limit.
+            # Re-chunk defensively so we never upsert empty embeddings.
+            return re_chunk_if_oversize(chunks), True, "content"
     except Exception as e:
         print(f"LlamaChunker error for {filepath}: {e}")
 
-    # Fallback: binary/unsupported files get metadata summary
-    return chunk_as_summary(path)
+    # Fallback: unsupported files get metadata summary
+    chunks, _ = chunk_as_summary(path)
+    return chunks, True, "summary"
 
 
 def get_embedding(text: str) -> List[float]:
@@ -228,6 +286,14 @@ def get_embedding(text: str) -> List[float]:
         embedding = embed_model.get_text_embedding(text)
         if not embedding:
             raise RuntimeError("Received empty embedding from API")
+        if len(embedding) != DIMENSION:
+            raise RuntimeError(
+                f"Unexpected embedding dimension: got {len(embedding)}, expected {DIMENSION}"
+            )
+        # Pinecone rejects NaN/inf; fail early with a clear message.
+        for v in embedding:
+            if v != v or v == float("inf") or v == float("-inf"):
+                raise RuntimeError("Embedding contains NaN/inf values")
         return embedding
     except Exception as e:
         raise RuntimeError(f"Embedding failed: {e}")
@@ -275,11 +341,11 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
             print(f"[warn] File not found: {filepath}")
             return []
 
-        chunks, should_embed = dispatch_chunking(Path(filepath))
+        chunks, should_embed, chunk_type = dispatch_chunking(Path(filepath))
         chunk_entries = []
 
         full_text = ""
-        if should_embed:
+        if chunk_type == "content":
             try:
                 full_text = Path(filepath).read_text(encoding="utf-8", errors="ignore")
             except Exception as e:
@@ -302,7 +368,7 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
                     "repo_name": repo_name,
                     "file_path": str(filepath),
                     "file_type": detect_file_type(filepath),
-                    "chunk_type": "summary" if not should_embed else "content",
+                    "chunk_type": chunk_type,
                     "chunk_index": i,
                     "chunk_id": chunk_id,
                     "content": chunk,
@@ -435,7 +501,43 @@ def append_error(path: str, file_path: str, operation: str, message: str, status
 
 
 def _run_git(args: List[str], cwd: str) -> str:
-    cp = subprocess.run(["git"] + args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # Git will refuse to run on repos owned by a different OS user unless marked safe.
+    # We pass safe.directory via -c so local runs (and automation users) work without mutating global git config.
+    def _norm_safe_dir(p: str) -> str:
+        # Git reports dubious ownership paths with forward slashes on Windows.
+        # Match that normalization so `safe.directory` actually applies.
+        try:
+            resolved = str(Path(p).resolve())
+        except Exception:
+            resolved = p
+        return resolved.replace("\\", "/")
+
+    safe_dirs: List[str] = [_norm_safe_dir(cwd)]
+
+    def _maybe_add_path(flag: str) -> None:
+        if flag in args:
+            idx = args.index(flag)
+            if idx + 1 < len(args) and str(args[idx + 1]).strip():
+                raw = str(args[idx + 1])
+                safe_dirs.append(_norm_safe_dir(raw))
+
+    _maybe_add_path("-C")
+    _maybe_add_path("--git-dir")
+
+    # Dedup while preserving order
+    seen = set()
+    safe_dirs_dedup: List[str] = []
+    for d in safe_dirs:
+        if d not in seen:
+            seen.add(d)
+            safe_dirs_dedup.append(d)
+
+    cmd: List[str] = ["git"]
+    for d in safe_dirs_dedup:
+        cmd.extend(["-c", f"safe.directory={d}"])
+    cmd.extend(args)
+
+    cp = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if cp.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {cp.stderr.strip()}")
     return cp.stdout
@@ -444,10 +546,89 @@ def _run_git(args: List[str], cwd: str) -> str:
 def _parse_submodule_short(diff_text: str) -> List[Tuple[str, str, str]]:
     results: List[Tuple[str, str, str]] = []
     for line in diff_text.splitlines():
-        m = re.match(r"^Submodule\s+([^\s]+)\s+([0-9a-f]{7,})\.\.([0-9a-f]{7,}).*$", line.strip())
+        # `git diff --submodule=short` may use either `..` or `...` between SHAs.
+        m = re.match(r"^Submodule\s+([^\s]+)\s+([0-9a-f]{7,})\.{2,3}([0-9a-f]{7,}).*$", line.strip())
         if m:
             results.append((m.group(1), m.group(2), m.group(3)))
     return results
+
+
+def _get_submodule_paths(repo_root: str) -> List[str]:
+    gm = Path(repo_root) / ".gitmodules"
+    if not gm.exists():
+        return []
+
+    try:
+        out = _run_git(
+            ["config", "--file", ".gitmodules", "--get-regexp", r"submodule\..*\.path"],
+            repo_root,
+        )
+    except Exception:
+        return []
+
+    paths: List[str] = []
+    for line in out.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2 and parts[1].strip():
+            # Normalize to forward slashes for Pinecone metadata consistency.
+            paths.append(parts[1].strip().replace("\\", "/"))
+
+    # Dedup while preserving order.
+    seen = set()
+    deduped: List[str] = []
+    for p in paths:
+        if p not in seen:
+            seen.add(p)
+            deduped.append(p)
+    return deduped
+
+
+def compute_reindex_all_files(repo_root: str, errors_out: str) -> List[Tuple[str, str]]:
+    """
+    For a full re-index, enumerate tracked files across the superproject and all submodules.
+
+    This avoids relying on empty-tree diffs which include submodule "gitlink" paths (directories)
+    and ensures we index actual files (e.g. `team/src/...`) rather than submodule pointers.
+    """
+    submodules = set(_get_submodule_paths(repo_root))
+
+    # Superproject tracked files (exclude submodule gitlink entries).
+    super_out = _run_git(["ls-files"], repo_root)
+    all_files: List[str] = []
+    for fp in super_out.splitlines():
+        fp = fp.strip()
+        if not fp:
+            continue
+        if fp in submodules:
+            continue
+        all_files.append(fp.replace("\\", "/"))
+
+    # Submodule tracked files (prefixed by submodule path).
+    for sub_path in sorted(submodules):
+        sub_abs = Path(repo_root) / sub_path
+        if not sub_abs.is_dir():
+            append_error(errors_out, sub_path, "ls-files-submodule", "Submodule path not found on disk")
+            continue
+        try:
+            out = _run_git(["-C", str(sub_abs), "ls-files"], repo_root)
+        except Exception as e:
+            append_error(errors_out, sub_path, "ls-files-submodule", str(e))
+            continue
+
+        for fp in out.splitlines():
+            fp = fp.strip()
+            if not fp:
+                continue
+            all_files.append(f"{sub_path}/{fp}".replace("\\", "/"))
+
+    # Dedup while preserving order.
+    seen = set()
+    deduped: List[Tuple[str, str]] = []
+    for fp in all_files:
+        if fp not in seen:
+            seen.add(fp)
+            deduped.append(("A", fp))
+    return deduped
 
 
 def compute_changes_from_git(repo_root: str, from_rev: str, to_rev: str) -> List[Tuple[str, str]]:
@@ -537,7 +718,14 @@ def main_entry():
     if args.reindex_all and (args.files or args.retry_errors or args.changed_files):
         raise RuntimeError("--reindex-all cannot be combined with --files, --retry-errors, or changed_files")
 
-    if args.files:
+    if args.reindex_all:
+        print(f"[info] --reindex-all: Will wipe all vectors and re-index everything")
+        files_to_process = compute_reindex_all_files(args.repo_root, errors_out)
+        if not files_to_process:
+            raise RuntimeError(
+                "No tracked files found to index. Make sure the superproject is a git repo and submodules are checked out."
+            )
+    elif args.files:
         def parse_token(tok: str) -> tuple:
             if ":" in tok:
                 st, path = tok.split(":", 1)
@@ -568,11 +756,6 @@ def main_entry():
     else:
         from_commit = args.from_commit
         to_commit = args.to_commit or "HEAD"
-
-        # Handle --reindex-all: wipe everything and index from scratch
-        if args.reindex_all:
-            from_commit = GIT_EMPTY_TREE
-            print(f"[info] --reindex-all: Will wipe all vectors and re-index everything")
 
         # Auto-detect commit range from GitHub Actions if not explicitly provided
         if not from_commit and not args.changed_files:
@@ -607,16 +790,20 @@ def main_entry():
         else:
             raise RuntimeError("Usage: provide one of: --files, --retry-errors, --from-commit, --reindex-all, or changed_files path")
 
-    run_sync(files_to_process, errors_out, wipe_first=args.reindex_all)
+    run_sync(files_to_process, errors_out, repo_root=args.repo_root, wipe_first=args.reindex_all)
 
 
-def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_first: bool = False):
+def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root: str, wipe_first: bool = False):
     # Environment context - repo_name used for metadata tagging
-    repo_name = os.getenv("GITHUB_REPOSITORY", "unknown").split("/")[-1]
+    github_repo = (os.getenv("GITHUB_REPOSITORY") or "").strip()
+    repo_name = github_repo.split("/")[-1] if github_repo else ""
+    if not repo_name:
+        # Local runs may not have GitHub env; fall back to the repo root directory name.
+        repo_name = Path(repo_root).resolve().name or "unknown"
     commit_sha = os.getenv("GITHUB_SHA", "unknown")
 
     # Initialize external clients and tokenizer lazily
-    global index, openai_client, tokenizer, pc
+    global index, tokenizer, pc
     index_name = os.getenv("PINECONE_INDEX", INDEX_NAME)
     api_key = os.environ.get("PINECONE_API_KEY", "")
 
@@ -708,68 +895,65 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_firs
             else:
                 raise RuntimeError(f"Failed to wipe namespace: {e}")
 
-    to_upsert: List[dict] = []
-    delete_operations: List[str] = []
     file_stats = {"processed": 0, "errors": 0, "skipped": 0}
     failures: List[dict] = []
+    deleted_files = 0
+    upserted_ids: List[str] = []
+    total_upserted = 0
 
     # Process files
     for status, filepath in files_to_process:
         try:
-            if status == "D":
-                delete_operations.append(filepath)
+            path = Path(filepath)
+            if path.exists() and path.is_dir():
+                # Submodule entries can appear as paths in some diff modes; skip directories to avoid false failures.
+                file_stats["skipped"] += 1
+                append_error(errors_out, filepath, "skip-dir", "Path is a directory; skipping", status=status)
                 continue
-            if not Path(filepath).exists():
+
+            if status == "D":
+                safe_delete_vectors(filepath, repo_name)
+                deleted_files += 1
+                continue
+
+            if not path.exists():
                 file_stats["skipped"] += 1
                 raise FileNotFoundError(f"File marked as {status} but not found: {filepath}")
-            if status in ("A", "M"):
-                delete_operations.append(filepath)
+
+            if status in ("A", "M") and not wipe_first:
+                # Keep idempotency when re-chunking changes chunk counts/ids.
+                safe_delete_vectors(filepath, repo_name)
+                deleted_files += 1
+
             chunks = process_file(filepath, status, repo_name, commit_sha)
-            to_upsert.extend(chunks)
+
+            if chunks:
+                for i in tqdm(range(0, len(chunks), BATCH_SIZE), desc=f"Upserting {filepath}", leave=False):
+                    batch = chunks[i:i + BATCH_SIZE]
+                    try:
+                        upserted_count = safe_upsert_batch(batch, repo_name)
+                        total_upserted += upserted_count
+                        for it in batch:
+                            uid = it.get('id')
+                            if isinstance(uid, str):
+                                upserted_ids.append(uid)
+                    except Exception as e:
+                        file_stats["errors"] += 1
+                        failures.append({"file_path": filepath, "operation": "upsert", "message": str(e), "status": status})
+                        append_error(errors_out, filepath, "upsert", str(e), status=status)
+
             file_stats["processed"] += 1
         except Exception as e:
             file_stats["errors"] += 1
             failures.append({"file_path": filepath, "operation": "process", "message": str(e), "status": status})
             append_error(errors_out, filepath, "process", str(e), status=status)
 
-    print(f"\n[info] Deleting vectors for {len(delete_operations)} files...")
-    for filepath in delete_operations:
-        try:
-            safe_delete_vectors(filepath, repo_name)
-        except Exception as e:
-            file_stats["errors"] += 1
-            failures.append({"file_path": filepath, "operation": "delete", "message": str(e), "status": "D"})
-            append_error(errors_out, filepath, "delete", str(e), status="D")
-
-    upserted_ids: List[str] = []
-    total_upserted = 0
-    if to_upsert:
-        print(f"\n[info] Upserting {len(to_upsert)} chunks in batches of {BATCH_SIZE}...")
-        for i in tqdm(range(0, len(to_upsert), BATCH_SIZE), desc="Upserting"):
-            batch = to_upsert[i:i + BATCH_SIZE]
-            try:
-                upserted_count = safe_upsert_batch(batch, repo_name)
-                total_upserted += upserted_count
-                for it in batch:
-                    uid = it.get('id')
-                    if isinstance(uid, str):
-                        upserted_ids.append(uid)
-            except Exception as e:
-                file_stats["errors"] += 1
-                paths_statuses = set(
-                    (it.get("metadata", {}).get("file_path"), it.get("metadata", {}).get("status", "M")) for it in
-                    batch)
-                for fp, st in paths_statuses:
-                    failures.append(
-                        {"file_path": fp or "<unknown>", "operation": "upsert", "message": str(e), "status": st})
-                    append_error(errors_out, fp or "<unknown>", "upsert", str(e), status=st or "M")
-
     print(f"\n[info] Sync Complete for {repo_name}:")
     print(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
     print(f"  - Files processed: {file_stats['processed']}")
     print(f"  - Files skipped: {file_stats['skipped']}")
     print(f"  - Files with errors: {file_stats['errors']}")
-    print(f"  - Vectors deleted: {len(delete_operations)} files")
+    print(f"  - Vectors deleted: {deleted_files} files")
     print(f"  - Chunks upserted: {total_upserted}")
     print(f"  - Embedding model: {EMBEDDING_MODEL}")
     if failures:
@@ -784,5 +968,4 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, wipe_firs
 
 if __name__ == "__main__":
     main_entry()
-
 
