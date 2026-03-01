@@ -39,6 +39,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
+import time
 import tiktoken
 from tqdm import tqdm
 import argparse
@@ -123,6 +124,24 @@ index = None
 embed_model = None  # VoyageEmbedding instance
 tokenizer = None
 chunker = None  # LlamaChunker instance
+timing_stats = {
+    "embed_calls": 0,
+    "embed_texts": 0,
+    "embed_seconds": 0.0,
+    "pinecone_seconds": 0.0,
+}
+
+
+def reset_timing_stats() -> None:
+    timing_stats["embed_calls"] = 0
+    timing_stats["embed_texts"] = 0
+    timing_stats["embed_seconds"] = 0.0
+    timing_stats["pinecone_seconds"] = 0.0
+
+
+def log_timing(message: str) -> None:
+    line = f"[timing] {message}"
+    print(line, flush=True)
 
 
 def count_tokens(text: str) -> int:
@@ -308,6 +327,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
         if not text or not text.strip():
             raise RuntimeError("Empty text provided for embedding batch")
 
+    started = time.perf_counter()
     try:
         embeddings = embed_model.get_text_embedding_batch(texts)
         if not embeddings:
@@ -328,8 +348,14 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
                 if v != v or v == float("inf") or v == float("-inf"):
                     raise RuntimeError("Embedding contains NaN/inf values")
 
+        elapsed = time.perf_counter() - started
+        timing_stats["embed_calls"] += 1
+        timing_stats["embed_texts"] += len(texts)
+        timing_stats["embed_seconds"] += elapsed
         return embeddings
     except Exception as e:
+        elapsed = time.perf_counter() - started
+        log_timing(f"embed_failed elapsed={elapsed:.3f}s")
         raise RuntimeError(f"Batch embedding failed: {e}")
 
 
@@ -846,6 +872,8 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
         # Local runs may not have GitHub env; fall back to the repo root directory name.
         repo_name = Path(repo_root).resolve().name or "unknown"
     commit_sha = os.getenv("GITHUB_SHA", "unknown")
+    reset_timing_stats()
+    run_started = time.perf_counter()
 
     # Initialize external clients and tokenizer lazily
     global index, tokenizer, pc
@@ -948,17 +976,44 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
 
     # Process files
     for status, filepath in files_to_process:
+        file_started = time.perf_counter()
+        embed_before = float(timing_stats["embed_seconds"])
+        pinecone_before = float(timing_stats["pinecone_seconds"])
+
+        def _log_file_timing() -> None:
+            total_elapsed = time.perf_counter() - file_started
+            embed_elapsed = max(0.0, float(timing_stats["embed_seconds"]) - embed_before)
+            pinecone_elapsed = max(0.0, float(timing_stats["pinecone_seconds"]) - pinecone_before)
+            other_elapsed = max(0.0, total_elapsed - embed_elapsed - pinecone_elapsed)
+            if total_elapsed > 0:
+                embed_pct = (embed_elapsed / total_elapsed) * 100.0
+                pinecone_pct = (pinecone_elapsed / total_elapsed) * 100.0
+                other_pct = (other_elapsed / total_elapsed) * 100.0
+            else:
+                embed_pct = 0.0
+                pinecone_pct = 0.0
+                other_pct = 0.0
+            log_timing(
+                f"file={filepath} embedding={embed_elapsed:.3f}s ({embed_pct:.1f}%) "
+                f"pinecone={pinecone_elapsed:.3f}s ({pinecone_pct:.1f}%) "
+                f"other={other_elapsed:.3f}s ({other_pct:.1f}%) total_time={total_elapsed:.3f}s"
+            )
+
         try:
             path = Path(filepath)
             if path.exists() and path.is_dir():
                 # Submodule entries can appear as paths in some diff modes; skip directories to avoid false failures.
                 file_stats["skipped"] += 1
                 append_error(errors_out, filepath, "skip-dir", "Path is a directory; skipping", status=status)
+                _log_file_timing()
                 continue
 
             if status == "D":
+                pinecone_started = time.perf_counter()
                 safe_delete_vectors(filepath, repo_name)
+                timing_stats["pinecone_seconds"] += (time.perf_counter() - pinecone_started)
                 deleted_files += 1
+                _log_file_timing()
                 continue
 
             if not path.exists():
@@ -967,7 +1022,9 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
 
             if status in ("A", "M") and not wipe_first:
                 # Keep idempotency when re-chunking changes chunk counts/ids.
+                pinecone_started = time.perf_counter()
                 safe_delete_vectors(filepath, repo_name)
+                timing_stats["pinecone_seconds"] += (time.perf_counter() - pinecone_started)
                 deleted_files += 1
 
             chunks = process_file(filepath, status, repo_name, commit_sha)
@@ -976,7 +1033,9 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                 for i in tqdm(range(0, len(chunks), BATCH_SIZE), desc=f"Upserting {filepath}", leave=False):
                     batch = chunks[i:i + BATCH_SIZE]
                     try:
+                        pinecone_started = time.perf_counter()
                         upserted_count = safe_upsert_batch(batch, repo_name)
+                        timing_stats["pinecone_seconds"] += (time.perf_counter() - pinecone_started)
                         total_upserted += upserted_count
                         for it in batch:
                             uid = it.get('id')
@@ -988,10 +1047,12 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                         append_error(errors_out, filepath, "upsert", str(e), status=status)
 
             file_stats["processed"] += 1
+            _log_file_timing()
         except Exception as e:
             file_stats["errors"] += 1
             failures.append({"file_path": filepath, "operation": "process", "message": str(e), "status": status})
             append_error(errors_out, filepath, "process", str(e), status=status)
+            _log_file_timing()
 
     print(f"\n[info] Sync Complete for {repo_name}:")
     print(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
@@ -1001,6 +1062,23 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     print(f"  - Vectors deleted: {deleted_files} files")
     print(f"  - Chunks upserted: {total_upserted}")
     print(f"  - Embedding model: {EMBEDDING_MODEL}")
+    total_embed_seconds = float(timing_stats["embed_seconds"])
+    total_pinecone_seconds = float(timing_stats["pinecone_seconds"])
+    total_run_seconds = time.perf_counter() - run_started
+    total_other_seconds = max(0.0, total_run_seconds - total_embed_seconds - total_pinecone_seconds)
+    if total_run_seconds > 0:
+        embed_pct = (total_embed_seconds / total_run_seconds) * 100.0
+        pinecone_pct = (total_pinecone_seconds / total_run_seconds) * 100.0
+        other_pct = (total_other_seconds / total_run_seconds) * 100.0
+    else:
+        embed_pct = 0.0
+        pinecone_pct = 0.0
+        other_pct = 0.0
+    log_timing(
+        f"summary embedding={total_embed_seconds:.3f}s ({embed_pct:.1f}%) "
+        f"pinecone={total_pinecone_seconds:.3f}s ({pinecone_pct:.1f}%) "
+        f"other={total_other_seconds:.3f}s ({other_pct:.1f}%) total_time={total_run_seconds:.3f}s"
+    )
     if failures:
         print(
             f"[error] {len(failures)} failures encountered. See {errors_out} for details. Use --retry-errors to re-run.")
