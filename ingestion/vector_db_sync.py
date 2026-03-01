@@ -57,6 +57,7 @@ EMBEDDING_MODEL = "voyage-code-3"  # SOTA code embedding model
 DIMENSION = 1024  # voyage-code-3 dimension
 METRIC = "cosine"
 BATCH_SIZE = 10
+EMBEDDING_BATCH_SIZE = 32
 
 # Extensions we should not attempt to parse/chunk as text. We index them as a single metadata summary.
 # This avoids embedding binary gibberish (images, archives, etc.) which is slow and error-prone.
@@ -299,6 +300,39 @@ def get_embedding(text: str) -> List[float]:
         raise RuntimeError(f"Embedding failed: {e}")
 
 
+def get_embeddings(texts: List[str]) -> List[List[float]]:
+    """Generate embeddings in batches using Voyage AI's voyage-code-3 model."""
+    if not texts:
+        return []
+    for text in texts:
+        if not text or not text.strip():
+            raise RuntimeError("Empty text provided for embedding batch")
+
+    try:
+        embeddings = embed_model.get_text_embedding_batch(texts)
+        if not embeddings:
+            raise RuntimeError("Received empty embedding batch from API")
+        if len(embeddings) != len(texts):
+            raise RuntimeError(
+                f"Unexpected embedding batch size: got {len(embeddings)}, expected {len(texts)}"
+            )
+
+        for embedding in embeddings:
+            if not embedding:
+                raise RuntimeError("Received empty embedding in batch response")
+            if len(embedding) != DIMENSION:
+                raise RuntimeError(
+                    f"Unexpected embedding dimension: got {len(embedding)}, expected {DIMENSION}"
+                )
+            for v in embedding:
+                if v != v or v == float("inf") or v == float("-inf"):
+                    raise RuntimeError("Embedding contains NaN/inf values")
+
+        return embeddings
+    except Exception as e:
+        raise RuntimeError(f"Batch embedding failed: {e}")
+
+
 def get_accurate_line_range(chunk: str, full_text: str) -> str:
     if not full_text or not chunk:
         return "L1-L1"
@@ -351,19 +385,19 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
             except Exception as e:
                 print(f"[warn] Could not read full text for {filepath}: {e}")
 
+        embeddable_entry_indexes: List[int] = []
+        embeddable_texts: List[str] = []
+
         for i, chunk in enumerate(chunks):
             if not chunk or not chunk.strip():
                 continue
 
             chunk_id = str(uuid.uuid4())
-            vector: List[float] = []
-
-            if should_embed and count_tokens(chunk) <= MAX_TOKENS:
-                vector = get_embedding(chunk)
+            token_count = count_tokens(chunk)
 
             chunk_entry = {
                 "id": chunk_id,
-                "values": vector,
+                "values": [],
                 "metadata": {
                     "repo_name": repo_name,
                     "file_path": str(filepath),
@@ -373,15 +407,26 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
                     "chunk_id": chunk_id,
                     "content": chunk,
                     "line_range": get_accurate_line_range(chunk, full_text),
-                    "embedded": bool(vector),
+                    "embedded": False,
                     "should_embed": bool(should_embed),
                     "status": status,
-                    "token_count": count_tokens(chunk),
+                    "token_count": token_count,
                     "commit_sha": commit_sha,
                     "indexed_at": datetime.utcnow().isoformat() + "Z"
                 }
             }
             chunk_entries.append(chunk_entry)
+            if should_embed and token_count <= MAX_TOKENS:
+                embeddable_entry_indexes.append(len(chunk_entries) - 1)
+                embeddable_texts.append(chunk)
+
+        for i in range(0, len(embeddable_texts), EMBEDDING_BATCH_SIZE):
+            text_batch = embeddable_texts[i:i + EMBEDDING_BATCH_SIZE]
+            embedding_batch = get_embeddings(text_batch)
+            for j, embedding in enumerate(embedding_batch):
+                entry_index = embeddable_entry_indexes[i + j]
+                chunk_entries[entry_index]["values"] = embedding
+                chunk_entries[entry_index]["metadata"]["embedded"] = True
 
         return chunk_entries
 
