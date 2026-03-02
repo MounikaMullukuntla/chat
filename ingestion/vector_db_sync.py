@@ -60,6 +60,7 @@ DIMENSION = 1024  # voyage-code-3 dimension
 METRIC = "cosine"
 PINECONE_UPSERT_BATCH_SIZE = 32
 EMBEDDING_BATCH_SIZE = 32
+SKIPPED_REPO_REASONS = {}
 
 # Extensions we should not attempt to parse/chunk as text. We index them as a single metadata summary.
 # This avoids embedding binary gibberish (images, archives, etc.) which is slow and error-prone.
@@ -659,6 +660,13 @@ def append_error(path: str, file_path: str, operation: str, message: str, status
         pass
 
 
+def top_level_repo_folder(filepath: str) -> str:
+    normalized = str(filepath).replace("\\", "/").lstrip("./")
+    if not normalized:
+        return ""
+    return normalized.split("/", 1)[0].lower()
+
+
 def _run_git(args: List[str], cwd: str) -> str:
     # Git will refuse to run on repos owned by a different OS user unless marked safe.
     # We pass safe.directory via -c so local runs (and automation users) work without mutating global git config.
@@ -1061,6 +1069,8 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     deleted_files = 0
     upserted_ids: List[str] = []
     total_upserted = 0
+    warned_skipped_repos = set()
+    skipped_repo_counts = {}
 
     # Process files
     for status, filepath in files_to_process:
@@ -1089,6 +1099,19 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
 
         try:
             path = Path(filepath)
+            repo_folder = top_level_repo_folder(filepath)
+            if repo_folder in SKIPPED_REPO_REASONS:
+                file_stats["skipped"] += 1
+                skipped_repo_counts[repo_folder] = int(skipped_repo_counts.get(repo_folder, 0)) + 1
+                if repo_folder not in warned_skipped_repos:
+                    warned_skipped_repos.add(repo_folder)
+                    logger.warning(
+                        "Skipping files under repo '%s' during VectorDB sync because it %s.",
+                        repo_folder,
+                        SKIPPED_REPO_REASONS[repo_folder],
+                    )
+                continue
+
             if path.exists() and path.is_dir():
                 # Submodule entries can appear as paths in some diff modes; skip directories to avoid false failures.
                 file_stats["skipped"] += 1
@@ -1150,6 +1173,9 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     logger.info(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
     logger.info(f"  - Files processed: {file_stats['processed']}")
     logger.info(f"  - Files skipped: {file_stats['skipped']}")
+    if skipped_repo_counts:
+        for repo_folder in sorted(skipped_repo_counts.keys()):
+            logger.info(f"    - skipped repo '{repo_folder}': {skipped_repo_counts[repo_folder]} files")
     logger.info(f"  - Files with errors: {file_stats['errors']}")
     logger.info(f"  - Vectors deleted: {deleted_files} files")
     logger.info(f"  - Chunks upserted: {total_upserted}")
