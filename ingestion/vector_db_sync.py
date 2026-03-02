@@ -530,7 +530,11 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
                 embeddable_entry_indexes.append(len(chunk_entries) - 1)
                 embeddable_texts.append(chunk)
 
-        for i in range(0, len(embeddable_texts), EMBEDDING_BATCH_SIZE):
+        for i in tqdm(
+            range(0, len(embeddable_texts), EMBEDDING_BATCH_SIZE),
+            desc=f"Embedding {filepath}",
+            leave=False,
+        ):
             text_batch = embeddable_texts[i:i + EMBEDDING_BATCH_SIZE]
             embedding_batch = get_embeddings(text_batch)
             for j, embedding in enumerate(embedding_batch):
