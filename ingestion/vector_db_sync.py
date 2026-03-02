@@ -36,6 +36,7 @@ import sys
 import uuid
 import re
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
@@ -124,6 +125,13 @@ index = None
 embed_model = None  # VoyageEmbedding instance
 tokenizer = None
 chunker = None  # LlamaChunker instance
+logger = logging.getLogger("vector_db_sync")
+if not logger.handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 timing_stats = {
     "embed_calls": 0,
     "embed_texts": 0,
@@ -140,8 +148,7 @@ def reset_timing_stats() -> None:
 
 
 def log_timing(message: str) -> None:
-    line = f"[timing] {message}"
-    print(line, flush=True)
+    logger.info(f"[timing] {message}")
 
 
 def count_tokens(text: str) -> int:
@@ -367,7 +374,7 @@ def dispatch_chunking(filepath: Path):
             # Re-chunk defensively so we never upsert empty embeddings.
             return re_chunk_if_oversize(chunks), True, "content"
     except Exception as e:
-        print(f"LlamaChunker error for {filepath}: {e}")
+        logger.warning(f"LlamaChunker error for {filepath}: {e}")
 
     # Fallback: unsupported files get metadata summary
     chunks, _ = chunk_as_summary(path)
@@ -468,14 +475,14 @@ def get_accurate_line_range(chunk: str, full_text: str) -> str:
         return "L1-L1"
 
     except Exception as e:
-        print(f"[warn] Error calculating line range: {e}")
+        logger.warning(f"Error calculating line range: {e}")
         return "L1-L1"
 
 
 def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
     try:
         if not Path(filepath).exists():
-            print(f"[warn] File not found: {filepath}")
+            logger.warning(f"File not found: {filepath}")
             return []
 
         chunks, should_embed, chunk_type = dispatch_chunking(Path(filepath))
@@ -486,7 +493,7 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
             try:
                 full_text = Path(filepath).read_text(encoding="utf-8", errors="ignore")
             except Exception as e:
-                print(f"[warn] Could not read full text for {filepath}: {e}")
+                logger.warning(f"Could not read full text for {filepath}: {e}")
 
         embeddable_entry_indexes: List[int] = []
         embeddable_texts: List[str] = []
@@ -534,7 +541,7 @@ def process_file(filepath: str, status: str, repo_name: str, commit_sha: str):
         return chunk_entries
 
     except Exception as e:
-        print(f"[error] Failed to process {filepath}: {e}")
+        logger.error(f"Failed to process {filepath}: {e}")
         raise
 
 
@@ -544,12 +551,12 @@ def safe_delete_vectors(file_path: str, repo_name: str) -> None:
             filter={"repo_name": repo_name, "file_path": file_path},
             namespace=DEFAULT_NAMESPACE
         )
-        print(f"[info] Deleted vectors for: {file_path}")
+        logger.info(f"Deleted vectors for: {file_path}")
     except Exception as e:
         msg = str(e).lower()
         if "namespace not found" in msg or "code\":5" in msg:
             # Namespace hasn't been created yet; deletion is a no-op
-            print(f"[info] Namespace absent on delete; skipping: {file_path}")
+            logger.info(f"Namespace absent on delete; skipping: {file_path}")
             return
         raise
 
@@ -854,7 +861,7 @@ def main_entry():
 
     if missing_keys:
         if args.skip_on_missing_keys:
-            print(f"[skip] Missing required API keys: {', '.join(missing_keys)}; skipping VectorDB sync.")
+            logger.info(f"Skipping VectorDB sync due to missing API keys: {', '.join(missing_keys)}")
             sys.exit(0)
         else:
             raise RuntimeError(f"Missing required API keys: {', '.join(missing_keys)}")
@@ -867,7 +874,7 @@ def main_entry():
         raise RuntimeError("--reindex-all cannot be combined with --files, --retry-errors, or changed_files")
 
     if args.reindex_all:
-        print(f"[info] --reindex-all: Will wipe all vectors and re-index everything")
+        logger.info("--reindex-all: Will wipe all vectors and re-index everything")
         files_to_process = compute_reindex_all_files(args.repo_root, errors_out)
         if not files_to_process:
             raise RuntimeError(
@@ -908,7 +915,7 @@ def main_entry():
         # Auto-detect commit range from GitHub Actions if not explicitly provided
         if not from_commit and not args.changed_files:
             from_commit, to_commit = detect_github_commit_range()
-            print(f"[info] Auto-detected commit range from GitHub Actions: {from_commit}..{to_commit}")
+            logger.info(f"Auto-detected commit range from GitHub Actions: {from_commit}..{to_commit}")
 
         if from_commit:
             changes = compute_changes_from_git(args.repo_root, from_commit, to_commit)
@@ -971,8 +978,8 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
             if index_name not in set([n for n in names if n]):
                 cloud = os.getenv("PINECONE_CLOUD", "aws")
                 region = os.getenv("PINECONE_REGION", "us-east-1")
-                print(
-                    f"[info] Creating Pinecone serverless index '{index_name}' (dim={DIMENSION}, metric={METRIC}, cloud={cloud}, region={region})")
+                logger.info(
+                    f"Creating Pinecone serverless index '{index_name}' (dim={DIMENSION}, metric={METRIC}, cloud={cloud}, region={region})")
                 try:
                     pc.create_index(
                         name=index_name,
@@ -981,9 +988,9 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                         spec=ServerlessSpec(cloud=cloud, region=region),
                     )
                 except Exception as e:
-                    print(f"[warn] create_index failed or already exists: {e}")
+                    logger.warning(f"create_index failed or already exists: {e}")
         except Exception as e:
-            print(f"[warn] Could not list/create serverless index: {e}")
+            logger.warning(f"Could not list/create serverless index: {e}")
         index = pc.Index(index_name)
     else:
         if pinecone_client is None:
@@ -1003,13 +1010,13 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
             if isinstance(existing, dict) and "indexes" in existing:
                 existing = [ix.get("name") for ix in existing.get("indexes", [])]
             if index_name not in set(existing or []):
-                print(f"[info] Creating Pinecone classic index '{index_name}' (dim={DIMENSION}, metric={METRIC})")
+                logger.info(f"Creating Pinecone classic index '{index_name}' (dim={DIMENSION}, metric={METRIC})")
                 try:
                     pinecone_client.create_index(index_name, dimension=DIMENSION, metric=METRIC)
                 except Exception as e:
-                    print(f"[warn] create_index failed: {e}")
+                    logger.warning(f"create_index failed: {e}")
         except Exception as e:
-            print(f"[warn] Could not verify/create classic index '{index_name}': {e}")
+            logger.warning(f"Could not verify/create classic index '{index_name}': {e}")
         index = pinecone_client.Index(index_name)
 
     # Initialize Voyage AI embedding model via LlamaIndex
@@ -1027,21 +1034,21 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     global chunker
     chunker = LlamaChunker()
 
-    print(f"[info] Starting VectorDB sync for {repo_name} (commit: {commit_sha[:8]})")
-    print(f"[info] Using LlamaIndex for intelligent code-aware chunking")
-    print(f"[info] Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"[info] Namespace: '{DEFAULT_NAMESPACE}'")
-    print(f"[info] Metadata tag: repo_name='{repo_name}'")
+    logger.info(f"Starting VectorDB sync for {repo_name} (commit: {commit_sha[:8]})")
+    logger.info("Using LlamaIndex for intelligent code-aware chunking")
+    logger.info(f"Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"Namespace: '{DEFAULT_NAMESPACE}'")
+    logger.info(f"Metadata tag: repo_name='{repo_name}'")
 
     # Wipe all vectors before syncing (used by --reindex-all)
     if wipe_first:
-        print(f"[warn] !!! WIPING ALL VECTORS IN NAMESPACE '{DEFAULT_NAMESPACE or '(default)'}' !!!")
+        logger.warning(f"!!! WIPING ALL VECTORS IN NAMESPACE '{DEFAULT_NAMESPACE or '(default)'}' !!!")
         try:
             index.delete(delete_all=True, namespace=DEFAULT_NAMESPACE)
-            print(f"[info] Namespace wiped successfully.")
+            logger.info("Namespace wiped successfully.")
         except Exception as e:
             # Handle case where namespace doesn't exist yet
             if "namespace not found" in str(e).lower():
-                print(f"[info] Namespace was empty, nothing to wipe.")
+                logger.info("Namespace was empty, nothing to wipe.")
             else:
                 raise RuntimeError(f"Failed to wipe namespace: {e}")
 
@@ -1131,14 +1138,14 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
             append_error(errors_out, filepath, "process", str(e), status=status)
             _log_file_timing()
 
-    print(f"\n[info] Sync Complete for {repo_name}:")
-    print(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
-    print(f"  - Files processed: {file_stats['processed']}")
-    print(f"  - Files skipped: {file_stats['skipped']}")
-    print(f"  - Files with errors: {file_stats['errors']}")
-    print(f"  - Vectors deleted: {deleted_files} files")
-    print(f"  - Chunks upserted: {total_upserted}")
-    print(f"  - Embedding model: {EMBEDDING_MODEL}")
+    logger.info(f"\nSync Complete for {repo_name}:")
+    logger.info(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
+    logger.info(f"  - Files processed: {file_stats['processed']}")
+    logger.info(f"  - Files skipped: {file_stats['skipped']}")
+    logger.info(f"  - Files with errors: {file_stats['errors']}")
+    logger.info(f"  - Vectors deleted: {deleted_files} files")
+    logger.info(f"  - Chunks upserted: {total_upserted}")
+    logger.info(f"  - Embedding model: {EMBEDDING_MODEL}")
     total_embed_seconds = float(timing_stats["embed_seconds"])
     total_pinecone_seconds = float(timing_stats["pinecone_seconds"])
     total_run_seconds = time.perf_counter() - run_started
@@ -1157,10 +1164,10 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
         f"other={total_other_seconds:.3f}s ({other_pct:.1f}%) total_time={total_run_seconds:.3f}s"
     )
     if failures:
-        print(
-            f"[error] {len(failures)} failures encountered. See {errors_out} for details. Use --retry-errors to re-run.")
+        logger.error(
+            f"{len(failures)} failures encountered. See {errors_out} for details. Use --retry-errors to re-run.")
         for f in failures:
-            print(
+            logger.error(
                 f"  - failure: op={f.get('operation')} status={f.get('status')} file={f.get('file_path')} message={f.get('message')}")
         raise SystemExit(1)
     return {"namespace": DEFAULT_NAMESPACE, "repo_name": repo_name, "upserted_ids": upserted_ids}
