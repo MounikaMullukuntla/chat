@@ -158,7 +158,7 @@ export class ChatAgentResolver {
 
       // Default system prompt with structured response guidelines
       const defaultSystemPrompt = [
-        "You are a helpful AI assistant powered by Google Gemini.",
+        "You are a helpful AI assistant.",
         "",
         "Response Guidelines:",
         "- Respond concisely.",
