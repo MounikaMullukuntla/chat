@@ -18,6 +18,7 @@ param.showsearch = "false"; // Set to true to include search bar
 <script>
 loadMarkdown("ABOUT.md", "aboutDiv", "_parent");
 loadMarkdown("README.md", "readmeDiv", "_parent");
+loadMarkdown("TECH.md", "techDiv", "_parent");
 </script>
 
 <style>
@@ -33,9 +34,11 @@ loadMarkdown("README.md", "readmeDiv", "_parent");
 <div class="content contentpadding large-list">
   <div id="aboutDiv"></div>
 
-  <h1>Parent Readme</h1>
+  <h1 style="margin-bottom:0px">Parent Readme</h1>
+  <div id="readmeDiv"></div><br>
 
-  <div id="readmeDiv"></div>
+  <h1 style="margin-bottom:0px">Earthscape / ModelEarth</h1>
+  <div id="techDiv"></div>
 </div>
 </body>
 </html>
