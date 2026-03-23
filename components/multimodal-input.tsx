@@ -33,11 +33,10 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "./elements/prompt-input";
-import { GitHubRepoModal } from "./github-repo-modal";
+import { GitHubRepoModal, ResourceAreaSelector } from "@/lib/github-components";
 import { ArrowUpIcon, StopIcon } from "./icons";
 import { ModelSelector } from "./model-selector";
 import { PreviewAttachment } from "./preview-attachment";
-import { RepoSelector } from "./repo-selector";
 import { SuggestedActions } from "./suggested-actions";
 import { ThinkingModeToggle } from "./thinking-mode-toggle";
 import { Button } from "./ui/button";
@@ -732,7 +731,7 @@ function PureMultimodalInput({
             )}
 
             {availableRepos && onRagSelectedReposChange && (
-              <RepoSelector
+              <ResourceAreaSelector
                 availableRepos={availableRepos}
                 isLoading={availableReposLoading}
                 onRagSelectedReposChange={onRagSelectedReposChange}
