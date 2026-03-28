@@ -58,8 +58,12 @@ GIT_EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"  # Git's empty tree 
 EMBEDDING_MODEL = "voyage-code-3"  # SOTA code embedding model
 DIMENSION = 1024  # voyage-code-3 dimension
 METRIC = "cosine"
-PINECONE_UPSERT_BATCH_SIZE = 32
-EMBEDDING_BATCH_SIZE = 32
+EMBEDDING_MAX_TEXTS_PER_BATCH = 1000
+EMBEDDING_MAX_TOKENS_PER_BATCH = 100_000
+PINECONE_MAX_RECORDS_PER_BATCH = 1000
+PINECONE_MAX_REQUEST_BYTES = 1_920_000
+PINECONE_RECORD_SIZE_SAFETY_MULTIPLIER = 1.03
+PINECONE_RECORD_SIZE_OVERHEAD_BYTES = 48
 SKIPPED_REPO_REASONS = {}
 
 # Extensions we should not attempt to parse/chunk as text. We index them as a single metadata summary.
@@ -139,6 +143,20 @@ timing_stats = {
     "embed_seconds": 0.0,
     "pinecone_seconds": 0.0,
 }
+batch_stats = {
+    "embedding_batches": 0,
+    "embedding_batch_texts_total": 0,
+    "embedding_batch_tokens_total": 0,
+    "embedding_batch_texts_max": 0,
+    "embedding_batch_tokens_max": 0,
+    "embedding_batch_fallbacks": 0,
+    "upsert_batches": 0,
+    "upsert_batch_records_total": 0,
+    "upsert_batch_bytes_total": 0,
+    "upsert_batch_records_max": 0,
+    "upsert_batch_bytes_max": 0,
+    "upsert_batch_fallbacks": 0,
+}
 PROGRESS_LOG_EVERY = 512
 PROGRESS_LOG_INTERVAL_SECONDS = 5.0
 
@@ -148,6 +166,18 @@ def reset_timing_stats() -> None:
     timing_stats["embed_texts"] = 0
     timing_stats["embed_seconds"] = 0.0
     timing_stats["pinecone_seconds"] = 0.0
+    batch_stats["embedding_batches"] = 0
+    batch_stats["embedding_batch_texts_total"] = 0
+    batch_stats["embedding_batch_tokens_total"] = 0
+    batch_stats["embedding_batch_texts_max"] = 0
+    batch_stats["embedding_batch_tokens_max"] = 0
+    batch_stats["embedding_batch_fallbacks"] = 0
+    batch_stats["upsert_batches"] = 0
+    batch_stats["upsert_batch_records_total"] = 0
+    batch_stats["upsert_batch_bytes_total"] = 0
+    batch_stats["upsert_batch_records_max"] = 0
+    batch_stats["upsert_batch_bytes_max"] = 0
+    batch_stats["upsert_batch_fallbacks"] = 0
 
 
 def log_timing(message: str) -> None:
@@ -613,6 +643,76 @@ def group_queue_items_by_file(queue_items: List[dict]) -> dict:
     for item in queue_items:
         grouped.setdefault(item["file_id"], []).append(item)
     return grouped
+
+
+def estimate_upsert_record_bytes(entry: dict) -> int:
+    raw_size = len(json.dumps(entry, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    return int(raw_size * PINECONE_RECORD_SIZE_SAFETY_MULTIPLIER) + PINECONE_RECORD_SIZE_OVERHEAD_BYTES
+
+
+def take_embedding_batch(queue: List[dict]) -> Tuple[List[dict], int]:
+    if not queue:
+        return [], 0
+
+    batch: List[dict] = []
+    total_tokens = 0
+    for item in queue:
+        token_count = max(int(item["entry"].get("metadata", {}).get("token_count", 0)), 1)
+        if batch and (
+            len(batch) >= EMBEDDING_MAX_TEXTS_PER_BATCH
+            or total_tokens + token_count > EMBEDDING_MAX_TOKENS_PER_BATCH
+        ):
+            break
+        batch.append(item)
+        total_tokens += token_count
+        if (
+            len(batch) >= EMBEDDING_MAX_TEXTS_PER_BATCH
+            or total_tokens >= EMBEDDING_MAX_TOKENS_PER_BATCH
+        ):
+            break
+
+    del queue[:len(batch)]
+    return batch, total_tokens
+
+
+def take_upsert_batch(queue: List[dict]) -> Tuple[List[dict], int]:
+    if not queue:
+        return [], 0
+
+    batch: List[dict] = []
+    total_bytes = 0
+    for item in queue:
+        record_bytes = int(item.get("estimated_upsert_bytes") or 0)
+        if record_bytes <= 0:
+            record_bytes = estimate_upsert_record_bytes(item["entry"])
+            item["estimated_upsert_bytes"] = record_bytes
+        if batch and (
+            len(batch) >= PINECONE_MAX_RECORDS_PER_BATCH
+            or total_bytes + record_bytes > PINECONE_MAX_REQUEST_BYTES
+        ):
+            break
+        batch.append(item)
+        total_bytes += record_bytes
+        if (
+            len(batch) >= PINECONE_MAX_RECORDS_PER_BATCH
+            or total_bytes >= PINECONE_MAX_REQUEST_BYTES
+        ):
+            break
+
+    del queue[:len(batch)]
+    return batch, total_bytes
+
+
+def embedding_item_tokens(item: dict) -> int:
+    return max(int(item["entry"].get("metadata", {}).get("token_count", 0)), 1)
+
+
+def upsert_item_bytes(item: dict) -> int:
+    record_bytes = int(item.get("estimated_upsert_bytes") or 0)
+    if record_bytes <= 0:
+        record_bytes = estimate_upsert_record_bytes(item["entry"])
+        item["estimated_upsert_bytes"] = record_bytes
+    return record_bytes
 
 
 def detect_github_commit_range() -> Tuple[str, str]:
@@ -1115,6 +1215,8 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     next_file_id = 0
     embedding_queue: List[dict] = []
     upsert_queue: List[dict] = []
+    embedding_queue_tokens = 0
+    upsert_queue_bytes = 0
     embedding_progress = ProgressReporter(desc="Embedding chunks", unit="chunk")
     upsert_progress = ProgressReporter(desc="Upserting chunks", unit="chunk")
 
@@ -1182,10 +1284,12 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
         append_error(errors_out, state["file_path"], operation, message, status=state["status"])
         _log_state_file_timing(state)
 
-    def _drop_file_items(queue: List[dict], file_ids: set) -> None:
+    def _drop_file_items(queue: List[dict], file_ids: set) -> List[dict]:
         if not file_ids:
-            return
+            return []
+        removed = [item for item in queue if item["file_id"] in file_ids]
         queue[:] = [item for item in queue if item["file_id"] not in file_ids]
+        return removed
 
     def _note_queue_elapsed(queue_items: List[dict], timing_field: str, elapsed: float) -> None:
         if not queue_items or elapsed <= 0:
@@ -1216,10 +1320,27 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                 _finalize_file_success(item["file_id"])
 
     def _flush_embedding_queue(force: bool = False) -> None:
-        while embedding_queue and (force or len(embedding_queue) >= EMBEDDING_BATCH_SIZE):
-            batch_size = min(len(embedding_queue), EMBEDDING_BATCH_SIZE)
-            batch_items = embedding_queue[:batch_size]
-            del embedding_queue[:batch_size]
+        nonlocal embedding_queue_tokens, upsert_queue_bytes
+        while embedding_queue and (
+            force
+            or len(embedding_queue) >= EMBEDDING_MAX_TEXTS_PER_BATCH
+            or embedding_queue_tokens >= EMBEDDING_MAX_TOKENS_PER_BATCH
+        ):
+            batch_items, batch_tokens = take_embedding_batch(embedding_queue)
+            if not batch_items:
+                break
+            embedding_queue_tokens = max(0, embedding_queue_tokens - batch_tokens)
+            batch_stats["embedding_batches"] += 1
+            batch_stats["embedding_batch_texts_total"] += len(batch_items)
+            batch_stats["embedding_batch_tokens_total"] += batch_tokens
+            batch_stats["embedding_batch_texts_max"] = max(
+                int(batch_stats["embedding_batch_texts_max"]),
+                len(batch_items),
+            )
+            batch_stats["embedding_batch_tokens_max"] = max(
+                int(batch_stats["embedding_batch_tokens_max"]),
+                batch_tokens,
+            )
             text_batch = [item["entry"]["metadata"]["content"] for item in batch_items]
             try:
                 started = time.perf_counter()
@@ -1230,8 +1351,16 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                 for item, embedding in zip(batch_items, embedding_batch):
                     item["entry"]["values"] = embedding
                     item["entry"]["metadata"]["embedded"] = True
+                    item["estimated_upsert_bytes"] = estimate_upsert_record_bytes(item["entry"])
                 upsert_queue.extend(batch_items)
+                upsert_queue_bytes += sum(upsert_item_bytes(item) for item in batch_items)
             except Exception:
+                batch_stats["embedding_batch_fallbacks"] += 1
+                logger.warning(
+                    "Embedding batch fallback: records=%d est_tokens=%d; retrying per file",
+                    len(batch_items),
+                    batch_tokens,
+                )
                 failed_file_ids = set()
                 for file_id, file_items in group_queue_items_by_file(batch_items).items():
                     try:
@@ -1243,18 +1372,45 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                         for item, embedding in zip(file_items, embedding_batch):
                             item["entry"]["values"] = embedding
                             item["entry"]["metadata"]["embedded"] = True
+                            item["estimated_upsert_bytes"] = estimate_upsert_record_bytes(item["entry"])
                         upsert_queue.extend(file_items)
+                        upsert_queue_bytes += sum(upsert_item_bytes(item) for item in file_items)
                     except Exception as file_error:
                         failed_file_ids.add(file_id)
                         _finalize_file_error(file_id, "embed", str(file_error))
-                _drop_file_items(embedding_queue, failed_file_ids)
-                _drop_file_items(upsert_queue, failed_file_ids)
+                dropped_embedding_items = _drop_file_items(embedding_queue, failed_file_ids)
+                embedding_queue_tokens = max(
+                    0,
+                    embedding_queue_tokens - sum(embedding_item_tokens(item) for item in dropped_embedding_items),
+                )
+                dropped_upsert_items = _drop_file_items(upsert_queue, failed_file_ids)
+                upsert_queue_bytes = max(
+                    0,
+                    upsert_queue_bytes - sum(upsert_item_bytes(item) for item in dropped_upsert_items),
+                )
 
     def _flush_upsert_queue(force: bool = False) -> None:
-        while upsert_queue and (force or len(upsert_queue) >= PINECONE_UPSERT_BATCH_SIZE):
-            batch_size = min(len(upsert_queue), PINECONE_UPSERT_BATCH_SIZE)
-            batch_items = upsert_queue[:batch_size]
-            del upsert_queue[:batch_size]
+        nonlocal upsert_queue_bytes
+        while upsert_queue and (
+            force
+            or len(upsert_queue) >= PINECONE_MAX_RECORDS_PER_BATCH
+            or upsert_queue_bytes >= PINECONE_MAX_REQUEST_BYTES
+        ):
+            batch_items, batch_bytes = take_upsert_batch(upsert_queue)
+            if not batch_items:
+                break
+            upsert_queue_bytes = max(0, upsert_queue_bytes - batch_bytes)
+            batch_stats["upsert_batches"] += 1
+            batch_stats["upsert_batch_records_total"] += len(batch_items)
+            batch_stats["upsert_batch_bytes_total"] += batch_bytes
+            batch_stats["upsert_batch_records_max"] = max(
+                int(batch_stats["upsert_batch_records_max"]),
+                len(batch_items),
+            )
+            batch_stats["upsert_batch_bytes_max"] = max(
+                int(batch_stats["upsert_batch_bytes_max"]),
+                batch_bytes,
+            )
             try:
                 started = time.perf_counter()
                 safe_upsert_batch([item["entry"] for item in batch_items], repo_name)
@@ -1262,6 +1418,12 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                 timing_stats["pinecone_seconds"] += elapsed
                 _record_upsert_success(batch_items, elapsed)
             except Exception:
+                batch_stats["upsert_batch_fallbacks"] += 1
+                logger.warning(
+                    "Upsert batch fallback: records=%d est_bytes=%d; retrying per file",
+                    len(batch_items),
+                    batch_bytes,
+                )
                 failed_file_ids = set()
                 for file_id, file_items in group_queue_items_by_file(batch_items).items():
                     try:
@@ -1273,7 +1435,11 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                     except Exception as file_error:
                         failed_file_ids.add(file_id)
                         _finalize_file_error(file_id, "upsert", str(file_error))
-                _drop_file_items(upsert_queue, failed_file_ids)
+                dropped_items = _drop_file_items(upsert_queue, failed_file_ids)
+                upsert_queue_bytes = max(
+                    0,
+                    upsert_queue_bytes - sum(upsert_item_bytes(item) for item in dropped_items),
+                )
 
     try:
         # Process files
@@ -1350,23 +1516,34 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
                         "file_path": filepath,
                         "status": status,
                         "entry": entry,
+                        "estimated_upsert_bytes": estimate_upsert_record_bytes(entry),
                     }
                     if bool(metadata.get("should_embed")) and int(metadata.get("token_count", 0)) <= MAX_TOKENS:
                         embedding_queue.append(queue_item)
+                        embedding_queue_tokens += embedding_item_tokens(queue_item)
                     else:
                         if metadata.get("chunk_type") == "content":
                             raise RuntimeError(
                                 f"Content chunk exceeds embedding token limit after re-chunking: {filepath}"
                             )
                         upsert_queue.append(queue_item)
+                        upsert_queue_bytes += upsert_item_bytes(queue_item)
 
                 _flush_embedding_queue()
                 _flush_upsert_queue()
             except Exception as e:
                 if queued_file_id is not None and queued_file_id in file_states:
                     _finalize_file_error(queued_file_id, "process", str(e))
-                    _drop_file_items(embedding_queue, {queued_file_id})
-                    _drop_file_items(upsert_queue, {queued_file_id})
+                    dropped_embedding_items = _drop_file_items(embedding_queue, {queued_file_id})
+                    embedding_queue_tokens = max(
+                        0,
+                        embedding_queue_tokens - sum(embedding_item_tokens(item) for item in dropped_embedding_items),
+                    )
+                    dropped_upsert_items = _drop_file_items(upsert_queue, {queued_file_id})
+                    upsert_queue_bytes = max(
+                        0,
+                        upsert_queue_bytes - sum(upsert_item_bytes(item) for item in dropped_upsert_items),
+                    )
                 else:
                     file_stats["errors"] += 1
                     failures.append({"file_path": filepath, "operation": "process", "message": str(e), "status": status})
@@ -1390,6 +1567,42 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     logger.info(f"  - Vectors deleted: {deleted_files} files")
     logger.info(f"  - Chunks upserted: {total_upserted}")
     logger.info(f"  - Embedding model: {EMBEDDING_MODEL}")
+    embedding_batches = int(batch_stats["embedding_batches"])
+    upsert_batches = int(batch_stats["upsert_batches"])
+    embedding_avg_texts = (
+        float(batch_stats["embedding_batch_texts_total"]) / embedding_batches
+        if embedding_batches else 0.0
+    )
+    embedding_avg_tokens = (
+        float(batch_stats["embedding_batch_tokens_total"]) / embedding_batches
+        if embedding_batches else 0.0
+    )
+    upsert_avg_records = (
+        float(batch_stats["upsert_batch_records_total"]) / upsert_batches
+        if upsert_batches else 0.0
+    )
+    upsert_avg_bytes = (
+        float(batch_stats["upsert_batch_bytes_total"]) / upsert_batches
+        if upsert_batches else 0.0
+    )
+    logger.info(
+        "  - Embedding batches: %d (avg_texts=%.1f, max_texts=%d, avg_est_tokens=%.0f, max_est_tokens=%d, fallbacks=%d)",
+        embedding_batches,
+        embedding_avg_texts,
+        int(batch_stats["embedding_batch_texts_max"]),
+        embedding_avg_tokens,
+        int(batch_stats["embedding_batch_tokens_max"]),
+        int(batch_stats["embedding_batch_fallbacks"]),
+    )
+    logger.info(
+        "  - Upsert batches: %d (avg_records=%.1f, max_records=%d, avg_est_bytes=%.0f, max_est_bytes=%d, fallbacks=%d)",
+        upsert_batches,
+        upsert_avg_records,
+        int(batch_stats["upsert_batch_records_max"]),
+        upsert_avg_bytes,
+        int(batch_stats["upsert_batch_bytes_max"]),
+        int(batch_stats["upsert_batch_fallbacks"]),
+    )
     total_embed_seconds = float(timing_stats["embed_seconds"])
     total_pinecone_seconds = float(timing_stats["pinecone_seconds"])
     total_run_seconds = time.perf_counter() - run_started
