@@ -139,6 +139,8 @@ timing_stats = {
     "embed_seconds": 0.0,
     "pinecone_seconds": 0.0,
 }
+PROGRESS_LOG_EVERY = 512
+PROGRESS_LOG_INTERVAL_SECONDS = 5.0
 
 
 def reset_timing_stats() -> None:
@@ -150,6 +152,55 @@ def reset_timing_stats() -> None:
 
 def log_timing(message: str) -> None:
     logger.info(f"[timing] {message}")
+
+
+class ProgressReporter:
+    def __init__(self, desc: str, unit: str = "chunk") -> None:
+        self.desc = desc
+        self.unit = unit
+        self.count = 0
+        self.started = time.perf_counter()
+        self.last_logged_count = 0
+        self.last_logged_at = self.started
+        use_tqdm = bool(getattr(sys.stderr, "isatty", lambda: False)())
+        self._bar = tqdm(desc=desc, unit=unit, leave=False) if use_tqdm else None
+
+    def update(self, n: int) -> None:
+        if n <= 0:
+            return
+        self.count += n
+        if self._bar is not None:
+            self._bar.update(n)
+            return
+
+        now = time.perf_counter()
+        if (
+            self.count - self.last_logged_count >= PROGRESS_LOG_EVERY
+            or now - self.last_logged_at >= PROGRESS_LOG_INTERVAL_SECONDS
+        ):
+            self._log_progress(now)
+
+    def close(self) -> None:
+        if self._bar is not None:
+            self._bar.close()
+            return
+        if self.count > self.last_logged_count:
+            self._log_progress(time.perf_counter())
+
+    def _log_progress(self, now: float) -> None:
+        elapsed = max(now - self.started, 1e-9)
+        rate = self.count / elapsed
+        logger.info(
+            "[progress] %s count=%d %s elapsed=%.1fs rate=%.2f %s/s",
+            self.desc,
+            self.count,
+            self.unit,
+            elapsed,
+            rate,
+            self.unit,
+        )
+        self.last_logged_count = self.count
+        self.last_logged_at = now
 
 
 def count_tokens(text: str) -> int:
@@ -1064,8 +1115,8 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     next_file_id = 0
     embedding_queue: List[dict] = []
     upsert_queue: List[dict] = []
-    embedding_progress = tqdm(desc="Embedding chunks", unit="chunk", leave=False)
-    upsert_progress = tqdm(desc="Upserting chunks", unit="chunk", leave=False)
+    embedding_progress = ProgressReporter(desc="Embedding chunks", unit="chunk")
+    upsert_progress = ProgressReporter(desc="Upserting chunks", unit="chunk")
 
     def _log_direct_file_timing(filepath: str, file_started: float, embed_before: float, pinecone_before: float) -> None:
         total_elapsed = time.perf_counter() - file_started
