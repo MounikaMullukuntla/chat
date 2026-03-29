@@ -66,7 +66,6 @@ PINECONE_MAX_RECORDS_PER_BATCH = 1000
 PINECONE_MAX_REQUEST_BYTES = 1_920_000
 PINECONE_RECORD_SIZE_SAFETY_MULTIPLIER = 1.03
 PINECONE_RECORD_SIZE_OVERHEAD_BYTES = 48
-SKIPPED_REPO_REASONS = {}
 
 # Extensions we should not attempt to parse/chunk as text. We index them as a single metadata summary.
 # This avoids embedding binary gibberish (images, archives, etc.) which is slow and error-prone.
@@ -774,6 +773,8 @@ def parse_args():
     parser.add_argument("changed_files", nargs="?", help="Path to changed_files.txt from git diff --name-status")
     parser.add_argument("--files", nargs="*",
                         help="Explicit files to process. Accepts optional status prefix: A:path, M:path, D:path. Default is M if omitted.")
+    parser.add_argument("--skip-paths", nargs="*",
+                        help="Skip repo-root-relative paths during sync. A matched entry skips that exact path and its descendants.")
     parser.add_argument("--retry-errors", dest="retry_errors", nargs="?", const="chat/.vector_sync_errors.jsonl",
                         help="Retry files listed in an errors file (default: chat/.vector_sync_errors.jsonl)")
     parser.add_argument("--errors-out", dest="errors_out", default="chat/.vector_sync_errors.jsonl",
@@ -806,11 +807,64 @@ def append_error(path: str, file_path: str, operation: str, message: str, status
         pass
 
 
-def top_level_repo_folder(filepath: str) -> str:
-    normalized = str(filepath).replace("\\", "/").lstrip("./")
-    if not normalized:
-        return ""
-    return normalized.split("/", 1)[0].lower()
+def normalize_relative_path(path: str) -> str:
+    normalized = str(path or "").strip().replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = re.sub(r"/+", "/", normalized)
+    return normalized.rstrip("/")
+
+
+def normalize_skip_paths(paths: Optional[List[str]]) -> List[str]:
+    if not paths:
+        return []
+
+    normalized_paths: List[str] = []
+    seen = set()
+    for raw in paths:
+        normalized = normalize_relative_path(raw)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        normalized_paths.append(normalized)
+    return normalized_paths
+
+
+def get_matching_skip_path(filepath: str, skip_paths: List[str]) -> Optional[str]:
+    normalized = normalize_relative_path(filepath)
+    for skip_path in skip_paths:
+        if normalized == skip_path or normalized.startswith(f"{skip_path}/"):
+            return skip_path
+    return None
+
+
+def apply_skip_paths(
+    files_to_process: List[Tuple[str, str]],
+    skip_paths: Optional[List[str]],
+    wipe_first: bool,
+) -> Tuple[List[Tuple[str, str]], dict]:
+    normalized_skip_paths = normalize_skip_paths(skip_paths)
+    if not normalized_skip_paths:
+        return files_to_process, {}
+
+    filtered_files: List[Tuple[str, str]] = []
+    skip_summary: dict = {}
+
+    for status, filepath in files_to_process:
+        matched_skip_path = get_matching_skip_path(filepath, normalized_skip_paths)
+        if not matched_skip_path:
+            filtered_files.append((status, filepath))
+            continue
+
+        bucket = skip_summary.setdefault(matched_skip_path, {"omitted": 0, "delete_handled": 0})
+        if wipe_first:
+            bucket["omitted"] += 1
+            continue
+
+        bucket["delete_handled"] += 1
+        filtered_files.append(("D", filepath))
+
+    return filtered_files, skip_summary
 
 
 def _run_git(args: List[str], cwd: str) -> str:
@@ -1103,11 +1157,47 @@ def main_entry():
         else:
             raise RuntimeError("Usage: provide one of: --files, --retry-errors, --from-commit, --reindex-all, or changed_files path")
 
-    run_sync(files_to_process, errors_out, repo_root=args.repo_root, wipe_first=args.reindex_all)
+    files_to_process, skip_summary = apply_skip_paths(
+        files_to_process,
+        args.skip_paths,
+        wipe_first=args.reindex_all,
+    )
+
+    if skip_summary:
+        for skip_path in sorted(skip_summary.keys()):
+            details = skip_summary[skip_path]
+            omitted = int(details.get("omitted", 0))
+            delete_handled = int(details.get("delete_handled", 0))
+            if omitted:
+                logger.warning(
+                    "Omitting %d files under '%s' because they matched --skip-paths during this full reindex.",
+                    omitted,
+                    skip_path,
+                )
+            if delete_handled:
+                logger.warning(
+                    "Handling %d files under '%s' as delete-only because they matched --skip-paths.",
+                    delete_handled,
+                    skip_path,
+                )
+
+    run_sync(
+        files_to_process,
+        errors_out,
+        repo_root=args.repo_root,
+        wipe_first=args.reindex_all,
+        skip_summary=skip_summary,
+    )
 
 
 
-def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root: str, wipe_first: bool = False):
+def run_sync(
+    files_to_process: List[Tuple[str, str]],
+    errors_out: str,
+    repo_root: str,
+    wipe_first: bool = False,
+    skip_summary: Optional[dict] = None,
+):
     # Environment context - repo_name used for metadata tagging
     github_repo = (os.getenv("GITHUB_REPOSITORY") or "").strip()
     repo_name = github_repo.split("/")[-1] if github_repo else ""
@@ -1216,8 +1306,7 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     deleted_files = 0
     upserted_ids: List[str] = []
     total_upserted = 0
-    warned_skipped_repos = set()
-    skipped_repo_counts = {}
+    skip_summary = skip_summary or {}
     file_states: dict = {}
     next_file_id = 0
     worker_errors: List[dict] = []
@@ -1566,20 +1655,6 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
 
             try:
                 path = Path(filepath)
-                repo_folder = top_level_repo_folder(filepath)
-                if repo_folder in SKIPPED_REPO_REASONS:
-                    with state_lock:
-                        file_stats["skipped"] += 1
-                        skipped_repo_counts[repo_folder] = int(skipped_repo_counts.get(repo_folder, 0)) + 1
-                    if repo_folder not in warned_skipped_repos:
-                        warned_skipped_repos.add(repo_folder)
-                        logger.warning(
-                            "Skipping files under repo '%s' during VectorDB sync because it %s.",
-                            repo_folder,
-                            SKIPPED_REPO_REASONS[repo_folder],
-                        )
-                    continue
-
                 if path.exists() and path.is_dir():
                     with state_lock:
                         file_stats["skipped"] += 1
@@ -1682,9 +1757,19 @@ def run_sync(files_to_process: List[Tuple[str, str]], errors_out: str, repo_root
     logger.info(f"  - Namespace: '{DEFAULT_NAMESPACE}' (default)" if DEFAULT_NAMESPACE == "" else f"  - Namespace: '{DEFAULT_NAMESPACE}'")
     logger.info(f"  - Files processed: {file_stats['processed']}")
     logger.info(f"  - Files skipped: {file_stats['skipped']}")
-    if skipped_repo_counts:
-        for repo_folder in sorted(skipped_repo_counts.keys()):
-            logger.info(f"    - skipped repo '{repo_folder}': {skipped_repo_counts[repo_folder]} files")
+    if skip_summary:
+        omitted_total = sum(int(details.get("omitted", 0)) for details in skip_summary.values())
+        delete_handled_total = sum(int(details.get("delete_handled", 0)) for details in skip_summary.values())
+        logger.info(f"  - Files omitted by --skip-paths: {omitted_total}")
+        logger.info(f"  - Files handled as delete-only by --skip-paths: {delete_handled_total}")
+        for skip_path in sorted(skip_summary.keys()):
+            details = skip_summary[skip_path]
+            logger.info(
+                "    - skip path '%s': omitted=%d delete_handled=%d",
+                skip_path,
+                int(details.get("omitted", 0)),
+                int(details.get("delete_handled", 0)),
+            )
     logger.info(f"  - Files with errors: {file_stats['errors']}")
     logger.info(f"  - Vectors deleted: {deleted_files} files")
     logger.info(f"  - Chunks upserted: {total_upserted}")
