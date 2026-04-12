@@ -398,14 +398,11 @@ GITHUB_SHA=abc123              # Auto-set in Actions
 
 ## Disaster Recovery
 
-See [scripts/restore.py](../scripts/restore.py):
+If the vector database is corrupted or needs to be completely rebuilt, you can re-index the entire repository natively using the sync script:
 
 ```bash
-# Rollback to specific commit
-python scripts/restore.py abc123 --namespace modelearth-webroot
-
-# Verify vectors before deletion
-python scripts/restore.py abc123 --dry-run
+# Wipe all vectors and re-index the entire repository from scratch
+python ingestion/vector_db_sync.py --reindex-all --repo-root .
 ```
 
 ## Architecture Decisions
@@ -490,5 +487,3 @@ pc.create_index(
 
 - [Main README](../README.md) - System overview
 - [LlamaChunker](llama_chunker.py) - Chunking implementation
-- [Pinecone Client](../lib/pine.py) - Vector DB wrapper
-- [Restore Script](../scripts/restore.py) - Rollback utility
