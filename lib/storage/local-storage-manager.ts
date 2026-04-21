@@ -244,6 +244,7 @@ class LocalStorageManager implements StorageManager {
       MISTRAL_API_KEY: "mistral",
       PERPLEXITY_API_KEY: "perplexity",
       DEEPSEEK_API_KEY: "deepseek",
+      DISCORD_BOT_TOKEN: "discord",
     };
 
     // Map from ${aiType}_api_key localStorage entries → provider IDs

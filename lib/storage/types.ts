@@ -15,6 +15,7 @@ export type LocalStorageSchema = {
     mistral?: string;
     perplexity?: string;
     deepseek?: string;
+    discord?: string;
   };
   integrations: {
     github?: {
@@ -93,7 +94,8 @@ export type APIProvider =
   | "fireworks"
   | "mistral"
   | "perplexity"
-  | "deepseek";
+  | "deepseek"
+  | "discord";
 
 // Storage manager interface
 export type StorageManager = {

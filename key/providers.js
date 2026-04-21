@@ -107,4 +107,12 @@ window.KeyManagerProviders = [
       { id: 'deepseek-chat', name: 'DeepSeek Chat', description: 'DeepSeek V3 chat model', isDefault: true, active: true },
     ],
   },
+  {
+    id: 'discord',
+    name: 'Discord Bot',
+    keyPlaceholder: '',
+    keyHint: 'Discord bot token (DISCORD_BOT_TOKEN)',
+    getKeyUrl: 'https://discord.com/developers/applications',
+    models: [],
+  },
 ];

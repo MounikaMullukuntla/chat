@@ -69,6 +69,7 @@
     MISTRAL_API_KEY:    'mistral',
     PERPLEXITY_API_KEY: 'perplexity',
     DEEPSEEK_API_KEY:   'deepseek',
+    DISCORD_BOT_TOKEN:  'discord',
   };
 
   var LEGACY_KEY_TO_PROVIDER = {
@@ -115,14 +116,18 @@
     if (changed) writeAll(data);
   }
 
-  // ── SVG icons ────────────────────────────────────────────────────────────────
+  // ── Icons (Material Icons — loaded via localsite.js) ─────────────────────────
 
-  var ICON_CHECK = '<svg viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14zm3.53-9.47a.75.75 0 0 0-1.06-1.06L7 7.94 5.53 6.47a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4-4z"/></svg>';
-  var ICON_CIRCLE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="6.25"/></svg>';
-  var ICON_CHEVRON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6l4 4 4-4"/></svg>';
-  var ICON_EYE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>';
-  var ICON_EYE_OFF = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M2 2l12 12M6.5 6.6A2 2 0 0 0 9.4 9.5M4.2 4.3C2.7 5.3 1.5 7 1.5 8s2 4.5 6.5 4.5c1.3 0 2.4-.3 3.3-.7M7 3.6C7.3 3.5 7.7 3.5 8 3.5c4.5 0 6.5 3 6.5 4.5 0 .7-.4 1.5-1.1 2.3"/></svg>';
-  var ICON_INFO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="6.25"/><path stroke-linecap="round" d="M8 7v4M8 5.5v.5"/></svg>';
+  function mi(name) {
+    return '<span class="material-icons" style="font-size:18px;vertical-align:middle">' + name + '</span>';
+  }
+
+  var ICON_CHECK   = mi('check_circle');
+  var ICON_CIRCLE  = mi('radio_button_unchecked');
+  var ICON_CHEVRON = mi('expand_more');
+  var ICON_EYE     = mi('visibility');
+  var ICON_EYE_OFF = mi('visibility_off');
+  var ICON_INFO    = mi('info');
 
   // ── Widget renderer ──────────────────────────────────────────────────────────
 
@@ -155,8 +160,9 @@
     card.className = 'km-provider';
     card.id = 'km-provider-' + provider.id;
 
-    var header = buildProviderHeader(provider, card);
-    var body = buildProviderBody(provider);
+    var startOpen = hasKey(provider.id);
+    var body = buildProviderBody(provider, startOpen);
+    var header = buildProviderHeader(provider, startOpen);
 
     header.addEventListener('click', function () {
       var expanded = header.getAttribute('aria-expanded') === 'true';
@@ -169,11 +175,11 @@
     return card;
   }
 
-  function buildProviderHeader(provider, card) {
+  function buildProviderHeader(provider, startOpen) {
     var header = document.createElement('button');
     header.type = 'button';
     header.className = 'km-provider-header';
-    header.setAttribute('aria-expanded', 'false');
+    header.setAttribute('aria-expanded', startOpen ? 'true' : 'false');
 
     var statusIcon = document.createElement('span');
     statusIcon.className = 'km-status-icon ' + (hasKey(provider.id) ? 'has-key' : 'no-key');
@@ -200,14 +206,17 @@
     return header;
   }
 
-  function buildProviderBody(provider) {
+  function buildProviderBody(provider, startOpen) {
     var body = document.createElement('div');
     body.className = 'km-provider-body';
-    body.hidden = true;
+    body.hidden = !startOpen;
 
-    // Key input section
+    var keyPresent = hasKey(provider.id);
+
+    // Key input section — hidden by default when key is already set
     var keyRow = document.createElement('div');
     keyRow.className = 'km-key-row';
+    keyRow.hidden = keyPresent;
 
     var label = document.createElement('div');
     label.className = 'km-key-label';
@@ -250,7 +259,6 @@
     statusMsg.className = 'km-status-msg';
 
     function refreshHeaderStatus() {
-      // Update the parent card's status icon
       var card = document.getElementById('km-provider-' + provider.id);
       if (!card) return;
       var icon = card.querySelector('.km-status-icon');
@@ -269,6 +277,8 @@
       setKey(provider.id, val);
       showStatus(statusMsg, 'Key saved.', 'ok');
       refreshHeaderStatus();
+      // Hide the key row again after saving
+      keyRow.hidden = true;
     });
 
     clearBtn.addEventListener('click', function () {
@@ -278,6 +288,7 @@
       removeKey(provider.id);
       showStatus(statusMsg, 'Key removed.', 'ok');
       refreshHeaderStatus();
+      // Keep key row visible so user can enter a new key
     });
 
     inputWrap.appendChild(input);
@@ -295,10 +306,28 @@
       var modelSection = document.createElement('div');
       modelSection.className = 'km-model-list';
 
-      var modelLabel = document.createElement('div');
-      modelLabel.className = 'km-model-list-label';
-      modelLabel.textContent = 'Models';
-      modelSection.appendChild(modelLabel);
+      var modelLabelRow = document.createElement('div');
+      modelLabelRow.className = 'km-model-list-label';
+
+      var modelLabelText = document.createElement('span');
+      modelLabelText.textContent = 'Models';
+
+      // Edit-key icon button on the far right of the Models label
+      var editKeyBtn = document.createElement('button');
+      editKeyBtn.type = 'button';
+      editKeyBtn.className = 'km-edit-key-btn';
+      editKeyBtn.innerHTML = mi('key');
+      editKeyBtn.title = 'Edit API key';
+      editKeyBtn.addEventListener('click', function () {
+        keyRow.hidden = !keyRow.hidden;
+        if (!keyRow.hidden) {
+          input.focus();
+        }
+      });
+
+      modelLabelRow.appendChild(modelLabelText);
+      modelLabelRow.appendChild(editKeyBtn);
+      modelSection.appendChild(modelLabelRow);
 
       provider.models.forEach(function (model) {
         var row = document.createElement('div');
