@@ -58,6 +58,10 @@ export function SettingsPage({ className }: SettingsPageProps) {
   const [togetherKey, setTogetherKey] = useState("");
   const [fireworksKey, setFireworksKey] = useState("");
 
+  // Export window state (1-hour window after last key edit)
+  const [exportWindowOpen, setExportWindowOpen] = useState(false);
+  const [exportEnvText, setExportEnvText] = useState<string | null>(null);
+
   // Verification services
   const googleService = new GoogleVerificationService();
   const anthropicService = new AnthropicVerificationService();
@@ -106,6 +110,12 @@ export function SettingsPage({ className }: SettingsPageProps) {
       // Simulate a small delay to show loading state
       await new Promise((resolve) => setTimeout(resolve, 300));
 
+      // Decrypt all stored keys into the in-memory cache before reading them.
+      await storage.general.initCrypto();
+
+      // Check whether the 1-hour export window is still open.
+      setExportWindowOpen(storage.general.isExportWindowOpen());
+
       // Load existing API keys
       const existingGoogleKey = storage.apiKeys.get("google");
       const existingAnthropicKey = storage.apiKeys.get("anthropic");
@@ -148,6 +158,35 @@ export function SettingsPage({ className }: SettingsPageProps) {
   useEffect(() => {
     initializeSettings();
   }, [initializeSettings]);
+
+  // Export window: generate .env text from decrypted keys in memory
+  const handleExportEnv = useCallback(() => {
+    const ENV_NAMES: Record<string, string> = {
+      google: "GOOGLE_API_KEY",
+      anthropic: "ANTHROPIC_API_KEY",
+      openai: "OPENAI_API_KEY",
+      xai: "XAI_API_KEY",
+      groq: "GROQ_API_KEY",
+      together: "TOGETHER_API_KEY",
+      fireworks: "FIREWORKS_API_KEY",
+      mistral: "MISTRAL_API_KEY",
+      perplexity: "PERPLEXITY_API_KEY",
+      deepseek: "DEEPSEEK_API_KEY",
+      discord: "DISCORD_BOT_TOKEN",
+    };
+    const keys = storage.general.getDecryptedKeysForExport();
+    const lines = Object.entries(keys)
+      .filter(([, v]) => !!v)
+      .map(([provider, value]) => `${ENV_NAMES[provider] || provider.toUpperCase() + "_API_KEY"}=${value}`);
+    setExportEnvText(lines.length > 0 ? lines.join("\n") : "(no keys saved)");
+  }, []);
+
+  const handleEncryptNow = useCallback(() => {
+    storage.general.closeExportWindow();
+    setExportWindowOpen(false);
+    setExportEnvText(null);
+    toast.success("Keys locked", "Export window closed. Keys are encrypted.");
+  }, [toast]);
 
   // Handle network reconnection
   useNetworkRetry(
@@ -519,16 +558,82 @@ export function SettingsPage({ className }: SettingsPageProps) {
                       </div>
                       <div className="min-w-0 text-xs sm:text-sm">
                         <div className="mb-1 font-medium text-green-900 dark:text-green-100">
-                          Secure Local Storage
+                          Encrypted at Rest
                         </div>
-                        <div className="text-green-700 dark:text-green-300">
-                          Your API keys are stored locally in your browser and
-                          are never transmitted to our servers. They remain
-                          private and secure on your device.
+                        <div className="text-green-700 dark:text-green-300 space-y-1">
+                          <p>
+                            Keys are encrypted with an AES-GCM key stored in
+                            your browser&apos;s IndexedDB. That key is{" "}
+                            <strong>non-extractable</strong> — JavaScript cannot
+                            read its raw bytes, so the ciphertext in localStorage
+                            is useless to any script or extension that can only
+                            read storage.
+                          </p>
+                          <p>
+                            When you send a message, the key is briefly decrypted
+                            in memory and forwarded over HTTPS to the server,
+                            which passes it directly to the AI provider. HTTPS
+                            prevents network interception, but code already
+                            running on this page could in theory read the key from
+                            memory at that moment.
+                          </p>
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Export window — only shown within 1 hour of last key edit */}
+                  {exportWindowOpen && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <div className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 sm:h-5 sm:w-5 dark:text-amber-400">
+                            ℹ
+                          </div>
+                          <div className="min-w-0 text-xs sm:text-sm">
+                            <div className="mb-1 font-medium text-amber-900 dark:text-amber-100">
+                              Export Window Open (1 hour)
+                            </div>
+                            <div className="text-amber-700 dark:text-amber-300">
+                              Your keys can be exported as a <code>.env</code> file
+                              within one hour of the last edit. After that, only
+                              re-entering a key reopens the window. Click{" "}
+                              <strong>Encrypt Now</strong> to close it immediately.
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={handleExportEnv}
+                            size="sm"
+                            variant="outline"
+                          >
+                            Export as .env
+                          </Button>
+                          <Button
+                            onClick={handleEncryptNow}
+                            size="sm"
+                            variant="default"
+                          >
+                            Encrypt Now
+                          </Button>
+                        </div>
+                        {exportEnvText !== null && (
+                          <textarea
+                            className="w-full rounded border border-amber-300 bg-white p-2 font-mono text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+                            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                            readOnly
+                            rows={Math.min(10, exportEnvText.split("\n").length + 1)}
+                            style={{ filter: "blur(4px)" }}
+                            title="Click to reveal"
+                            value={exportEnvText}
+                            onFocus={(e) => { (e.target as HTMLTextAreaElement).style.filter = "none"; }}
+                            onBlur={(e) => { (e.target as HTMLTextAreaElement).style.filter = "blur(4px)"; }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <Separator />
 

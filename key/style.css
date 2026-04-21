@@ -255,8 +255,9 @@
 /* Status message */
 .key-status-msg {
   font-size: 0.8rem;
-  min-height: 1.2em;
 }
+
+.key-status-msg:empty { display: none; }
 
 .key-status-msg.ok  { color: var(--key-success); }
 .key-status-msg.err { color: var(--key-danger); }

@@ -292,6 +292,29 @@ export const storageHelpers = {
   migrateFromLegacy: (): void => {
     localStorageManager.migrateFromLegacy();
   },
+
+  /**
+   * Decrypt all stored API keys into the in-memory cache.
+   * Call once at app startup before reading any keys.
+   */
+  initCrypto: (): Promise<void> => localStorageManager.initCrypto(),
+
+  /**
+   * Returns true if the 1-hour export window is open (within 1 hour of last key edit).
+   */
+  isExportWindowOpen: (): boolean => localStorageManager.isExportWindowOpen(),
+
+  /**
+   * Closes the export window immediately (sets last-edit to 0).
+   */
+  closeExportWindow: (): void => localStorageManager.closeExportWindow(),
+
+  /**
+   * Returns all currently decrypted API keys as plaintext for .env export.
+   * Only call when isExportWindowOpen() is true.
+   */
+  getDecryptedKeysForExport: (): Record<string, string> =>
+    localStorageManager.getDecryptedKeysForExport(),
 };
 
 /**

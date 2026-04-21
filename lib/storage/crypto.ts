@@ -1,0 +1,115 @@
+/**
+ * Browser-side encryption for API keys using the Web Crypto API.
+ *
+ * Uses a non-extractable AES-GCM-256 key stored in IndexedDB.  The key is
+ * unique per browser profile and origin — it can never be exported and is
+ * therefore inaccessible to injected scripts that can only read storage values.
+ *
+ * Encrypted format stored in localStorage: "<iv base64>:<ciphertext base64>"
+ */
+
+const DB_NAME = "km-store";
+const DB_VERSION = 1;
+const KEY_STORE = "keys";
+const KEY_ID = "browser-key";
+
+// Matches the "<base64iv>:<base64ciphertext>" format produced by encryptValue.
+// Both segments are standard base64 (A-Z, a-z, 0-9, +, /, optional = padding).
+const ENCRYPTED_RE = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/;
+
+let _cachedKey: CryptoKey | null = null;
+
+// ── IndexedDB helpers ────────────────────────────────────────────────────────
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => req.result.createObjectStore(KEY_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadStoredKey(db: IDBDatabase): Promise<CryptoKey | null> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(KEY_STORE, "readonly");
+    const req = tx.objectStore(KEY_STORE).get(KEY_ID);
+    req.onsuccess = () => resolve((req.result as CryptoKey) ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveStoredKey(db: IDBDatabase, key: CryptoKey): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(KEY_STORE, "readwrite");
+    const req = tx.objectStore(KEY_STORE).put(key, KEY_ID);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Retrieve the browser-specific CryptoKey from IndexedDB, generating a new
+ * non-extractable AES-GCM-256 key if one does not yet exist.
+ */
+export async function initBrowserKey(): Promise<CryptoKey> {
+  if (_cachedKey) return _cachedKey;
+
+  const db = await openDB();
+  let key = await loadStoredKey(db);
+
+  if (!key) {
+    key = await crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      false, // non-extractable — raw bytes are never accessible to JS
+      ["encrypt", "decrypt"]
+    );
+    await saveStoredKey(db, key);
+  }
+
+  _cachedKey = key;
+  db.close();
+  return key;
+}
+
+/**
+ * Encrypt a plaintext string using the browser key.
+ * Returns a "<iv base64>:<ciphertext base64>" string suitable for localStorage.
+ */
+export async function encryptValue(plaintext: string): Promise<string> {
+  const key = await initBrowserKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(plaintext)
+  );
+  const ivB64 = btoa(String.fromCharCode(...iv));
+  const ctB64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)));
+  return `${ivB64}:${ctB64}`;
+}
+
+/**
+ * Decrypt a stored "<iv base64>:<ciphertext base64>" string.
+ * Throws if the browser key does not match (different browser/profile).
+ */
+export async function decryptValue(stored: string): Promise<string> {
+  const key = await initBrowserKey();
+  const colonIdx = stored.indexOf(":");
+  const ivB64 = stored.slice(0, colonIdx);
+  const ctB64 = stored.slice(colonIdx + 1);
+  const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0));
+  const ct = Uint8Array.from(atob(ctB64), (c) => c.charCodeAt(0));
+  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  return new TextDecoder().decode(plaintext);
+}
+
+/**
+ * Returns true if the value looks like it was produced by encryptValue().
+ * Used to migrate legacy plaintext entries without double-encrypting.
+ */
+export function isEncrypted(value: string): boolean {
+  return ENCRYPTED_RE.test(value);
+}

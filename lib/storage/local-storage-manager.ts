@@ -12,6 +12,7 @@ import type {
   StorageQuotaInfo,
 } from "./types";
 import { StorageErrorType } from "./types";
+import { decryptValue, encryptValue, isEncrypted } from "./crypto";
 
 class LocalStorageManager implements StorageManager {
   private static instance: LocalStorageManager;
@@ -24,6 +25,11 @@ class LocalStorageManager implements StorageManager {
     enableEncryption: false,
   };
   private cleanupListeners: (() => void)[] = [];
+
+  // In-memory plaintext cache — populated by initCrypto() and kept in sync by
+  // setAPIKey / removeAPIKey.  getAPIKey() reads from this cache so callers
+  // always receive plaintext and do not need to handle async decryption.
+  private _plaintextCache: Map<string, string> = new Map();
 
   private constructor() {
     this.setupAutoCleanup();
@@ -174,28 +180,60 @@ class LocalStorageManager implements StorageManager {
   }
 
   /**
-   * Get API key for a specific provider
+   * Get API key for a specific provider.
+   * Returns from the in-memory plaintext cache (populated by initCrypto()).
+   * Falls back to raw storage only when the cache has not been initialized yet
+   * (e.g. very early in app startup) — in that case plaintext keys still work
+   * and encrypted values are skipped gracefully.
    */
   getAPIKey(provider: APIProvider): string | null {
+    if (this._plaintextCache.has(provider)) {
+      return this._plaintextCache.get(provider)!;
+    }
+    // Cache miss — read raw storage as a fallback (pre-initCrypto path).
     const apiKeys =
       this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
-    console.log("🗄️ [DEBUG] LocalStorage API keys data:", {
-      hasApiKeysData: !!apiKeys,
-      availableProviders: apiKeys ? Object.keys(apiKeys) : [],
-      requestedProvider: provider,
-      hasRequestedKey: !!apiKeys?.[provider],
-    });
-    return apiKeys?.[provider] || null;
+    const raw = apiKeys?.[provider];
+    // Return null for encrypted values we cannot decrypt synchronously.
+    if (!raw || isEncrypted(raw)) return null;
+    return raw;
   }
 
   /**
-   * Set API key for a specific provider
+   * Set API key for a specific provider.
+   * Updates the in-memory plaintext cache immediately (so getAPIKey() works at
+   * once) then encrypts and persists to localStorage in the background.
+   * Records the edit timestamp used by the 1-hour export window.
    */
   setAPIKey(provider: APIProvider, key: string): void {
-    const apiKeys =
-      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
-    apiKeys[provider] = key;
-    this.setStorageData("api-keys", apiKeys);
+    // Update cache synchronously so callers can read the key right away.
+    this._plaintextCache.set(provider, key);
+
+    // Record the edit timestamp for the export window check.
+    try {
+      localStorage.setItem("settings_api-keys-last-edit", String(Date.now()));
+    } catch (_) {}
+
+    // Encrypt and persist in the background — non-blocking.
+    encryptValue(key)
+      .then((encrypted) => {
+        const apiKeys =
+          this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
+        apiKeys[provider] = encrypted;
+        this.setStorageData("api-keys", apiKeys);
+      })
+      .catch((err) => {
+        // Encryption unavailable (e.g. in a non-browser environment) —
+        // fall back to writing plaintext.
+        console.warn(
+          "[storage] crypto unavailable, writing plaintext key",
+          err
+        );
+        const apiKeys =
+          this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
+        apiKeys[provider] = key;
+        this.setStorageData("api-keys", apiKeys);
+      });
 
     this.emitEvent({
       type: "api-key-updated",
@@ -208,6 +246,7 @@ class LocalStorageManager implements StorageManager {
    * Remove API key for a specific provider
    */
   removeAPIKey(provider: APIProvider): void {
+    this._plaintextCache.delete(provider);
     const apiKeys =
       this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
     if (apiKeys?.[provider]) {
@@ -295,8 +334,86 @@ class LocalStorageManager implements StorageManager {
     }
 
     if (changed) {
+      // Write migrated keys. They will be encrypted on the next initCrypto()
+      // call (or on the next setAPIKey call for any individual key).
       this.setStorageData("api-keys", apiKeys);
     }
+  }
+
+  /**
+   * Initialize the encryption layer: decrypt all stored API keys into the
+   * in-memory plaintext cache.  Must be called once at app startup (or at the
+   * start of any async operation that reads keys).  Safe to call multiple times.
+   */
+  async initCrypto(): Promise<void> {
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
+
+    const entries = Object.entries(apiKeys) as [APIProvider, string][];
+    await Promise.all(
+      entries.map(async ([provider, stored]) => {
+        if (!stored) return;
+        try {
+          const plaintext = isEncrypted(stored)
+            ? await decryptValue(stored)
+            : stored; // legacy plaintext — encrypt it now
+          this._plaintextCache.set(provider, plaintext);
+
+          // Re-encrypt any plaintext values found in storage.
+          if (!isEncrypted(stored)) {
+            const encrypted = await encryptValue(stored);
+            const current =
+              this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") ||
+              {};
+            current[provider] = encrypted;
+            this.setStorageData("api-keys", current);
+          }
+        } catch (err) {
+          // Decryption failure — different browser/key or corrupted data.
+          // Remove the un-decryptable entry rather than surfacing garbage.
+          console.warn(`[storage] could not decrypt key for ${provider}`, err);
+          this._plaintextCache.delete(provider);
+        }
+      })
+    );
+  }
+
+  /**
+   * Check whether the 1-hour export window is currently open.
+   * Returns true if settings_api-keys-last-edit is within the last hour.
+   */
+  isExportWindowOpen(): boolean {
+    try {
+      const ts = parseInt(
+        localStorage.getItem("settings_api-keys-last-edit") || "0",
+        10
+      );
+      return ts > 0 && Date.now() - ts < 3_600_000;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Close the export window immediately ("Encrypt Now").
+   * Sets settings_api-keys-last-edit to 0 so the export button disappears.
+   */
+  closeExportWindow(): void {
+    try {
+      localStorage.setItem("settings_api-keys-last-edit", "0");
+    } catch (_) {}
+  }
+
+  /**
+   * Return all currently decrypted API keys as plaintext (for .env export).
+   * Only call when the export window is open (isExportWindowOpen() === true).
+   */
+  getDecryptedKeysForExport(): Record<string, string> {
+    const result: Record<string, string> = {};
+    this._plaintextCache.forEach((value, provider) => {
+      result[provider] = value;
+    });
+    return result;
   }
 
   /**

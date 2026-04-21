@@ -71,6 +71,12 @@ export function Chat({
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
 
+  // Populate the in-memory key cache so getAPIKey() returns plaintext
+  // before the user sends their first message.
+  useEffect(() => {
+    storage.general.initCrypto().catch(console.error);
+  }, []);
+
   // RAG repo selection state — persists across sessions
   const [ragSelectedRepos, setRagSelectedRepos] = useLocalStorage<string[]>(
     "rag-selected-repos",

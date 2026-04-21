@@ -5,26 +5,129 @@
  * Reads/writes localStorage['settings_api-keys'] — same format as the
  * chat repo's LocalStorageManager (chat/lib/storage/local-storage-manager.ts).
  *
+ * Keys are encrypted at rest using the Web Crypto API with a non-extractable
+ * AES-GCM-256 key stored in IndexedDB — matching crypto.ts in the Next.js app.
+ *
  * Public API (window.KeyManager):
  *   KeyManager.init(containerEl, options)  — render widget into a container element
- *   KeyManager.get(providerId)             — returns key string or null
- *   KeyManager.set(providerId, value)      — writes to settings_api-keys
- *   KeyManager.has(providerId)             — boolean
- *   KeyManager.remove(providerId)          — deletes from settings_api-keys
- *   KeyManager.getAll()                    — returns full settings_api-keys object
+ *   KeyManager.get(providerId)             — returns plaintext key or null (from cache)
+ *   KeyManager.set(providerId, value)      — encrypts and writes to settings_api-keys
+ *   KeyManager.has(providerId)             — boolean (from cache)
+ *   KeyManager.remove(providerId)          — deletes from cache + storage
+ *   KeyManager.getAll()                    — returns full settings_api-keys object (raw/encrypted)
  *   KeyManager.migrateFromLegacy()         — one-time migration from aPro / ${aiType}_api_key
- *
- * Note: encryption (Phase 1b) will be added here once crypto.ts is implemented
- * in the Next.js app, keeping both in sync.
  */
 (function () {
   'use strict';
 
   var STORAGE_KEY = 'settings_api-keys';
+  var LAST_EDIT_KEY = 'settings_api-keys-last-edit';
 
-  // ── Storage helpers ──────────────────────────────────────────────────────────
+  // ── Crypto (Web Crypto API + IndexedDB) ──────────────────────────────────────
 
-  function readAll() {
+  var DB_NAME = 'km-store';
+  var KEY_ID = 'browser-key';
+  var _cachedKey = null;
+  // In-memory plaintext cache — populated by _initCrypto()
+  var _plaintextCache = {};
+
+  var ENCRYPTED_RE = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/;
+
+  function _isEncrypted(value) {
+    return ENCRYPTED_RE.test(value);
+  }
+
+  function _openDB() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('keys'); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function _initBrowserKey() {
+    if (_cachedKey) return Promise.resolve(_cachedKey);
+    return _openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('keys', 'readonly');
+        var req = tx.objectStore('keys').get(KEY_ID);
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror = function () { reject(req.error); };
+      }).then(function (key) {
+        if (key) { _cachedKey = key; db.close(); return key; }
+        return crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+        ).then(function (newKey) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction('keys', 'readwrite');
+            var req = tx.objectStore('keys').put(newKey, KEY_ID);
+            req.onsuccess = function () { resolve(newKey); };
+            req.onerror = function () { reject(req.error); };
+          });
+        }).then(function (newKey) {
+          _cachedKey = newKey; db.close(); return newKey;
+        });
+      });
+    });
+  }
+
+  function _encryptValue(plaintext) {
+    return _initBrowserKey().then(function (key) {
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv }, key,
+        new TextEncoder().encode(plaintext)
+      ).then(function (ct) {
+        var ivB64 = btoa(String.fromCharCode.apply(null, iv));
+        var ctB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(ct)));
+        return ivB64 + ':' + ctB64;
+      });
+    });
+  }
+
+  function _decryptValue(stored) {
+    return _initBrowserKey().then(function (key) {
+      var colonIdx = stored.indexOf(':');
+      var iv = Uint8Array.from(atob(stored.slice(0, colonIdx)), function (c) { return c.charCodeAt(0); });
+      var ct = Uint8Array.from(atob(stored.slice(colonIdx + 1)), function (c) { return c.charCodeAt(0); });
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct)
+        .then(function (pt) { return new TextDecoder().decode(pt); });
+    });
+  }
+
+  /**
+   * Decrypt all stored keys into _plaintextCache.
+   * Encrypt any plaintext keys found (legacy migration).
+   * Returns a Promise that resolves when the cache is ready.
+   */
+  function _initCrypto() {
+    var data = _readAllRaw();
+    var providers = Object.keys(data);
+    if (providers.length === 0) return Promise.resolve();
+    return Promise.all(providers.map(function (providerId) {
+      var stored = data[providerId];
+      if (!stored) return Promise.resolve();
+      if (_isEncrypted(stored)) {
+        return _decryptValue(stored).then(function (pt) {
+          _plaintextCache[providerId] = pt;
+        }).catch(function () {
+          // Cannot decrypt (different browser key) — remove the stale entry.
+          delete _plaintextCache[providerId];
+        });
+      }
+      // Plaintext key — cache it and re-encrypt.
+      _plaintextCache[providerId] = stored;
+      return _encryptValue(stored).then(function (enc) {
+        data[providerId] = enc;
+        _writeAllRaw(data);
+      }).catch(function () {});
+    }));
+  }
+
+  // ── Storage helpers (raw, operates on encrypted values) ─────────────────────
+
+  function _readAllRaw() {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     } catch (_) {
@@ -32,24 +135,42 @@
     }
   }
 
-  function writeAll(data) {
+  function _writeAllRaw(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
+  function readAll() {
+    // Public readAll returns raw (possibly encrypted) values.
+    return _readAllRaw();
+  }
+
   function getKey(providerId) {
-    return readAll()[providerId] || null;
+    return _plaintextCache[providerId] || null;
   }
 
   function setKey(providerId, value) {
-    var data = readAll();
-    data[providerId] = value;
-    writeAll(data);
+    // Update cache immediately.
+    _plaintextCache[providerId] = value;
+    // Record edit timestamp for the 1-hour export window.
+    try { localStorage.setItem(LAST_EDIT_KEY, String(Date.now())); } catch (_) {}
+    // Encrypt and persist in the background.
+    _encryptValue(value).then(function (enc) {
+      var data = _readAllRaw();
+      data[providerId] = enc;
+      _writeAllRaw(data);
+    }).catch(function () {
+      // Crypto unavailable — write plaintext as fallback.
+      var data = _readAllRaw();
+      data[providerId] = value;
+      _writeAllRaw(data);
+    });
   }
 
   function removeKey(providerId) {
-    var data = readAll();
+    delete _plaintextCache[providerId];
+    var data = _readAllRaw();
     delete data[providerId];
-    writeAll(data);
+    _writeAllRaw(data);
   }
 
   function hasKey(providerId) {
@@ -135,6 +256,17 @@
     if (!containerEl) return;
     options = options || {};
 
+    // Decrypt stored keys into the in-memory cache before rendering, so that
+    // provider headers show the correct has-key / no-key state on first paint.
+    _initCrypto().then(function () {
+      _renderWidget(containerEl, options);
+    }).catch(function () {
+      // Crypto init failed — render anyway (keys will appear absent).
+      _renderWidget(containerEl, options);
+    });
+  }
+
+  function _renderWidget(containerEl, options) {
     var providers = (window.KeyManagerProviders || []);
     containerEl.innerHTML = '';
     containerEl.className = (containerEl.className + ' key-widget').trim();
@@ -151,7 +283,11 @@
     // Security notice
     var notice = document.createElement('div');
     notice.className = 'key-notice';
-    notice.innerHTML = ICON_INFO + ' Keys are stored in your browser\'s localStorage. They are never sent to any server by this page.';
+    notice.innerHTML = ICON_INFO +
+      ' Keys are encrypted at rest using AES-GCM with a browser-bound key stored in IndexedDB.' +
+      ' That key is non-extractable — JavaScript cannot read its raw bytes, so it cannot be stolen by reading storage.' +
+      ' When you send a message, the key is briefly decrypted in memory and sent over HTTPS to the server, which passes it directly to the AI provider.' +
+      ' HTTPS prevents network interception, but code already running on this page (e.g. a malicious extension or XSS) could in theory read the key from memory at that moment.';
     containerEl.appendChild(notice);
   }
 
@@ -252,11 +388,19 @@
 
     var clearBtn = document.createElement('button');
     clearBtn.type = 'button';
-    clearBtn.className = 'key-btn key-btn-danger';
-    clearBtn.textContent = 'Clear';
+    clearBtn.className = 'key-btn';
+    clearBtn.textContent = 'Close';
 
     var statusMsg = document.createElement('div');
     statusMsg.className = 'key-status-msg';
+
+    var editKeyBtn = null;
+
+    function syncInputToStoredKey() {
+      input.value = getKey(provider.id) || '';
+      input.type = 'password';
+      toggleBtn.innerHTML = ICON_EYE;
+    }
 
     function refreshHeaderStatus() {
       var card = document.getElementById('key-provider-' + provider.id);
@@ -268,27 +412,43 @@
       icon.innerHTML = present ? ICON_CHECK : ICON_CIRCLE;
     }
 
-    saveBtn.addEventListener('click', function () {
+    function setKeyRowOpen(isOpen) {
+      keyRow.hidden = !isOpen;
+      if (editKeyBtn) {
+        editKeyBtn.hidden = isOpen;
+      }
+      if (isOpen) {
+        input.focus();
+      } else {
+        syncInputToStoredKey();
+      }
+    }
+
+    function submitKeyValue() {
       var val = input.value.trim();
       if (!val) {
-        showStatus(statusMsg, 'Enter a key to save.', 'err');
+        removeKey(provider.id);
+        showStatus(statusMsg, 'Key removed.', 'ok');
+        refreshHeaderStatus();
         return;
       }
       setKey(provider.id, val);
       showStatus(statusMsg, 'Key saved.', 'ok');
       refreshHeaderStatus();
-      // Hide the key row again after saving
-      keyRow.hidden = true;
+    }
+
+    saveBtn.addEventListener('click', function () {
+      submitKeyValue();
     });
 
     clearBtn.addEventListener('click', function () {
-      input.value = '';
-      input.type = 'password';
-      toggleBtn.innerHTML = ICON_EYE;
-      removeKey(provider.id);
-      showStatus(statusMsg, 'Key removed.', 'ok');
-      refreshHeaderStatus();
-      // Keep key row visible so user can enter a new key
+      setKeyRowOpen(false);
+    });
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      submitKeyValue();
     });
 
     inputWrap.appendChild(input);
@@ -298,8 +458,8 @@
 
     keyRow.appendChild(label);
     keyRow.appendChild(inputWrap);
-    keyRow.appendChild(statusMsg);
     body.appendChild(keyRow);
+    body.appendChild(statusMsg);
 
     // Model list
     if (provider.models.length > 0) {
@@ -313,17 +473,15 @@
       modelLabelText.textContent = 'Models';
 
       // Edit-key icon button on the far right of the Models label
-      var editKeyBtn = document.createElement('button');
+      editKeyBtn = document.createElement('button');
       editKeyBtn.type = 'button';
       editKeyBtn.className = 'key-edit-key-btn';
       editKeyBtn.innerHTML = mi('key');
-      editKeyBtn.title = 'Edit API key';
+      editKeyBtn.title = 'Key is encrypted in browser storage';
       editKeyBtn.addEventListener('click', function () {
-        keyRow.hidden = !keyRow.hidden;
-        if (!keyRow.hidden) {
-          input.focus();
-        }
+        showStatus(statusMsg, 'The ' + provider.name + ' key is encrypted in your browser storage.', 'ok');
       });
+      editKeyBtn.hidden = !keyRow.hidden;
 
       modelLabelRow.appendChild(modelLabelText);
       modelLabelRow.appendChild(editKeyBtn);
@@ -363,6 +521,8 @@
       body.appendChild(noModels);
     }
 
+    setKeyRowOpen(!keyRow.hidden);
+
     return body;
   }
 
@@ -388,5 +548,6 @@
     remove: removeKey,
     getAll: readAll,
     migrateFromLegacy: migrateFromLegacy,
+    initCrypto: _initCrypto,
   };
 })();
