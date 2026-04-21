@@ -137,10 +137,10 @@
 
     var providers = (window.KeyManagerProviders || []);
     containerEl.innerHTML = '';
-    containerEl.className = (containerEl.className + ' km-widget').trim();
+    containerEl.className = (containerEl.className + ' key-widget').trim();
 
     var list = document.createElement('div');
-    list.className = 'km-provider-list';
+    list.className = 'key-provider-list';
 
     providers.forEach(function (provider) {
       list.appendChild(buildProviderCard(provider));
@@ -150,15 +150,15 @@
 
     // Security notice
     var notice = document.createElement('div');
-    notice.className = 'km-notice';
+    notice.className = 'key-notice';
     notice.innerHTML = ICON_INFO + ' Keys are stored in your browser\'s localStorage. They are never sent to any server by this page.';
     containerEl.appendChild(notice);
   }
 
   function buildProviderCard(provider) {
     var card = document.createElement('div');
-    card.className = 'km-provider';
-    card.id = 'km-provider-' + provider.id;
+    card.className = 'key-provider';
+    card.id = 'key-provider-' + provider.id;
 
     var startOpen = hasKey(provider.id);
     var body = buildProviderBody(provider, startOpen);
@@ -178,24 +178,24 @@
   function buildProviderHeader(provider, startOpen) {
     var header = document.createElement('button');
     header.type = 'button';
-    header.className = 'km-provider-header';
+    header.className = 'key-provider-header';
     header.setAttribute('aria-expanded', startOpen ? 'true' : 'false');
 
     var statusIcon = document.createElement('span');
-    statusIcon.className = 'km-status-icon ' + (hasKey(provider.id) ? 'has-key' : 'no-key');
+    statusIcon.className = 'key-status-icon ' + (hasKey(provider.id) ? 'has-key' : 'no-key');
     statusIcon.innerHTML = hasKey(provider.id) ? ICON_CHECK : ICON_CIRCLE;
 
     var name = document.createElement('span');
-    name.className = 'km-provider-name';
+    name.className = 'key-provider-name';
     name.textContent = provider.name;
 
     var meta = document.createElement('span');
-    meta.className = 'km-provider-meta';
+    meta.className = 'key-provider-meta';
     var modelCount = provider.models.length;
     meta.textContent = modelCount ? modelCount + ' model' + (modelCount !== 1 ? 's' : '') : '';
 
     var chevron = document.createElement('span');
-    chevron.className = 'km-chevron';
+    chevron.className = 'key-chevron';
     chevron.innerHTML = ICON_CHEVRON;
 
     header.appendChild(statusIcon);
@@ -208,34 +208,34 @@
 
   function buildProviderBody(provider, startOpen) {
     var body = document.createElement('div');
-    body.className = 'km-provider-body';
+    body.className = 'key-provider-body';
     body.hidden = !startOpen;
 
     var keyPresent = hasKey(provider.id);
 
     // Key input section — hidden by default when key is already set
     var keyRow = document.createElement('div');
-    keyRow.className = 'km-key-row';
+    keyRow.className = 'key-key-row';
     keyRow.hidden = keyPresent;
 
     var label = document.createElement('div');
-    label.className = 'km-key-label';
+    label.className = 'key-key-label';
     label.innerHTML = '<span>API Key</span>' +
-      '<a class="km-get-key-link" href="' + escapeAttr(provider.getKeyUrl) + '" target="_blank" rel="noopener">Get key ↗</a>';
+      '<a class="key-get-key-link" href="' + escapeAttr(provider.getKeyUrl) + '" target="_blank" rel="noopener">Get key ↗</a>';
 
     var inputWrap = document.createElement('div');
-    inputWrap.className = 'km-key-input-wrap';
+    inputWrap.className = 'key-key-input-wrap';
 
     var input = document.createElement('input');
     input.type = 'password';
-    input.className = 'km-key-input';
+    input.className = 'key-key-input';
     input.placeholder = provider.keyPlaceholder || 'Paste your API key';
     input.value = getKey(provider.id) || '';
     input.setAttribute('autocomplete', 'off');
 
     var toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
-    toggleBtn.className = 'km-btn';
+    toggleBtn.className = 'key-btn';
     toggleBtn.innerHTML = ICON_EYE;
     toggleBtn.title = 'Show/hide key';
 
@@ -247,24 +247,24 @@
 
     var saveBtn = document.createElement('button');
     saveBtn.type = 'button';
-    saveBtn.className = 'km-btn km-btn-primary';
+    saveBtn.className = 'key-btn key-btn-primary';
     saveBtn.textContent = 'Save';
 
     var clearBtn = document.createElement('button');
     clearBtn.type = 'button';
-    clearBtn.className = 'km-btn km-btn-danger';
+    clearBtn.className = 'key-btn key-btn-danger';
     clearBtn.textContent = 'Clear';
 
     var statusMsg = document.createElement('div');
-    statusMsg.className = 'km-status-msg';
+    statusMsg.className = 'key-status-msg';
 
     function refreshHeaderStatus() {
-      var card = document.getElementById('km-provider-' + provider.id);
+      var card = document.getElementById('key-provider-' + provider.id);
       if (!card) return;
-      var icon = card.querySelector('.km-status-icon');
+      var icon = card.querySelector('.key-status-icon');
       if (!icon) return;
       var present = hasKey(provider.id);
-      icon.className = 'km-status-icon ' + (present ? 'has-key' : 'no-key');
+      icon.className = 'key-status-icon ' + (present ? 'has-key' : 'no-key');
       icon.innerHTML = present ? ICON_CHECK : ICON_CIRCLE;
     }
 
@@ -304,10 +304,10 @@
     // Model list
     if (provider.models.length > 0) {
       var modelSection = document.createElement('div');
-      modelSection.className = 'km-model-list';
+      modelSection.className = 'key-model-list';
 
       var modelLabelRow = document.createElement('div');
-      modelLabelRow.className = 'km-model-list-label';
+      modelLabelRow.className = 'key-model-list-label';
 
       var modelLabelText = document.createElement('span');
       modelLabelText.textContent = 'Models';
@@ -315,7 +315,7 @@
       // Edit-key icon button on the far right of the Models label
       var editKeyBtn = document.createElement('button');
       editKeyBtn.type = 'button';
-      editKeyBtn.className = 'km-edit-key-btn';
+      editKeyBtn.className = 'key-edit-key-btn';
       editKeyBtn.innerHTML = mi('key');
       editKeyBtn.title = 'Edit API key';
       editKeyBtn.addEventListener('click', function () {
@@ -331,22 +331,22 @@
 
       provider.models.forEach(function (model) {
         var row = document.createElement('div');
-        row.className = 'km-model-row' + (model.active ? '' : ' inactive');
-        row.id = 'km-model-' + model.id;
+        row.className = 'key-model-row' + (model.active ? '' : ' inactive');
+        row.id = 'key-model-' + model.id;
 
         var nameEl = document.createElement('span');
-        nameEl.className = 'km-model-name';
+        nameEl.className = 'key-model-name';
         nameEl.textContent = model.name;
 
         var descEl = document.createElement('span');
-        descEl.className = 'km-model-desc';
+        descEl.className = 'key-model-desc';
         descEl.textContent = model.description;
 
         row.appendChild(nameEl);
 
         if (model.isDefault) {
           var badge = document.createElement('span');
-          badge.className = 'km-model-badge';
+          badge.className = 'key-model-badge';
           badge.textContent = 'default';
           row.appendChild(badge);
         }
@@ -358,7 +358,7 @@
       body.appendChild(modelSection);
     } else {
       var noModels = document.createElement('p');
-      noModels.className = 'km-no-models';
+      noModels.className = 'key-no-models';
       noModels.textContent = 'No models configured.';
       body.appendChild(noModels);
     }
@@ -368,7 +368,7 @@
 
   function showStatus(el, msg, type) {
     el.textContent = msg;
-    el.className = 'km-status-msg ' + (type || '');
+    el.className = 'key-status-msg ' + (type || '');
     setTimeout(function () {
       if (el.textContent === msg) el.textContent = '';
     }, 3000);

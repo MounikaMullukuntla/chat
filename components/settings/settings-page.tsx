@@ -50,6 +50,13 @@ export function SettingsPage({ className }: SettingsPageProps) {
   const [googleKey, setGoogleKey] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [openaiKey, setOpenaiKey] = useState("");
+  const [xaiKey, setXaiKey] = useState("");
+  const [groqKey, setGroqKey] = useState("");
+  const [mistralKey, setMistralKey] = useState("");
+  const [perplexityKey, setPerplexityKey] = useState("");
+  const [deepseekKey, setDeepseekKey] = useState("");
+  const [togetherKey, setTogetherKey] = useState("");
+  const [fireworksKey, setFireworksKey] = useState("");
 
   // Verification services
   const googleService = new GoogleVerificationService();
@@ -103,16 +110,24 @@ export function SettingsPage({ className }: SettingsPageProps) {
       const existingGoogleKey = storage.apiKeys.get("google");
       const existingAnthropicKey = storage.apiKeys.get("anthropic");
       const existingOpenaiKey = storage.apiKeys.get("openai");
+      const existingXaiKey = storage.apiKeys.get("xai");
+      const existingGroqKey = storage.apiKeys.get("groq");
+      const existingMistralKey = storage.apiKeys.get("mistral");
+      const existingPerplexityKey = storage.apiKeys.get("perplexity");
+      const existingDeepseekKey = storage.apiKeys.get("deepseek");
+      const existingTogetherKey = storage.apiKeys.get("together");
+      const existingFireworksKey = storage.apiKeys.get("fireworks");
 
-      if (existingGoogleKey) {
-        setGoogleKey(existingGoogleKey);
-      }
-      if (existingAnthropicKey) {
-        setAnthropicKey(existingAnthropicKey);
-      }
-      if (existingOpenaiKey) {
-        setOpenaiKey(existingOpenaiKey);
-      }
+      if (existingGoogleKey) setGoogleKey(existingGoogleKey);
+      if (existingAnthropicKey) setAnthropicKey(existingAnthropicKey);
+      if (existingOpenaiKey) setOpenaiKey(existingOpenaiKey);
+      if (existingXaiKey) setXaiKey(existingXaiKey);
+      if (existingGroqKey) setGroqKey(existingGroqKey);
+      if (existingMistralKey) setMistralKey(existingMistralKey);
+      if (existingPerplexityKey) setPerplexityKey(existingPerplexityKey);
+      if (existingDeepseekKey) setDeepseekKey(existingDeepseekKey);
+      if (existingTogetherKey) setTogetherKey(existingTogetherKey);
+      if (existingFireworksKey) setFireworksKey(existingFireworksKey);
 
       // Check storage health
       const healthCheck = storage.general.checkHealth();
@@ -229,6 +244,41 @@ export function SettingsPage({ className }: SettingsPageProps) {
     },
     [handleError, toast]
   );
+
+  const handleXaiKeyChange = useCallback((value: string) => {
+    try { setXaiKey(value); value.trim() ? storage.apiKeys.set("xai", value) : storage.apiKeys.remove("xai"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handleGroqKeyChange = useCallback((value: string) => {
+    try { setGroqKey(value); value.trim() ? storage.apiKeys.set("groq", value) : storage.apiKeys.remove("groq"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handleMistralKeyChange = useCallback((value: string) => {
+    try { setMistralKey(value); value.trim() ? storage.apiKeys.set("mistral", value) : storage.apiKeys.remove("mistral"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handlePerplexityKeyChange = useCallback((value: string) => {
+    try { setPerplexityKey(value); value.trim() ? storage.apiKeys.set("perplexity", value) : storage.apiKeys.remove("perplexity"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handleDeepseekKeyChange = useCallback((value: string) => {
+    try { setDeepseekKey(value); value.trim() ? storage.apiKeys.set("deepseek", value) : storage.apiKeys.remove("deepseek"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handleTogetherKeyChange = useCallback((value: string) => {
+    try { setTogetherKey(value); value.trim() ? storage.apiKeys.set("together", value) : storage.apiKeys.remove("together"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
+
+  const handleFireworksKeyChange = useCallback((value: string) => {
+    try { setFireworksKey(value); value.trim() ? storage.apiKeys.set("fireworks", value) : storage.apiKeys.remove("fireworks"); }
+    catch (err) { handleError(err instanceof Error ? err : new Error(String(err))); }
+  }, [handleError]);
 
   // Get storage summary for display
   const storageSummary = storage.general.getSummary();
@@ -525,6 +575,104 @@ export function SettingsPage({ className }: SettingsPageProps) {
                         provider="openai"
                         title="OpenAI"
                         value={openaiKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* xAI API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your xAI API key to use Grok models"
+                        onChange={handleXaiKeyChange}
+                        placeholder="xai-..."
+                        provider="xai"
+                        title="xAI"
+                        value={xaiKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* Groq API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Groq API key for fast open-source models"
+                        onChange={handleGroqKeyChange}
+                        placeholder="gsk_..."
+                        provider="groq"
+                        title="Groq"
+                        value={groqKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* Mistral API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Mistral API key to use Mistral models"
+                        onChange={handleMistralKeyChange}
+                        placeholder=""
+                        provider="mistral"
+                        title="Mistral"
+                        value={mistralKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* Perplexity API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Perplexity API key for online search models"
+                        onChange={handlePerplexityKeyChange}
+                        placeholder="pplx-..."
+                        provider="perplexity"
+                        title="Perplexity"
+                        value={perplexityKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* DeepSeek API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your DeepSeek API key to use DeepSeek models"
+                        onChange={handleDeepseekKeyChange}
+                        placeholder=""
+                        provider="deepseek"
+                        title="DeepSeek"
+                        value={deepseekKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* Together AI API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Together AI API key for open-source models"
+                        onChange={handleTogetherKeyChange}
+                        placeholder=""
+                        provider="together"
+                        title="Together AI"
+                        value={togetherKey}
+                      />
+                    </SettingsErrorBoundary>
+                  </Suspense>
+
+                  {/* Fireworks API Key */}
+                  <Suspense fallback={<ComponentLoading />}>
+                    <SettingsErrorBoundary>
+                      <APIKeySection
+                        description="Configure your Fireworks AI API key for fast model inference"
+                        onChange={handleFireworksKeyChange}
+                        placeholder=""
+                        provider="fireworks"
+                        title="Fireworks AI"
+                        value={fireworksKey}
                       />
                     </SettingsErrorBoundary>
                   </Suspense>

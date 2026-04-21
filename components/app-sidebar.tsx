@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Check, Globe, Library, Lock, MoreHorizontal, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { BookOpen, BrainCog, Check, Globe, Library, Lock, MoreHorizontal, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -75,7 +75,7 @@ const TABS = [
   { id: "sources" as ActiveTab, icon: <Library size={15} />, label: "Sources" },
   { id: "chats" as ActiveTab, icon: <MessageSquare size={15} />, label: "List Chats" },
   { id: "kb" as ActiveTab, icon: <BookOpen size={15} />, label: "Knowledge Base" },
-  { id: "visibility" as ActiveTab, icon: <Lock size={15} />, label: "Visibility" },
+  { id: "visibility" as ActiveTab, icon: <BrainCog size={15} />, label: "AI Models & API Keys" },
 ];
 
 export function AppSidebar() {
@@ -327,13 +327,23 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* ── Visibility ── */}
+          {/* ── AI Models & API Keys ── */}
           {activeTab === "visibility" && (
             <div className="flex h-full flex-col overflow-hidden">
               <div className="flex items-center px-3 py-2 border-b border-sidebar-border">
-                <span className="text-sm font-semibold">Visibility</span>
+                <span className="text-sm font-semibold">AI Models &amp; API Keys</span>
               </div>
               <div className="flex-1 overflow-y-auto py-1">
+                <div className="px-3 py-2 border-b border-sidebar-border">
+                  <a
+                    href="/settings"
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <BrainCog size={14} />
+                    Manage API Keys &amp; Models →
+                  </a>
+                </div>
+                <p className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Chat Visibility</p>
                 {VISIBILITY_OPTIONS.map((option) => (
                   <button
                     key={option.id}
