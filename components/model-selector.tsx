@@ -1,6 +1,8 @@
 "use client";
 
-import { memo, startTransition } from "react";
+import { memo, startTransition, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import {
   DropdownMenu,
@@ -13,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AdminConfigSummary } from "@/lib/types";
+import { storage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, CpuIcon } from "./icons";
 
@@ -33,6 +36,20 @@ function PureModelSelector({
   onModelChange,
   className,
 }: ModelSelectorProps) {
+  const router = useRouter();
+  const [keyedProviders, setKeyedProviders] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const readKeys = () => {
+      const providers = storage.apiKeys.getConfiguredProviders();
+      setKeyedProviders(new Set(providers));
+    };
+    readKeys();
+    // Re-read when localStorage changes (e.g. key saved in another tab or settings page)
+    window.addEventListener("storage", readKeys);
+    return () => window.removeEventListener("storage", readKeys);
+  }, []);
+
   // Handle loading and error states
   if (isLoading) {
     return (
@@ -83,27 +100,21 @@ function PureModelSelector({
 
   Object.entries(adminConfig.providers || {}).forEach(
     ([providerId, providerConfig]) => {
-      if (!providerConfig.enabled) {
-        return;
-      }
-
       const providerName =
         providerId.charAt(0).toUpperCase() + providerId.slice(1);
       const models: any[] = [];
 
-      // First pass: collect all enabled models
+      // Collect all models (enabled or not)
       Object.entries(providerConfig.models || {}).forEach(
         ([modelId, modelConfig]) => {
-          if (modelConfig.enabled) {
-            models.push({
-              id: modelId,
-              name: modelConfig.name,
-              description: modelConfig.description,
-              provider: providerId,
-              providerName,
-              isDefault: modelConfig.isDefault,
-            });
-          }
+          models.push({
+            id: modelId,
+            name: modelConfig.name,
+            description: modelConfig.description,
+            provider: providerId,
+            providerName,
+            isDefault: modelConfig.isDefault,
+          });
         }
       );
 
@@ -132,14 +143,12 @@ function PureModelSelector({
         return a.name.localeCompare(b.name);
       });
 
-      if (models.length > 0) {
-        providerGroups.push({
-          providerId,
-          providerName,
-          enabled: providerConfig.enabled,
-          models,
-        });
-      }
+      providerGroups.push({
+        providerId,
+        providerName,
+        enabled: providerConfig.enabled,
+        models,
+      });
     }
   );
 
@@ -191,7 +200,11 @@ function PureModelSelector({
     }
   }
 
-  const handleModelSelection = (modelId: string) => {
+  const handleModelSelection = (modelId: string, providerId: string) => {
+    if (!keyedProviders.has(providerId)) {
+      router.push("/settings");
+      return;
+    }
     onModelChange(modelId);
     startTransition(() => {
       saveChatModelAsCookie(modelId);
@@ -200,7 +213,7 @@ function PureModelSelector({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild id="key-model-selector">
         <button
           className={cn(
             "flex h-8 w-auto min-w-[200px] items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0",
@@ -223,55 +236,77 @@ function PureModelSelector({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="max-h-[400px] min-w-[320px] overflow-y-auto">
-        {providerGroups.map((group) => (
-          <DropdownMenuSub key={group.providerId}>
-            <DropdownMenuSubTrigger className="flex items-center justify-between px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">
-                  {group.providerName}
-                </span>
-                <span className="text-muted-foreground/70 text-xs">
-                  {group.models.length} model
-                  {group.models.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent className="min-w-[280px]">
-                {group.models.map((model) => (
-                  <DropdownMenuItem
-                    className="h-auto cursor-pointer px-3 py-3 focus:bg-accent focus:text-accent-foreground"
-                    key={model.id}
-                    onClick={() => handleModelSelection(model.id)}
-                  >
-                    <div className="flex w-full items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className="truncate font-medium text-sm">
-                            {model.name}
-                          </span>
-                          {model.isDefault && (
-                            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <div className="truncate text-muted-foreground text-xs leading-relaxed">
-                          {model.description}
-                        </div>
-                      </div>
-                      {selectedModel === model.id && (
-                        <div className="mt-0.5 flex-shrink-0 text-primary">
-                          <CheckCircleFillIcon size={14} />
-                        </div>
+        {providerGroups.map((group) => {
+          const hasKey = keyedProviders.has(group.providerId);
+          return (
+            <div id={`key-provider-${group.providerId}`}>
+            <DropdownMenuSub key={group.providerId}>
+              <DropdownMenuSubTrigger
+                className="flex items-center justify-between px-3 py-2"
+                onClick={!hasKey ? () => router.push("/settings") : undefined}
+              >
+                <div className="flex items-center gap-2">
+                  {hasKey ? (
+                    <CheckCircleFillIcon size={13} />
+                  ) : (
+                    <Lock size={13} className="text-muted-foreground" />
+                  )}
+                  <span className="font-medium text-sm">
+                    {group.providerName}
+                  </span>
+                  <span className="text-muted-foreground/70 text-xs">
+                    {group.models.length} model
+                    {group.models.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="min-w-[280px]">
+                  {group.models.map((model) => (
+                    <DropdownMenuItem
+                      id={`key-model-${model.id}`}
+                      className={cn(
+                        "h-auto cursor-pointer px-3 py-3 focus:bg-accent focus:text-accent-foreground",
+                        !hasKey && "opacity-50"
                       )}
+                      key={model.id}
+                      onClick={() => handleModelSelection(model.id, group.providerId)}
+                    >
+                      <div className="flex w-full items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="truncate font-medium text-sm">
+                              {model.name}
+                            </span>
+                            {model.isDefault && (
+                              <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="truncate text-muted-foreground text-xs leading-relaxed">
+                            {!hasKey ? "Add key to use" : model.description}
+                          </div>
+                        </div>
+                        {selectedModel === model.id && hasKey && (
+                          <div className="mt-0.5 flex-shrink-0 text-primary">
+                            <CheckCircleFillIcon size={14} />
+                          </div>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  {group.models.length === 0 && (
+                    <div className="px-3 py-2 text-muted-foreground text-xs">
+                      No models configured
                     </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-        ))}
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            </div>
+          );
+        })}
 
         {providerGroups.length === 0 && (
           <div className="px-2 py-4 text-center text-muted-foreground text-sm">
