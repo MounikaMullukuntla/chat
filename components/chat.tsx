@@ -366,15 +366,11 @@ export function Chat({
           {!isReadonly && (
             <MultimodalInput
               attachments={attachments}
-              availableRepos={availableRepos}
-              availableReposLoading={reposLoading}
               chatId={id}
               githubPAT={storage.github.getToken() || undefined}
               input={input}
               messages={messages}
               onModelChange={setCurrentModelId}
-              onRagSelectedReposChange={setRagSelectedRepos}
-              ragSelectedRepos={ragSelectedRepos}
               selectedModelId={currentModelId}
               selectedVisibilityType={visibilityType}
               sendMessage={sendMessage}

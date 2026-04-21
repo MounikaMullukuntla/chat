@@ -223,6 +223,82 @@ class LocalStorageManager implements StorageManager {
   }
 
   /**
+   * Migrate API keys from legacy localStorage formats into settings_api-keys.
+   * - Reads `aPro` (requests/engine format): { GEMINI_API_KEY: "...", ... }
+   * - Reads per-key entries: gemini_api_key, claude_api_key, openai_api_key, xai_api_key
+   * Runs safely if called multiple times (skips already-set providers, removes legacy keys).
+   */
+  migrateFromLegacy(): void {
+    const storage = this.getStorage();
+    if (!storage) return;
+
+    // Map from aPro env-var key names → provider IDs
+    const ENV_TO_PROVIDER: Record<string, APIProvider> = {
+      GEMINI_API_KEY: "google",
+      ANTHROPIC_API_KEY: "anthropic",
+      OPENAI_API_KEY: "openai",
+      XAI_API_KEY: "xai",
+      GROQ_API_KEY: "groq",
+      TOGETHER_API_KEY: "together",
+      FIREWORKS_API_KEY: "fireworks",
+      MISTRAL_API_KEY: "mistral",
+      PERPLEXITY_API_KEY: "perplexity",
+      DEEPSEEK_API_KEY: "deepseek",
+    };
+
+    // Map from ${aiType}_api_key localStorage entries → provider IDs
+    const LEGACY_KEY_TO_PROVIDER: Record<string, APIProvider> = {
+      gemini_api_key: "google",
+      claude_api_key: "anthropic",
+      openai_api_key: "openai",
+      xai_api_key: "xai",
+      groq_api_key: "groq",
+    };
+
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
+    let changed = false;
+
+    // Migrate from aPro (requests/engine format)
+    try {
+      const aProRaw = storage.getItem("aPro");
+      if (aProRaw) {
+        const aPro = JSON.parse(aProRaw) as Record<string, string>;
+        for (const [envKey, providerId] of Object.entries(ENV_TO_PROVIDER)) {
+          const value = aPro[envKey];
+          if (value && !apiKeys[providerId]) {
+            apiKeys[providerId] = value;
+            changed = true;
+          }
+        }
+        storage.removeItem("aPro");
+      }
+    } catch {
+      // aPro missing or malformed — skip silently
+    }
+
+    // Migrate from per-key ${aiType}_api_key entries
+    for (const [legacyKey, providerId] of Object.entries(LEGACY_KEY_TO_PROVIDER)) {
+      try {
+        const value = storage.getItem(legacyKey);
+        if (value && !apiKeys[providerId]) {
+          apiKeys[providerId] = value;
+          changed = true;
+        }
+        if (value) {
+          storage.removeItem(legacyKey);
+        }
+      } catch {
+        // skip
+      }
+    }
+
+    if (changed) {
+      this.setStorageData("api-keys", apiKeys);
+    }
+  }
+
+  /**
    * Get GitHub Personal Access Token
    */
   getGitHubPAT(): string | null {

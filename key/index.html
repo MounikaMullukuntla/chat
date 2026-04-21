@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>API Key Settings</title>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link type="text/css" rel="stylesheet" href="../../localsite/css/base.css" id="/localsite/css/base.css" />
+  <script type="text/javascript" src="../../localsite/js/localsite.js?showheader=true"></script>
+
+   <link rel="stylesheet" href="style.css">
+  <script>
+  //loadMarkdown("README.md", "readmeDiv", "_parent");
+  </script>
+
+
+</head>
+<body>
+
+  <div class="km-page">
+    <div class="km-page-header">
+      <h1>API Key Settings</h1>
+      <p>
+        Add your API keys to unlock AI models. Keys are stored in your browser only —
+        they are never sent to any server by this page.
+        For the full experience, visit the
+        <a href="http://localhost:3000/settings" style="color:var(--km-accent)">chat settings page</a>.
+      </p>
+    </div>
+
+    <div id="km-root"></div>
+  </div>
+
+  <script src="providers.js"></script>
+  <script src="key-manager.js"></script>
+  <script>
+    KeyManager.migrateFromLegacy();
+    KeyManager.init(document.getElementById('km-root'));
+  </script>
+
+</body>
+</html>

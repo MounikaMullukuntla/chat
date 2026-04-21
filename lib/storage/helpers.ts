@@ -284,6 +284,14 @@ export const storageHelpers = {
   cleanup: (): void => {
     localStorageManager.cleanupOnLogout();
   },
+
+  /**
+   * Migrate keys from legacy formats (aPro, ${aiType}_api_key) into settings_api-keys.
+   * Safe to call multiple times.
+   */
+  migrateFromLegacy: (): void => {
+    localStorageManager.migrateFromLegacy();
+  },
 };
 
 /**

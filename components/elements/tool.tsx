@@ -29,14 +29,21 @@ export const Tool = ({ className, ...props }: ToolProps) => (
   />
 );
 
+// Extends the SDK's ToolUIPart state with approval/denial states used by this app
+type ToolState =
+  | ToolUIPart["state"]
+  | "approval-requested"
+  | "approval-responded"
+  | "output-denied";
+
 export type ToolHeaderProps = {
   type: ToolUIPart["type"];
-  state: ToolUIPart["state"];
+  state: ToolState;
   className?: string;
 };
 
-const getStatusBadge = (status: ToolUIPart["state"]) => {
-  const labels: Record<ToolUIPart["state"], string> = {
+const getStatusBadge = (status: ToolState) => {
+  const labels: Record<ToolState, string> = {
     "input-streaming": "Pending",
     "input-available": "Running",
     "approval-requested": "Approval Required",
@@ -46,7 +53,7 @@ const getStatusBadge = (status: ToolUIPart["state"]) => {
     "output-denied": "Denied",
   };
 
-  const icons: Record<ToolUIPart["state"], React.ReactNode> = {
+  const icons: Record<ToolState, React.ReactNode> = {
     "input-streaming": <CircleIcon className="size-4" />,
     "input-available": <ClockIcon className="size-4 animate-pulse" />,
     "approval-requested": <ClockIcon className="size-4 text-yellow-500" />,

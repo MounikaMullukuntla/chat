@@ -1,0 +1,331 @@
+/* key-manager widget styles */
+
+:root {
+  --km-bg: #ffffff;
+  --km-bg-subtle: #f9fafb;
+  --km-bg-hover: #f3f4f6;
+  --km-border: #e5e7eb;
+  --km-text: #111827;
+  --km-text-muted: #6b7280;
+  --km-text-placeholder: #9ca3af;
+  --km-accent: #2563eb;
+  --km-accent-hover: #1d4ed8;
+  --km-success: #16a34a;
+  --km-warning: #d97706;
+  --km-danger: #dc2626;
+  --km-radius: 8px;
+  --km-radius-sm: 4px;
+  --km-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --km-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.dark, [data-theme="dark"] {
+  --km-bg: #111827;
+  --km-bg-subtle: #1f2937;
+  --km-bg-hover: #374151;
+  --km-border: #374151;
+  --km-text: #f9fafb;
+  --km-text-muted: #9ca3af;
+  --km-text-placeholder: #6b7280;
+  --km-accent: #3b82f6;
+  --km-accent-hover: #60a5fa;
+  --km-success: #22c55e;
+}
+
+/* Page shell (only when widget is used as standalone page) */
+.km-page {
+  font-family: var(--km-font);
+  background: var(--km-bg);
+  color: var(--km-text);
+  min-height: 100vh;
+  padding: 32px 16px;
+  box-sizing: border-box;
+}
+
+.km-page-header {
+  max-width: 680px;
+  margin: 0 auto 24px;
+}
+
+.km-page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.km-page-header p {
+  color: var(--km-text-muted);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Widget root */
+.km-widget {
+  font-family: var(--km-font);
+  color: var(--km-text);
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* Provider list */
+.km-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Provider card */
+.km-provider {
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius);
+  background: var(--km-bg);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+
+.km-provider:has(.km-provider-body:not([hidden])) {
+  box-shadow: var(--km-shadow);
+}
+
+/* Provider header row */
+.km-provider-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: var(--km-text);
+  font-family: var(--km-font);
+  transition: background 0.1s;
+}
+
+.km-provider-header:hover {
+  background: var(--km-bg-hover);
+}
+
+.km-provider-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.km-provider-meta {
+  font-size: 0.8rem;
+  color: var(--km-text-muted);
+}
+
+/* Status indicator */
+.km-status-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.km-status-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.km-status-icon.has-key svg { color: var(--km-success); }
+.km-status-icon.no-key svg  { color: var(--km-text-muted); }
+
+/* Chevron */
+.km-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--km-text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.km-provider-header[aria-expanded="true"] .km-chevron {
+  transform: rotate(180deg);
+}
+
+/* Provider body (expanded) */
+.km-provider-body {
+  border-top: 1px solid var(--km-border);
+  padding: 14px;
+  background: var(--km-bg-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Key input row */
+.km-key-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.km-key-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--km-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.km-get-key-link {
+  color: var(--km-accent);
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.km-get-key-link:hover {
+  text-decoration: underline;
+}
+
+.km-key-input-wrap {
+  display: flex;
+  gap: 6px;
+}
+
+.km-key-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--km-border);
+  border-radius: var(--km-radius-sm);
+  background: var(--km-bg);
+  color: var(--km-text);
+  font-size: 0.875rem;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.15s;
+  min-width: 0;
+}
+
+.km-key-input::placeholder {
+  color: var(--km-text-placeholder);
+  font-family: var(--km-font);
+}
+
+.km-key-input:focus {
+  border-color: var(--km-accent);
+}
+
+.km-btn {
+  padding: 7px 12px;
+  border-radius: var(--km-radius-sm);
+  border: 1px solid var(--km-border);
+  background: var(--km-bg);
+  color: var(--km-text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--km-font);
+  transition: background 0.1s, border-color 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.km-btn:hover {
+  background: var(--km-bg-hover);
+}
+
+.km-btn-primary {
+  background: var(--km-accent);
+  border-color: var(--km-accent);
+  color: #fff;
+}
+
+.km-btn-primary:hover {
+  background: var(--km-accent-hover);
+  border-color: var(--km-accent-hover);
+}
+
+.km-btn-danger:hover {
+  color: var(--km-danger);
+  border-color: var(--km-danger);
+}
+
+/* Status message */
+.km-status-msg {
+  font-size: 0.8rem;
+  min-height: 1.2em;
+}
+
+.km-status-msg.ok  { color: var(--km-success); }
+.km-status-msg.err { color: var(--km-danger); }
+
+/* Model list */
+.km-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.km-model-list-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--km-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.km-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.km-model-row.inactive {
+  opacity: 0.45;
+}
+
+.km-model-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.km-model-desc {
+  font-size: 0.78rem;
+  color: var(--km-text-muted);
+  margin-left: auto;
+}
+
+.km-model-badge {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--km-bg-hover);
+  color: var(--km-text-muted);
+  border: 1px solid var(--km-border);
+}
+
+.km-no-models {
+  font-size: 0.8rem;
+  color: var(--km-text-muted);
+  font-style: italic;
+}
+
+/* Security notice */
+.km-notice {
+  font-size: 0.78rem;
+  color: var(--km-text-muted);
+  border-top: 1px solid var(--km-border);
+  padding-top: 16px;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.km-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--km-text-muted);
+}
