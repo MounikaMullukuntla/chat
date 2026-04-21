@@ -112,6 +112,25 @@ The **static provider registry** at `chat/key/providers.js` must be kept manuall
 ### AI Providers
 Provider implementations live in `lib/ai/providers/{google,anthropic,openai}/`. Each has agent variants (chat, document, mermaid, python, etc.). The resolver `lib/ai/chat-agent-resolver.ts` selects the right agent at runtime.
 
+### Client vs Server API Calls
+In this Vercel repo, the main chat goes through the app server because of architecture, not because browser JavaScript is inherently incapable of calling external APIs.
+
+Within independent static widget folders (like chat/key), you can add static javascript that calls provider APIs directly from browser JavaScript for some flows. The current chat path uses `/api/chat` because:
+
+- the client intentionally sends the key to the app server: `components/chat.tsx`
+- the server reads that header and runs the chat agent there: `app/(chat)/api/chat/route.ts`
+- the agent code is explicitly server-only: `lib/ai/providers/google/chat-agent.ts`, `lib/ai/providers/google/agentConfigLoader.ts`
+- the server path is tied into auth, DB saves, streaming, tool orchestration, and optional server env fallback key: `app/(chat)/api/chat/route.ts`
+
+CORS is not the reason for Vercel's server-side emphasis. The chat repo already provide some browser-direct calls. The current chat implementation is server-mediated because that is how the app is structured. Whether a specific provider endpoint can be moved fully client-side depends on that provider's browser/CORS support and whether you are willing to move (duplicate) streaming, tools, auth checks, and persistence from the server-side folders.
+
+Browser-direct calls include:
+
+  - GitHub repo search/user repo fetch is done from client code with the PAT in the request header: chat/lib/github-components/github-context-
+    integration.tsx
+  - API key verification for Google/OpenAI/Anthropic is also client-side fetch code: chat/components/settings/settings-page.tsx, chat/lib/verification/
+    google-verification-service.ts:24, chat/lib/verification/openai-verification-service.ts:22, chat/lib/verification/anthropic-verification-service.ts
+
 ### Left Sidebar Navigation
 
 The sidebar (`components/app-sidebar.tsx`) has a top icon row defined in the `TABS` array. Each tab is a round icon button that switches the panel content below it. Current tabs (all icons from `lucide-react`):
