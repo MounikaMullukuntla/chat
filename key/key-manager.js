@@ -33,7 +33,7 @@
 
   // ── RSA-OAEP server-key encryption (Phase 9) ────────────────────────────────
 
-  var PUBLIC_KEY_URL = (location.port === '3000')
+  var PUBLIC_KEY_URL = (location.port === '3000' || location.port === '8888')
     ? '/api/public-key'
     : null; // Not available when served from the Python static server
 
@@ -79,11 +79,17 @@
 
   // ── Server keys (.env) ──────────────────────────────────────────────────────
 
-  var SERVER_KEYS_URL = (location.port === '3000')
+  var SERVER_KEYS_URL = (location.port === '3000' || location.port === '8888')
     ? '/api/server-keys'
     : 'http://localhost:8081/api/config/current';
 
+  var VALIDATE_KEY_URL = (location.port === '3000' || location.port === '8888')
+    ? '/api/validate-key'
+    : null;
+
   var _serverKeys = new Set();
+  var _validatedKeys = new Set();
+  var _invalidKeys = new Set();
 
   function _loadServerKeys() {
     return fetch(SERVER_KEYS_URL)
@@ -323,10 +329,63 @@
 
   var ICON_CHECK   = mi('check_circle');
   var ICON_CIRCLE  = mi('radio_button_unchecked');
+  var ICON_PENDING = mi('radio_button_checked');
+  var ICON_CANCEL  = mi('cancel');
   var ICON_CHEVRON = mi('expand_more');
   var ICON_EYE     = mi('visibility');
   var ICON_EYE_OFF = mi('visibility_off');
   var ICON_INFO    = mi('info');
+
+  // ── Key validation ───────────────────────────────────────────────────────────
+
+  function _updateStatusIcon(icon, providerId) {
+    var present = hasKey(providerId);
+    if (!present) {
+      icon.className = 'key-status-icon no-key';
+      icon.innerHTML = ICON_CIRCLE;
+    } else if (_invalidKeys.has(providerId)) {
+      icon.className = 'key-status-icon invalid-key';
+      icon.innerHTML = ICON_CANCEL;
+    } else if (_validatedKeys.has(providerId)) {
+      icon.className = 'key-status-icon validated-key';
+      icon.innerHTML = ICON_CHECK;
+    } else {
+      icon.className = 'key-status-icon pending-key';
+      icon.innerHTML = ICON_PENDING;
+    }
+  }
+
+  function _refreshStatusIcon(providerId) {
+    var card = document.getElementById('key-provider-' + providerId);
+    if (!card) return;
+    var icon = card.querySelector('.key-status-icon');
+    if (!icon) return;
+    _updateStatusIcon(icon, providerId);
+  }
+
+  function _validateKey(providerId, key) {
+    if (!VALIDATE_KEY_URL || !key) return;
+    fetch(VALIDATE_KEY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: providerId, key: key }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.valid === true) {
+          _validatedKeys.add(providerId);
+          _invalidKeys.delete(providerId);
+        } else if (data.valid === false) {
+          _invalidKeys.add(providerId);
+          _validatedKeys.delete(providerId);
+        }
+        // data.valid === null means unknown — leave as pending (orange)
+        _refreshStatusIcon(providerId);
+      })
+      .catch(function () {
+        // Network error — leave as pending (orange)
+      });
+  }
 
   // ── Widget renderer ──────────────────────────────────────────────────────────
 
@@ -356,6 +415,12 @@
     });
 
     containerEl.appendChild(list);
+
+    // Trigger background validation for all stored browser keys
+    providers.forEach(function (provider) {
+      var key = getKey(provider.id);
+      if (key) _validateKey(provider.id, key);
+    });
 
     // Security notice
     var notice = document.createElement('div');
@@ -398,8 +463,7 @@
     var serverKey = _serverKeys.has(provider.id);
 
     var statusIcon = document.createElement('span');
-    statusIcon.className = 'key-status-icon ' + (browserKey ? 'has-key' : 'no-key');
-    statusIcon.innerHTML = browserKey ? ICON_CHECK : ICON_CIRCLE;
+    _updateStatusIcon(statusIcon, provider.id);
 
     var name = document.createElement('span');
     name.className = 'key-provider-name';
@@ -490,13 +554,7 @@
     }
 
     function refreshHeaderStatus() {
-      var card = document.getElementById('key-provider-' + provider.id);
-      if (!card) return;
-      var icon = card.querySelector('.key-status-icon');
-      if (!icon) return;
-      var present = hasKey(provider.id);
-      icon.className = 'key-status-icon ' + (present ? 'has-key' : 'no-key');
-      icon.innerHTML = present ? ICON_CHECK : ICON_CIRCLE;
+      _refreshStatusIcon(provider.id);
     }
 
     function setKeyRowOpen(isOpen) {
@@ -515,13 +573,18 @@
       var val = input.value.trim();
       if (!val) {
         removeKey(provider.id);
+        _validatedKeys.delete(provider.id);
+        _invalidKeys.delete(provider.id);
         showStatus(statusMsg, 'Key removed.', 'ok');
         refreshHeaderStatus();
         return;
       }
       setKey(provider.id, val);
-      showStatus(statusMsg, 'Key saved.', 'ok');
+      _validatedKeys.delete(provider.id);
+      _invalidKeys.delete(provider.id);
+      showStatus(statusMsg, 'Key saved. Validating…', 'ok');
       refreshHeaderStatus();
+      _validateKey(provider.id, val);
     }
 
     saveBtn.addEventListener('click', function () {

@@ -132,8 +132,12 @@
   font-size: 18px;
 }
 
+.key-status-icon.no-key        svg { color: var(--key-text-muted); }
+.key-status-icon.pending-key   svg { color: var(--key-warning); }
+.key-status-icon.validated-key svg { color: var(--key-success); }
+.key-status-icon.invalid-key   svg { color: var(--key-danger); }
+/* legacy alias kept for any external callers */
 .key-status-icon.has-key svg { color: var(--key-success); }
-.key-status-icon.no-key svg  { color: var(--key-text-muted); }
 
 /* Chevron */
 .key-chevron {

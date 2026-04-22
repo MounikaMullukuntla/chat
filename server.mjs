@@ -54,6 +54,20 @@ process.env.WEBROOT = 'true'
 // Expose the webroot path so server code can locate shared files (.gitmodules, .siterepos).
 process.env.WEBROOT_PATH = WEBROOT
 
+// Pre-compute which provider keys are present in the environment so the
+// /api/server-keys route can read a single env var without needing dotenv again.
+const PROVIDER_ENV_VARS = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  google:    'GEMINI_API_KEY',
+  openai:    'OPENAI_API_KEY',
+  xai:       'XAI_API_KEY',
+}
+process.env.SERVER_KEYS_JSON = JSON.stringify(
+  Object.entries(PROVIDER_ENV_VARS)
+    .filter(([, v]) => !!process.env[v])
+    .map(([id]) => id)
+)
+
 // ── Static file serving ──────────────────────────────────────────────────────
 
 // Directories in the webroot that are reserved for Next.js — never served statically.

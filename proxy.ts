@@ -31,6 +31,8 @@ const PUBLIC_ROUTES = [
   "/intro", // Intro/landing page - accessible to all users
   "/chat/key", // Key manager widget - accessible to all users
   "/chat/keys", // Alias for key manager
+  "/api/server-keys",   // Public: which provider keys are present in server .env
+  "/api/validate-key",  // Public: validate a user-supplied API key against provider
   "/login", // Login page - accessible to unauthenticated users
   "/register", // Registration page - accessible to unauthenticated users
   "/ping", // Health check endpoint for testing
