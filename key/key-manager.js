@@ -264,17 +264,18 @@
   // ── Legacy migration ─────────────────────────────────────────────────────────
 
   var ENV_TO_PROVIDER = {
-    GEMINI_API_KEY:     'google',
-    ANTHROPIC_API_KEY:  'anthropic',
-    OPENAI_API_KEY:     'openai',
-    XAI_API_KEY:        'xai',
-    GROQ_API_KEY:       'groq',
-    TOGETHER_API_KEY:   'together',
-    FIREWORKS_API_KEY:  'fireworks',
-    MISTRAL_API_KEY:    'mistral',
-    PERPLEXITY_API_KEY: 'perplexity',
-    DEEPSEEK_API_KEY:   'deepseek',
-    DISCORD_BOT_TOKEN:  'discord',
+    GEMINI_API_KEY:                'google',
+    ANTHROPIC_API_KEY:             'anthropic',
+    OPENAI_API_KEY:                'openai',
+    XAI_API_KEY:                   'xai',
+    GROQ_API_KEY:                  'groq',
+    TOGETHER_API_KEY:              'together',
+    FIREWORKS_API_KEY:             'fireworks',
+    MISTRAL_API_KEY:               'mistral',
+    PERPLEXITY_API_KEY:            'perplexity',
+    DEEPSEEK_API_KEY:              'deepseek',
+    DISCORD_BOT_TOKEN:             'discord',
+    GITHUB_PERSONAL_ACCESS_TOKEN:  'github',
   };
 
   var LEGACY_KEY_TO_PROVIDER = {
@@ -664,7 +665,7 @@
       });
 
       body.appendChild(modelSection);
-    } else {
+    } else if (!provider.tokenOnly) {
       var noModels = document.createElement('p');
       noModels.className = 'key-no-models';
       noModels.textContent = 'No models configured.';

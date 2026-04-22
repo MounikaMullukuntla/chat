@@ -481,9 +481,14 @@ class LocalStorageManager implements StorageManager {
   }
 
   /**
-   * Get GitHub Personal Access Token
+   * Get GitHub Personal Access Token.
+   * Checks api-keys['github'] first (managed via the key-manager widget and
+   * the server .env GITHUB_PERSONAL_ACCESS_TOKEN), then falls back to the
+   * legacy integrations storage written by the Settings page.
    */
   getGitHubPAT(): string | null {
+    const fromApiKeys = this.getAPIKey("github");
+    if (fromApiKeys) return fromApiKeys;
     const integrations =
       this.getStorageData<LocalStorageSchema["integrations"]>("integrations");
     return integrations?.github?.token || null;

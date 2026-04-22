@@ -39,6 +39,7 @@ import { ModelSelector } from "./model-selector";
 import { PreviewAttachment } from "./preview-attachment";
 import { ThinkingModeToggle } from "./thinking-mode-toggle";
 import { Button } from "./ui/button";
+import { useSidebar } from "./ui/sidebar";
 import type { VisibilityType } from "./visibility-selector";
 
 function PureMultimodalInput({
@@ -80,6 +81,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { setOpen, setOpenMobile, isMobile } = useSidebar();
 
   // Thinking mode state - persists across model selections within the session
   const [thinkingMode, setThinkingMode] = useLocalStorage(
@@ -161,6 +163,16 @@ function PureMultimodalInput({
       sessionStorage.removeItem(`github-folders-${chatId}`);
     }
   }, [selectedFolders, chatId]);
+
+  // Sync GitHub repo selections made in the sidebar
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      const { repos, chatId: fromChatId } = e.detail as { repos: GitHubRepo[]; chatId: string };
+      if (fromChatId === chatId) setSelectedRepos(repos ?? []);
+    };
+    window.addEventListener("github-selection-changed", handler as EventListener);
+    return () => window.removeEventListener("github-selection-changed", handler as EventListener);
+  }, [chatId]);
 
   // Handle GitHub selection changes
   const handleGitHubRepoChange = useCallback((repos: GitHubRepo[]) => {
@@ -674,6 +686,7 @@ function PureMultimodalInput({
             {/* GitHub Context Button */}
             {githubPAT && (
               <Button
+                id="openSources"
                 className={`aspect-square h-8 rounded-lg p-1 transition-all duration-200 ${
                   selectedRepos.length > 0 ||
                   selectedFiles.length > 0 ||
@@ -684,7 +697,9 @@ function PureMultimodalInput({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setShowGitHubModal(!showGitHubModal);
+                  if (isMobile) setOpenMobile(true);
+                  else setOpen(true);
+                  window.dispatchEvent(new CustomEvent("open-github-sources"));
                 }}
                 title={
                   selectedRepos.length > 0 ||

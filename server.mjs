@@ -61,6 +61,7 @@ const PROVIDER_ENV_VARS = {
   google:    'GEMINI_API_KEY',
   openai:    'OPENAI_API_KEY',
   xai:       'XAI_API_KEY',
+  github:    'GITHUB_PERSONAL_ACCESS_TOKEN',
 }
 process.env.SERVER_KEYS_JSON = JSON.stringify(
   Object.entries(PROVIDER_ENV_VARS)

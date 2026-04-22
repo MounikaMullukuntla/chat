@@ -1,8 +1,8 @@
 "use client";
 
-import { BookOpen, BrainCog, Check, Globe, Library, Lock, MoreHorizontal, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, BrainCog, Check, Globe, Library, Loader2, Lock, MoreHorizontal, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -10,6 +10,9 @@ import { useLocalStorage } from "usehooks-ts";
 import { useRepos } from "@/hooks/use-repos";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import type { Repo } from "@/lib/repos";
+import { storage } from "@/lib/storage";
+import { GitHubContextIntegration } from "@/lib/github-components";
+import type { GitHubRepo } from "@/lib/types";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -78,9 +81,9 @@ const TABS = [
   { id: "visibility" as ActiveTab, icon: <BrainCog size={15} />, label: "AI Models & API Keys" },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
   const router = useRouter();
-  const { setOpenMobile } = useSidebar();
+  const { setOpenMobile, setOpen } = useSidebar();
   const { mutate } = useSWRConfig();
   const { user } = useAuth();
 
@@ -95,6 +98,23 @@ export function AppSidebar() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("sources");
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [broadened, setBroadened] = useState(false);
+  const [noneSelected, setNoneSelected] = useState(false);
+  const [showGithubSources, setShowGithubSources] = useState(false);
+  const [githubSelectedRepos, setGithubSelectedRepos] = useState<GitHubRepo[]>([]);
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage("sidebar-width", 256);
+
+  const [githubPAT, setGithubPAT] = useState<string | undefined>(
+    storage.github.getToken() || undefined
+  );
+
+  // If no browser-stored PAT, check whether the server has one in its .env
+  useEffect(() => {
+    if (githubPAT) return;
+    fetch("/api/github-token")
+      .then((r) => r.json())
+      .then((data) => { if (data.token) setGithubPAT(data.token); })
+      .catch(() => {});
+  }, [githubPAT]);
 
   const { repos: availableRepos, isLoading: reposLoading } = useRepos();
   const [ragSelectedRepos, setRagSelectedRepos] = useLocalStorage<string[]>(
@@ -102,13 +122,14 @@ export function AppSidebar() {
     []
   );
 
-  const allSelected = ragSelectedRepos.length === 0;
-  const repoCount = allSelected ? availableRepos.length : ragSelectedRepos.length;
+  const allSelected = !noneSelected && ragSelectedRepos.length === 0;
+  const repoCount = noneSelected ? 0 : (allSelected ? availableRepos.length : ragSelectedRepos.length);
 
   const isChecked = (repo: Repo) =>
-    allSelected || ragSelectedRepos.includes(repo.name);
+    !noneSelected && (allSelected || ragSelectedRepos.includes(repo.name));
 
   const handleToggleRepo = (repo: Repo) => {
+    setNoneSelected(false);
     if (allSelected) {
       const next = availableRepos.filter((r) => r.name !== repo.name).map((r) => r.name);
       setRagSelectedRepos(next);
@@ -123,6 +144,53 @@ export function AppSidebar() {
       }
     }
   };
+
+  // Apply persisted sidebar width via CSS variable
+  useEffect(() => {
+    const wrapper = document.querySelector(".group\\/sidebar-wrapper") as HTMLElement | null;
+    if (wrapper) wrapper.style.setProperty("--sidebar-width", `${sidebarWidth}px`);
+  }, [sidebarWidth]);
+
+  // Open the GitHub sources panel when the toolbar button dispatches the event
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true);
+      setActiveTab("sources");
+      setShowGithubSources(true);
+    };
+    window.addEventListener("open-github-sources", handler);
+    return () => window.removeEventListener("open-github-sources", handler);
+  }, [setOpen]);
+
+  // Broadcast GitHub repo selection changes so multimodal-input can sync
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("github-selection-changed", {
+        detail: { repos: githubSelectedRepos, chatId },
+      })
+    );
+  }, [githubSelectedRepos, chatId]);
+
+  const handleResizePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = sidebarWidth;
+      const onMove = (ev: PointerEvent) => {
+        const w = Math.max(180, Math.min(560, startWidth + ev.clientX - startX));
+        setSidebarWidth(w);
+        const wrapper = document.querySelector(".group\\/sidebar-wrapper") as HTMLElement | null;
+        if (wrapper) wrapper.style.setProperty("--sidebar-width", `${w}px`);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [sidebarWidth, setSidebarWidth]
+  );
 
   const handleDeleteAll = () => {
     const deletePromise = fetch("/api/history", { method: "DELETE" });
@@ -140,7 +208,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)]">
+      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)] relative">
 
         {/* ── Tab row ── */}
         <SidebarHeader className="border-b border-sidebar-border p-2">
@@ -172,7 +240,9 @@ export function AppSidebar() {
           {activeTab === "sources" && (
             <div className="flex h-full flex-col overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-sidebar-border">
-                <span className="text-sm font-semibold">Sources</span>
+                <span className="text-sm font-semibold">
+                  {showGithubSources ? "Sources (Anyone's Repo)" : "Sources (CodeChat)"}
+                </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -184,79 +254,117 @@ export function AppSidebar() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem
-                      onClick={() => setBroadened(false)}
-                      className={!broadened ? "font-medium" : ""}
+                      onClick={() => { setBroadened(false); setShowGithubSources(false); }}
+                      className={!showGithubSources ? "font-medium" : ""}
                     >
-                      {!broadened && "✓ "}ModelEarth Repos
+                      {!showGithubSources && "✓ "}CodeChat Repos
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => setBroadened(true)}
-                      className={broadened ? "font-medium" : ""}
+                      onClick={() => setShowGithubSources(true)}
+                      className={showGithubSources ? "font-medium" : ""}
                     >
-                      {broadened && "✓ "}All Repos
+                      {showGithubSources && "✓ "}Anyone's Repo
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              {/* Select All */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-sidebar-border">
-                <input
-                  type="checkbox"
-                  id="select-all-repos"
-                  checked={allSelected}
-                  onChange={() => allSelected ? setRagSelectedRepos(availableRepos.map((r) => r.name)) : setRagSelectedRepos([])}
-                  className="size-4 cursor-pointer accent-primary"
-                />
-                <label
-                  htmlFor="select-all-repos"
-                  className="flex-1 cursor-pointer text-xs text-muted-foreground"
-                >
-                  Select All
-                </label>
-                <span className="text-xs text-muted-foreground">
-                  {reposLoading ? "…" : `${repoCount} sources`}
-                </span>
-              </div>
+              {/* CodeChat RAG repos view */}
+              {!showGithubSources && (
+                <>
+                  {/* Loading spinner — shown before repos arrive */}
+                  {reposLoading && (
+                    <div className="relative flex-1">
+                      <Loader2 size={40} className="animate-spin text-muted-foreground/40 absolute left-1/2 -translate-x-1/2" style={{ top: 40 }} />
+                    </div>
+                  )}
 
-              {/* Repo list */}
-              <div className="flex-1 overflow-y-auto py-1">
-                {reposLoading ? (
-                  <div className="flex flex-col gap-1 px-3 py-2">
-                    {[60, 45, 72, 55, 65].map((w) => (
-                      <div
-                        key={w}
-                        className="h-5 rounded bg-muted animate-pulse"
-                        style={{ width: `${w}%` }}
-                      />
-                    ))}
-                  </div>
-                ) : availableRepos.length === 0 ? (
-                  <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    No repos configured.
-                  </p>
-                ) : (
-                  availableRepos.map((repo) => (
+                  {/* Select All + repo list — hidden while loading */}
+                  {!reposLoading && (
+                    <>
+                  {/* About CodeChat Submodules link — webroot only */}
+                  {isWebroot && (
+                    <div className="px-3 py-2 border-b border-sidebar-border">
+                      <a
+                        href="/codechat"
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        About CodeChat Submodules
+                        <ArrowRight size={14} />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Select All */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-sidebar-border">
+                    <input
+                      type="checkbox"
+                      id="select-all-repos"
+                      checked={allSelected}
+                      onChange={() => {
+                        if (allSelected) {
+                          setNoneSelected(true);
+                        } else {
+                          setNoneSelected(false);
+                          setRagSelectedRepos([]);
+                        }
+                      }}
+                      className="size-4 cursor-pointer accent-primary"
+                    />
                     <label
-                      key={repo.name}
-                      className="flex cursor-pointer items-center gap-2.5 rounded-md mx-1 px-2 py-1.5 hover:bg-muted transition-colors"
+                      htmlFor="select-all-repos"
+                      className="flex-1 cursor-pointer text-xs text-muted-foreground"
                     >
-                      <input
-                        type="checkbox"
-                        checked={isChecked(repo)}
-                        onChange={() => handleToggleRepo(repo)}
-                        className="size-4 flex-shrink-0 cursor-pointer accent-primary"
-                      />
-                      <span className="truncate text-sm">
-                        {repo.name}
-                        {repo.label.includes("(site)") && (
-                          <span className="ml-1 text-xs text-blue-400">(site)</span>
-                        )}
-                      </span>
+                      Select All
                     </label>
-                  ))
-                )}
-              </div>
+                    <span className="text-xs text-muted-foreground">
+                      {`${repoCount} sources`}
+                    </span>
+                  </div>
+
+                  {/* Repo list */}
+                  <div className="flex-1 overflow-y-auto py-1">
+                    {availableRepos.length === 0 ? (
+                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                        No repos configured.
+                      </p>
+                    ) : (
+                      availableRepos.map((repo) => (
+                        <label
+                          key={repo.name}
+                          className="flex cursor-pointer items-center gap-2.5 rounded-md mx-1 px-2 py-1.5 hover:bg-muted transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked(repo)}
+                            onChange={() => handleToggleRepo(repo)}
+                            className="size-4 flex-shrink-0 cursor-pointer accent-primary"
+                          />
+                          <span className="truncate text-sm">
+                            {repo.name}
+                            {repo.label.includes("(site)") && (
+                              <span className="ml-1 text-xs text-blue-400">(site)</span>
+                            )}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Anyone's Repo – GitHub context integration */}
+              {showGithubSources && (
+                <div className="flex-1 overflow-y-auto">
+                  <GitHubContextIntegration
+                    githubPAT={githubPAT}
+                    selectedRepos={githubSelectedRepos}
+                    onRepoSelectionChange={setGithubSelectedRepos}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -368,6 +476,12 @@ export function AppSidebar() {
         </SidebarContent>
 
         <SidebarFooter>{user && <SidebarUserNav />}</SidebarFooter>
+
+        {/* Drag handle for resizing the sidebar width */}
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-20 hover:bg-primary/30 active:bg-primary/50 transition-colors"
+          onPointerDown={handleResizePointerDown}
+        />
       </Sidebar>
 
       <AlertDialog onOpenChange={setShowDeleteAllDialog} open={showDeleteAllDialog}>

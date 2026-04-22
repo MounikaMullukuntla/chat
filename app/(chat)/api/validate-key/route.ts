@@ -52,6 +52,14 @@ export async function POST(request: Request) {
         else if (r.status === 401 || r.status === 403) valid = false;
         break;
       }
+      case 'github': {
+        const r = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'codechat-key-validator' },
+        });
+        if (r.status === 200) valid = true;
+        else if (r.status === 401 || r.status === 403) valid = false;
+        break;
+      }
       default:
         return Response.json({ valid: null, error: 'Unsupported provider' });
     }

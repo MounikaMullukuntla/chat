@@ -67,6 +67,10 @@ export const ContextIcon = ({ percent }: ContextIconProps) => {
         strokeWidth={ICON_STROKE_WIDTH}
         transform={`rotate(-90 ${ICON_CENTER} ${ICON_CENTER})`}
       />
+      {/* Mini bar-chart icon inside the ring */}
+      <rect x="8.5" y="14.5" width="2" height="3" fill="currentColor" opacity="0.55" rx="0.4" />
+      <rect x="11"   y="11.5" width="2" height="6" fill="currentColor" opacity="0.55" rx="0.4" />
+      <rect x="13.5" y="13"   width="2" height="4.5" fill="currentColor" opacity="0.55" rx="0.4" />
     </svg>
   );
 };

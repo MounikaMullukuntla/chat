@@ -215,8 +215,8 @@ export function GitHubContextIntegration({
       {!githubPAT && (
         <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
           <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            GitHub Personal Access Token required for repository search. Please
-            configure your PAT in settings.
+            GitHub Personal Access Token required for repository search.{" "}
+            <a href="/settings" className="underline hover:opacity-80 whitespace-nowrap">Add Token in Settings</a>
           </p>
         </div>
       )}

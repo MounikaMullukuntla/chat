@@ -113,6 +113,16 @@ window.KeyManagerProviders = [
     keyPlaceholder: '',
     keyHint: 'Discord bot token (DISCORD_BOT_TOKEN)',
     getKeyUrl: 'https://discord.com/developers/applications',
+    tokenOnly: true,
+    models: [],
+  },
+  {
+    id: 'github',
+    name: 'GitHub',
+    keyPlaceholder: 'ghp_... or github_pat_...',
+    keyHint: 'Personal Access Token (GITHUB_PERSONAL_ACCESS_TOKEN)',
+    getKeyUrl: 'https://github.com/settings/tokens',
+    tokenOnly: true,
     models: [],
   },
 ];

@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   "/chat/keys", // Alias for key manager
   "/api/server-keys",   // Public: which provider keys are present in server .env
   "/api/validate-key",  // Public: validate a user-supplied API key against provider
+  "/api/github-token",  // Public: server GitHub PAT for the GitHub integration
   "/login", // Login page - accessible to unauthenticated users
   "/register", // Registration page - accessible to unauthenticated users
   "/ping", // Health check endpoint for testing
