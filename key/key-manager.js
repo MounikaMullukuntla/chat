@@ -31,6 +31,70 @@
   // In-memory plaintext cache — populated by _initCrypto()
   var _plaintextCache = {};
 
+  // ── RSA-OAEP server-key encryption (Phase 9) ────────────────────────────────
+
+  var PUBLIC_KEY_URL = (location.port === '3000')
+    ? '/api/public-key'
+    : null; // Not available when served from the Python static server
+
+  var _cachedServerPublicKey = null;
+
+  function _fetchServerPublicKey() {
+    if (_cachedServerPublicKey) return Promise.resolve(_cachedServerPublicKey);
+    if (!PUBLIC_KEY_URL) return Promise.reject(new Error('No public key endpoint'));
+    return fetch(PUBLIC_KEY_URL)
+      .then(function (r) {
+        if (!r.ok) throw new Error('Public key unavailable');
+        return r.json();
+      })
+      .then(function (jwk) {
+        return crypto.subtle.importKey(
+          'jwk', jwk,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          false,
+          ['encrypt']
+        );
+      })
+      .then(function (key) {
+        _cachedServerPublicKey = key;
+        return key;
+      });
+  }
+
+  function _encryptForServer(plaintext) {
+    return _fetchServerPublicKey().then(function (key) {
+      return crypto.subtle.encrypt(
+        { name: 'RSA-OAEP' },
+        key,
+        new TextEncoder().encode(plaintext)
+      );
+    }).then(function (ct) {
+      return 'rsa:' + btoa(String.fromCharCode.apply(null, new Uint8Array(ct)));
+    });
+  }
+
+  function _isServerEncrypted(value) {
+    return typeof value === 'string' && value.startsWith('rsa:');
+  }
+
+  // ── Server keys (.env) ──────────────────────────────────────────────────────
+
+  var SERVER_KEYS_URL = (location.port === '3000')
+    ? '/api/server-keys'
+    : 'http://localhost:8081/api/config/current';
+
+  var _serverKeys = new Set();
+
+  function _loadServerKeys() {
+    return fetch(SERVER_KEYS_URL)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var list = Array.isArray(data) ? data : (data.env_keys_present || []);
+        _serverKeys = new Set(list);
+      })
+      .catch(function () {}); // silently ignore if server unavailable
+  }
+
   var ENCRYPTED_RE = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/;
 
   function _isEncrypted(value) {
@@ -108,6 +172,10 @@
     return Promise.all(providers.map(function (providerId) {
       var stored = data[providerId];
       if (!stored) return Promise.resolve();
+      if (_isServerEncrypted(stored)) {
+        // RSA blob — can only be decrypted server-side; mark as present.
+        return Promise.resolve();
+      }
       if (_isEncrypted(stored)) {
         return _decryptValue(stored).then(function (pt) {
           _plaintextCache[providerId] = pt;
@@ -116,12 +184,17 @@
           delete _plaintextCache[providerId];
         });
       }
-      // Plaintext key — cache it and re-encrypt.
+      // Plaintext key — cache it and re-encrypt (try RSA first).
       _plaintextCache[providerId] = stored;
-      return _encryptValue(stored).then(function (enc) {
-        data[providerId] = enc;
+      return _encryptForServer(stored).then(function (rsaBlob) {
+        data[providerId] = rsaBlob;
         _writeAllRaw(data);
-      }).catch(function () {});
+      }).catch(function () {
+        return _encryptValue(stored).then(function (enc) {
+          data[providerId] = enc;
+          _writeAllRaw(data);
+        }).catch(function () {});
+      });
     }));
   }
 
@@ -153,16 +226,21 @@
     _plaintextCache[providerId] = value;
     // Record edit timestamp for the 1-hour export window.
     try { localStorage.setItem(LAST_EDIT_KEY, String(Date.now())); } catch (_) {}
-    // Encrypt and persist in the background.
-    _encryptValue(value).then(function (enc) {
+    // Try RSA (server-only decryptable) first; fall back to browser AES.
+    _encryptForServer(value).then(function (rsaBlob) {
       var data = _readAllRaw();
-      data[providerId] = enc;
+      data[providerId] = rsaBlob;
       _writeAllRaw(data);
     }).catch(function () {
-      // Crypto unavailable — write plaintext as fallback.
-      var data = _readAllRaw();
-      data[providerId] = value;
-      _writeAllRaw(data);
+      _encryptValue(value).then(function (enc) {
+        var data = _readAllRaw();
+        data[providerId] = enc;
+        _writeAllRaw(data);
+      }).catch(function () {
+        var data = _readAllRaw();
+        data[providerId] = value;
+        _writeAllRaw(data);
+      });
     });
   }
 
@@ -256,12 +334,11 @@
     if (!containerEl) return;
     options = options || {};
 
-    // Decrypt stored keys into the in-memory cache before rendering, so that
-    // provider headers show the correct has-key / no-key state on first paint.
-    _initCrypto().then(function () {
-      _renderWidget(containerEl, options);
-    }).catch(function () {
-      // Crypto init failed — render anyway (keys will appear absent).
+    // Run crypto init and server key fetch in parallel; render once both settle.
+    Promise.all([
+      _initCrypto().catch(function () {}),
+      _loadServerKeys(),
+    ]).then(function () {
       _renderWidget(containerEl, options);
     });
   }
@@ -317,9 +394,12 @@
     header.className = 'key-provider-header';
     header.setAttribute('aria-expanded', startOpen ? 'true' : 'false');
 
+    var browserKey = hasKey(provider.id);
+    var serverKey = _serverKeys.has(provider.id);
+
     var statusIcon = document.createElement('span');
-    statusIcon.className = 'key-status-icon ' + (hasKey(provider.id) ? 'has-key' : 'no-key');
-    statusIcon.innerHTML = hasKey(provider.id) ? ICON_CHECK : ICON_CIRCLE;
+    statusIcon.className = 'key-status-icon ' + (browserKey ? 'has-key' : 'no-key');
+    statusIcon.innerHTML = browserKey ? ICON_CHECK : ICON_CIRCLE;
 
     var name = document.createElement('span');
     name.className = 'key-provider-name';
@@ -336,6 +416,13 @@
 
     header.appendChild(statusIcon);
     header.appendChild(name);
+    if (serverKey && !browserKey) {
+      var serverBadge = document.createElement('span');
+      serverBadge.className = 'key-server-badge';
+      serverBadge.textContent = '.env';
+      serverBadge.title = 'Key available from server .env file';
+      header.appendChild(serverBadge);
+    }
     header.appendChild(meta);
     header.appendChild(chevron);
 

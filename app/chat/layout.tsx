@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DataStreamProvider } from "@/components/data-stream-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TopNav } from "@/components/top-nav";
 
 export const experimental_ppr = true;
 
@@ -13,13 +14,17 @@ export default async function ChatLayout({
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get("sidebar_state")?.value;
   const isCollapsed = sidebarCookie === "false";
+  const isWebroot = process.env.WEBROOT === "true";
 
   return (
     <DataStreamProvider>
-      <SidebarProvider defaultOpen={!isCollapsed}>
-        <AppSidebar />
-        <SidebarInset>{children}</SidebarInset>
-      </SidebarProvider>
+      <TopNav isWebroot={isWebroot} isLoggedIn={true} />
+      <div className="pt-[73px]">
+        <SidebarProvider defaultOpen={!isCollapsed}>
+          <AppSidebar />
+          <SidebarInset>{children}</SidebarInset>
+        </SidebarProvider>
+      </div>
     </DataStreamProvider>
   );
 }

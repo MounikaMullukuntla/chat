@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/site-footer";
+import { VercelIcon } from "@/components/icons";
 import {
-    HelpCircle,
     DollarSign,
     Key,
     Shield,
@@ -115,46 +116,20 @@ export default function FAQPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Navigation */}
-            <nav className="fixed top-0 right-0 left-0 z-50 border-b bg-background/80 backdrop-blur-md">
-                <div className="container mx-auto flex items-center justify-between px-4 py-4">
-                    <Link href="/" className="font-bold text-xl hover:opacity-80 transition-opacity">
-                        AI Chatbot
-                    </Link>
-                    <div className="flex gap-2">
-                        <Button asChild variant="ghost">
-                            <Link href="/">Home</Link>
-                        </Button>
-                        <Button asChild variant="ghost">
-                            <Link href="/features">Features</Link>
-                        </Button>
-                        <Button asChild variant="ghost">
-                            <Link href="/agents">Agents</Link>
-                        </Button>
-                        <Button asChild variant="ghost">
-                            <Link href="/login">Sign In</Link>
-                        </Button>
-                        <Button asChild>
-                            <Link href="/register">Sign Up</Link>
-                        </Button>
-                    </div>
-                </div>
-            </nav>
-
             {/* Hero Section */}
-            <section className="px-4 pt-32 pb-20">
+            <section className="px-4 pt-8 pb-20">
                 <div className="container mx-auto text-center">
                     <div className="animate-fade-in-up">
-                        <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-4 py-2 border border-blue-500/20">
-                            <HelpCircle className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-blue-600">Frequently Asked Questions</span>
-                        </div>
                         <h1 className="mb-6 font-bold text-5xl md:text-7xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
                             Got Questions?
                         </h1>
-                        <p className="mx-auto mb-8 max-w-3xl text-muted-foreground text-xl leading-relaxed">
+                        <p className="mb-6 mx-auto max-w-3xl text-muted-foreground text-xl leading-relaxed">
                             Find answers to common questions about pricing, security, features, and more.
                         </p>
+                        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-4 py-2 border border-purple-500/20 text-purple-600">
+                            <VercelIcon size={14} />
+                            <Link href="https://vercel.com/templates/next.js/nextjs-ai-chatbot" target="_blank" rel="noreferrer" className="text-sm font-medium text-purple-600">Deploy with Vercel</Link>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -165,17 +140,11 @@ export default function FAQPage() {
                     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 p-12 text-center text-white">
                         <div className="absolute inset-0 bg-grid-white/10" />
                         <div className="relative z-10">
-                            <DollarSign className="mx-auto mb-6 h-16 w-16" />
-                            <h2 className="mb-4 font-bold text-4xl">100% Free Platform</h2>
-                            <p className="mx-auto mb-6 max-w-2xl text-lg text-white/90">
-                                No subscription fees, no hidden costs, no credit card required.
-                                Just bring your own API keys and start chatting!
-                            </p>
                             <div className="flex flex-wrap justify-center gap-6 text-left">
                                 <div className="flex items-start gap-2">
                                     <CheckCircle2 className="h-5 w-5 mt-0.5" />
                                     <div>
-                                        <div className="font-semibold">Pay Providers Directly</div>
+                                        <div className="font-semibold">Bring your own Keys</div>
                                         <div className="text-sm text-white/80">No markup or fees</div>
                                     </div>
                                 </div>
@@ -260,7 +229,7 @@ export default function FAQPage() {
                                 <Button asChild size="lg" variant="secondary">
                                     <Link href="/register">Get Started Free</Link>
                                 </Button>
-                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-purple-600">
+                                <Button asChild size="lg" className="bg-white text-purple-600 hover:bg-white/90">
                                     <Link href="/agents">Explore Agents</Link>
                                 </Button>
                             </div>
@@ -269,12 +238,7 @@ export default function FAQPage() {
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="border-t px-4 py-8">
-                <div className="container mx-auto text-center text-muted-foreground">
-                    <p>&copy; 2026 DreamStudio Earth &ndash; CodeChat RAG addition to [Vercel Starter](https://model.earth/chat/).</p>
-                </div>
-            </footer>
+            <SiteFooter />
         </div>
     );
 }

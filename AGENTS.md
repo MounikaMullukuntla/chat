@@ -15,6 +15,69 @@ It lives inside the webroot container at `webroot/chat/` alongside static-file r
 
 ---
 
+## Running from the Webroot
+
+### Unified server (recommended for webroot development)
+
+`chat/server.mjs` is a custom Node.js server that boots Next.js **and** serves the sibling webroot static repos from a single port — no separate Python server needed.
+
+```bash
+# 1. Install dependencies (first time only, or after pulling new commits)
+pnpm --prefix chat install
+
+# 2. Start the unified server from the webroot root:
+node chat/server.mjs               # → http://localhost:8888
+PORT=8887 node chat/server.mjs     # → replaces the Python server
+
+# Or via pnpm:
+pnpm --prefix chat dev:webroot
+```
+
+The server loads `docker/.env` automatically from the webroot root before booting Next.js.
+
+#### URL layout on the unified server
+
+The **chat app occupies the root** — no path prefix:
+
+| URL | Serves |
+|---|---|
+| `localhost:8888/` | chat home |
+| `localhost:8888/chat` | chat list / new chat |
+| `localhost:8888/chat/[id]` | a conversation |
+| `localhost:8888/settings` | settings |
+| `localhost:8888/chat/key/` | standalone key manager widget |
+| `localhost:8888/localsite/…` | `localsite/` static files |
+| `localhost:8888/team/…` | `team/` static files |
+| `localhost:8888/requests/…` | `requests/` static files |
+
+Static repo paths (`/localsite/`, `/team/`, `/requests/`, `/realitystream/`, `/data-pipeline/`, `/home/`) are served directly from the filesystem before Next.js sees the request. Everything else goes to Next.js.
+
+#### Why port 8888?
+
+Port 3000 stays free for the plain `pnpm dev` (Turbopack) workflow. Port 8887 is the existing Python static server. 8888 is the unified server default; set `PORT=8887` to replace the Python server entirely.
+
+### Chat-only development (fastest)
+
+For working exclusively on the Next.js app with Turbopack HMR:
+
+```bash
+cd chat && pnpm dev    # port 3000, Turbopack, no static repo serving
+```
+
+`lib/env-loader.ts` finds `docker/.env` at `../docker/.env` relative to `chat/`. No separate `.env` file inside `chat/` is needed.
+
+### No-Supabase mode
+
+If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` are absent from the environment, the auth middleware is bypassed automatically. Pages load without login. DB-backed features (chat history, saved messages, admin config) will return errors, but the key manager, settings UI, and client-side features work normally.
+
+For the full chat experience (conversation history, model config from DB, logging), Supabase Cloud credentials in `docker/.env` are required. Running a **local** Supabase instance is not required — the hosted project works directly.
+
+### `pnpm build` and migrations
+
+`pnpm build` runs DB migrations before building (`tsx lib/db/migrate && next build`). `pnpm dev` and `dev:webroot` do **not** run migrations. To apply migrations manually: `pnpm db:migrate`.
+
+---
+
 ## Development Commands
 
 ```bash
@@ -30,7 +93,11 @@ pnpm test:e2e     # Playwright end-to-end tests
 
 Run in background when you need it running but want to keep the terminal:
 ```bash
-nohup pnpm dev > /tmp/chat-dev.log 2>&1 &
+# Unified webroot server (from webroot/):
+nohup node chat/server.mjs > /tmp/chat-dev.log 2>&1 &
+
+# Chat-only Turbopack dev (from webroot/ or chat/):
+nohup pnpm --prefix chat dev > /tmp/chat-dev.log 2>&1 &
 ```
 
 Check if already running: `lsof -ti:3000`

@@ -44,11 +44,14 @@ function parseSiterepos(content: string): string[] {
 }
 
 /**
- * Read a file from the webroot root (one level above chat/), returning null if not found.
+ * Read a file from the webroot root, returning null if not found.
+ * Uses WEBROOT_PATH env var (set by server.mjs) when available,
+ * otherwise falls back to one level above cwd (chat-only dev server).
  */
 async function readProjectFile(filename: string): Promise<string | null> {
   try {
-    const filePath = resolve(process.cwd(), "..", filename);
+    const base = process.env.WEBROOT_PATH ?? resolve(process.cwd(), "..");
+    const filePath = resolve(base, filename);
     return await readFile(filePath, "utf-8");
   } catch {
     return null;

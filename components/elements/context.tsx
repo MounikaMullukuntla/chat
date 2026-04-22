@@ -117,6 +117,7 @@ export const Context = ({ className, usage, ...props }: ContextProps) => {
             className
           )}
           type="button"
+          suppressHydrationWarning
           {...props}
         >
           <span className="hidden font-medium text-muted-foreground">

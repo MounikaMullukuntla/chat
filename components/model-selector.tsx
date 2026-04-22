@@ -2,7 +2,8 @@
 
 import { memo, startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { Lock, Server } from "lucide-react";
+import useSWR from "swr";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import {
   DropdownMenu,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AdminConfigSummary } from "@/lib/types";
 import { storage } from "@/lib/storage";
-import { cn } from "@/lib/utils";
+import { cn, fetcher } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, CpuIcon } from "./icons";
 
 type ModelSelectorProps = {
@@ -38,6 +39,8 @@ function PureModelSelector({
 }: ModelSelectorProps) {
   const router = useRouter();
   const [keyedProviders, setKeyedProviders] = useState<Set<string>>(new Set());
+  const { data: serverKeysData } = useSWR<string[]>("/api/server-keys", fetcher, { refreshInterval: 30000 });
+  const serverKeys = new Set<string>(serverKeysData ?? []);
 
   useEffect(() => {
     const readKeys = () => {
@@ -201,7 +204,7 @@ function PureModelSelector({
   }
 
   const handleModelSelection = (modelId: string, providerId: string) => {
-    if (!keyedProviders.has(providerId)) {
+    if (!keyedProviders.has(providerId) && !serverKeys.has(providerId)) {
       router.push("/settings");
       return;
     }
@@ -237,7 +240,9 @@ function PureModelSelector({
 
       <DropdownMenuContent className="max-h-[400px] min-w-[320px] overflow-y-auto">
         {providerGroups.map((group) => {
-          const hasKey = keyedProviders.has(group.providerId);
+          const hasBrowserKey = keyedProviders.has(group.providerId);
+          const hasServerKey = serverKeys.has(group.providerId);
+          const hasKey = hasBrowserKey || hasServerKey;
           return (
             <div id={`key-provider-${group.providerId}`}>
             <DropdownMenuSub key={group.providerId}>
@@ -246,8 +251,10 @@ function PureModelSelector({
                 onClick={!hasKey ? () => router.push("/settings") : undefined}
               >
                 <div className="flex items-center gap-2">
-                  {hasKey ? (
+                  {hasBrowserKey ? (
                     <CheckCircleFillIcon size={13} />
+                  ) : hasServerKey ? (
+                    <Server size={13} className="text-muted-foreground" />
                   ) : (
                     <Lock size={13} className="text-muted-foreground" />
                   )}
@@ -285,7 +292,7 @@ function PureModelSelector({
                             )}
                           </div>
                           <div className="truncate text-muted-foreground text-xs leading-relaxed">
-                            {!hasKey ? "Add key to use" : model.description}
+                            {!hasKey ? "Add key to use" : hasServerKey && !hasBrowserKey ? "Available via server .env" : model.description}
                           </div>
                         </div>
                         {selectedModel === model.id && hasKey && (

@@ -1,21 +1,15 @@
-# CodeChat - Complete Overview & Quick Start Guide
-
-Welcome to CodeChat, a production-ready multimodal AI chat application with advanced agent orchestration and enterprise-grade features.
-
 ## Table of Contents
 
-- [Project Overview](#project-overview)
-- [Quick Start Guide](#quick-start-guide)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [How to Contribute](#how-to-contribute)
-- [Documentation Index](#documentation-index)
-
----
+- [Project Overview](#projectoverview)
+- [Quick Start Guide](#quickstartguide)
+- [Tech Stack](#techstack)
+- [System Architecture](#systemarchitecture)
+- [How to Contribute](#howtocontribute)
+- [Documentation Index](#documentationindex)
 
 ## Project Overview
 
-CodeChat is an intelligent, extensible AI chatbot platform featuring:
+Earthscape Chat is an extensible AI chatbot platform featuring:
 
 - **Multi-Agent AI System**: Specialized agents for chat, document management, code execution, diagram generation, and GitHub integration
 - **Multi-Provider Support**: Seamlessly integrate Google Gemini, OpenAI, and Anthropic Claude with dynamic model selection
@@ -41,7 +35,6 @@ CodeChat is an intelligent, extensible AI chatbot platform featuring:
 - 🎨 **System Prompts** - Customize AI behavior for each specialized agent
 - 📊 **Logging & Monitoring** - Comprehensive activity, usage, and error logs
 
----
 
 ## Quick Start Guide
 
@@ -56,11 +49,15 @@ Before you begin, ensure you have:
 
 ### Setup Steps
 
-#### 1. Clone the Repository
+#### 1b. Run in the webroot for full functionality
+
+
+
+#### 1b. Or clone only the chat repository
 
 ```bash
-git clone https://github.com/ananthpai1998/codechat.git
-cd codechat
+git clone https://github.com/earthscape/chat.git
+cd chat
 pnpm install
 ```
 
@@ -83,7 +80,7 @@ If you're using the [Model.Earth webroot structure](https://model.earth/webroot/
 
 **Option B: Local Configuration**
 
-Create `.env` or `.env.local` in project root:
+Create `.env` in project root:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://[YOUR-PROJECT].supabase.co
@@ -139,7 +136,6 @@ Navigate to `http://localhost:3000`
 5. **Enable Thinking Mode**: Toggle extended reasoning for complex problem-solving
 6. **Access Admin Panel** (if admin): Configure agents, monitor usage, and manage users at `/admin`
 
----
 
 ## Tech Stack
 
@@ -184,7 +180,6 @@ Navigate to `http://localhost:3000`
 - **Rate Limiting**: Per-agent and per-user rate controls
 - **Comprehensive Logging**: Activity, usage, and error tracking
 
----
 
 ## System Architecture
 
@@ -420,7 +415,6 @@ erDiagram
     }
 ```
 
----
 
 ## How to Contribute
 
@@ -519,15 +513,12 @@ For detailed workflow information, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 ### Getting Help
 
 - **Documentation**: Check the [Documentation Index](#documentation-index) below
-- **Issues**: Browse or create [GitHub Issues](https://github.com/ananthpai1998/codechat/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/ananthpai1998/codechat/discussions)
+- **Issues**: Browse or create [GitHub Issues](https://github.com/earthscape/chat/issues)
+- **Discussions**: Join [GitHub Discussions](https://github.com/earthscape/chat/discussions)
 - **Questions**: Reach out to maintainers in pull request comments
 
----
 
 ## Documentation Index
-
-Complete documentation for all aspects of the CodeChat application.
 
 ### **[Admin Panel Documentation](./admin-panel.md)**
 
@@ -710,29 +701,31 @@ Step-by-step guide for contributors to set up their environment and submit chang
 - [Code Standards](./CONTRIBUTING.md#code-standards)
 - [Getting Help](./CONTRIBUTING.md#getting-help)
 
----
 
 ## Additional Resources
 
 ### Project Structure
 
 ```
-codechat/
-├── app/                    # Next.js app directory
-│   ├── (auth)/            # Authentication routes
-│   ├── (chat)/            # Chat interface routes
-│   ├── admin/             # Admin panel routes
-│   └── api/               # API endpoints
-├── components/            # React components
-│   ├── admin/             # Admin-specific components
-│   ├── chat/              # Chat interface components
-│   └── ui/                # Reusable UI components
-├── lib/                   # Core utilities and services
-│   ├── ai/                # Agent system and AI integrations
-│   ├── db/                # Database schema and queries
-│   └── utils/             # Utility functions
-├── docs/                  # Documentation (you are here!)
-└── public/                # Static assets
+webroot
+    chat/
+    ├── app/                    # Next.js app directory
+    │   ├── (auth)/            # Authentication routes
+    │   ├── (chat)/            # Chat interface routes
+    │   ├── admin/             # Admin panel routes
+    │   └── api/               # API endpoints
+    ├── components/            # React components
+    │   ├── admin/             # Admin-specific components
+    │   ├── chat/              # Chat interface components
+    │   └── ui/                # Reusable UI components
+    ├── lib/                   # Core utilities and services
+    │   ├── ai/                # Agent system and AI integrations
+    │   ├── db/                # Database schema and queries
+    │   └── utils/             # Utility functions
+    ├── docs/                  # Documentation (you are here!)
+    └── public/                # Static assets
+    team
+    requests
 ```
 
 ### Useful Commands
@@ -759,4 +752,4 @@ codechat/
 
 **Happy Coding! 🚀**
 
-For questions or support, please open an issue on [GitHub](https://github.com/ananthpai1998/codechat/issues).
+For questions or support, please open an issue on [GitHub](https://github.com/earthscape/chat/issues).

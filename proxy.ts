@@ -28,6 +28,9 @@ import {
 // Route configuration
 const PUBLIC_ROUTES = [
   "/", // Home page - accessible to all users
+  "/intro", // Intro/landing page - accessible to all users
+  "/chat/key", // Key manager widget - accessible to all users
+  "/chat/keys", // Alias for key manager
   "/login", // Login page - accessible to unauthenticated users
   "/register", // Registration page - accessible to unauthenticated users
   "/ping", // Health check endpoint for testing
@@ -92,7 +95,7 @@ function getUserRole(user: any): "admin" | "user" {
   return user?.user_metadata?.role === "admin" ? "admin" : "user";
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   /*
@@ -101,6 +104,16 @@ export async function middleware(request: NextRequest) {
    */
   if (pathname.startsWith("/ping")) {
     return new Response("pong", { status: 200 });
+  }
+
+  // If Supabase is not configured, bypass auth entirely so the app loads in
+  // environments without Supabase credentials (key manager, settings, etc.
+  // remain usable; DB-backed features like chat history will error naturally).
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return NextResponse.next();
   }
 
   // Skip middleware for system routes and static files

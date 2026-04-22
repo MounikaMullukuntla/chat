@@ -150,6 +150,11 @@ async function getLoggingConfig(): Promise<any> {
   }
 
   try {
+    // Skip DB fetch when the service role key is absent (local dev without admin credentials).
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return { user_activity_logging_enabled: false, agent_activity_logging_enabled: false };
+    }
+
     // Fetch from database using admin client
     const { createAdminClient } = await import("@/lib/db/supabase-client");
     const supabase = createAdminClient();

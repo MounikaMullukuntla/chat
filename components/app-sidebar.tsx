@@ -140,7 +140,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar className="group-data-[side=left]:border-r-0">
+      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)]">
 
         {/* ── Tab row ── */}
         <SidebarHeader className="border-b border-sidebar-border p-2">

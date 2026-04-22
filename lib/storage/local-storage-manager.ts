@@ -12,7 +12,13 @@ import type {
   StorageQuotaInfo,
 } from "./types";
 import { StorageErrorType } from "./types";
-import { decryptValue, encryptValue, isEncrypted } from "./crypto";
+import {
+  decryptValue,
+  encryptValue,
+  encryptForServer,
+  isEncrypted,
+  isServerEncrypted,
+} from "./crypto";
 
 class LocalStorageManager implements StorageManager {
   private static instance: LocalStorageManager;
@@ -30,6 +36,10 @@ class LocalStorageManager implements StorageManager {
   // setAPIKey / removeAPIKey.  getAPIKey() reads from this cache so callers
   // always receive plaintext and do not need to handle async decryption.
   private _plaintextCache: Map<string, string> = new Map();
+
+  // Providers whose stored key is an RSA blob ("rsa:...") — the key exists in
+  // localStorage but can only be decrypted server-side.  Populated by initCrypto().
+  private _serverEncryptedProviders: Set<string> = new Set();
 
   private constructor() {
     this.setupAutoCleanup();
@@ -214,25 +224,38 @@ class LocalStorageManager implements StorageManager {
       localStorage.setItem("settings_api-keys-last-edit", String(Date.now()));
     } catch (_) {}
 
-    // Encrypt and persist in the background — non-blocking.
-    encryptValue(key)
-      .then((encrypted) => {
+    // Try RSA (server-only decryptable) first; fall back to browser AES.
+    encryptForServer(key)
+      .then((rsaBlob) => {
         const apiKeys =
           this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
-        apiKeys[provider] = encrypted;
+        apiKeys[provider] = rsaBlob;
         this.setStorageData("api-keys", apiKeys);
+        this._serverEncryptedProviders.add(provider);
       })
-      .catch((err) => {
-        // Encryption unavailable (e.g. in a non-browser environment) —
-        // fall back to writing plaintext.
-        console.warn(
-          "[storage] crypto unavailable, writing plaintext key",
-          err
-        );
-        const apiKeys =
-          this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") || {};
-        apiKeys[provider] = key;
-        this.setStorageData("api-keys", apiKeys);
+      .catch(() => {
+        // Server public key unavailable — fall back to browser AES encryption.
+        encryptValue(key)
+          .then((encrypted) => {
+            const apiKeys =
+              this.getStorageData<LocalStorageSchema["api-keys"]>(
+                "api-keys"
+              ) || {};
+            apiKeys[provider] = encrypted;
+            this.setStorageData("api-keys", apiKeys);
+          })
+          .catch((err) => {
+            console.warn(
+              "[storage] crypto unavailable, writing plaintext key",
+              err
+            );
+            const apiKeys =
+              this.getStorageData<LocalStorageSchema["api-keys"]>(
+                "api-keys"
+              ) || {};
+            apiKeys[provider] = key;
+            this.setStorageData("api-keys", apiKeys);
+          });
       });
 
     this.emitEvent({
@@ -354,23 +377,43 @@ class LocalStorageManager implements StorageManager {
       entries.map(async ([provider, stored]) => {
         if (!stored) return;
         try {
+          if (isServerEncrypted(stored)) {
+            // RSA blob — can only be decrypted server-side.  Mark as present.
+            this._serverEncryptedProviders.add(provider);
+            return;
+          }
           const plaintext = isEncrypted(stored)
             ? await decryptValue(stored)
-            : stored; // legacy plaintext — encrypt it now
+            : stored; // legacy plaintext — re-encrypt it now
           this._plaintextCache.set(provider, plaintext);
 
-          // Re-encrypt any plaintext values found in storage.
+          // Re-encrypt any plaintext values found in storage (try RSA first).
           if (!isEncrypted(stored)) {
-            const encrypted = await encryptValue(stored);
-            const current =
-              this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys") ||
-              {};
-            current[provider] = encrypted;
-            this.setStorageData("api-keys", current);
+            encryptForServer(plaintext)
+              .then((rsaBlob) => {
+                const current =
+                  this.getStorageData<LocalStorageSchema["api-keys"]>(
+                    "api-keys"
+                  ) || {};
+                current[provider] = rsaBlob;
+                this.setStorageData("api-keys", current);
+                this._serverEncryptedProviders.add(provider);
+              })
+              .catch(() =>
+                encryptValue(stored)
+                  .then((encrypted) => {
+                    const current =
+                      this.getStorageData<LocalStorageSchema["api-keys"]>(
+                        "api-keys"
+                      ) || {};
+                    current[provider] = encrypted;
+                    this.setStorageData("api-keys", current);
+                  })
+                  .catch(() => {})
+              );
           }
         } catch (err) {
           // Decryption failure — different browser/key or corrupted data.
-          // Remove the un-decryptable entry rather than surfacing garbage.
           console.warn(`[storage] could not decrypt key for ${provider}`, err);
           this._plaintextCache.delete(provider);
         }
@@ -414,6 +457,27 @@ class LocalStorageManager implements StorageManager {
       result[provider] = value;
     });
     return result;
+  }
+
+  /**
+   * Return the raw "rsa:<base64>" blob stored for this provider, or null if
+   * the stored value is not RSA-encrypted.  Used by chat.tsx to send the blob
+   * to the server for decryption when no plaintext key is in the session cache.
+   */
+  getEncryptedBlob(provider: APIProvider): string | null {
+    const apiKeys =
+      this.getStorageData<LocalStorageSchema["api-keys"]>("api-keys");
+    const raw = apiKeys?.[provider];
+    if (!raw || !isServerEncrypted(raw)) return null;
+    return raw;
+  }
+
+  /**
+   * Returns true if the provider has an RSA-encrypted key in localStorage
+   * (populated by initCrypto).
+   */
+  hasServerEncryptedKey(provider: APIProvider): boolean {
+    return this._serverEncryptedProviders.has(provider);
   }
 
   /**

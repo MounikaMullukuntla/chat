@@ -152,8 +152,16 @@ export async function POST(request: Request) {
         ? `\n\nNewly Attached Files:\n${fileContexts.join("\n\n")}`
         : "";
 
-    // Get API key and validate
-    const apiKey = request.headers.get("x-google-api-key");
+    // Get API key and validate.
+    // x-google-api-key: plaintext (from the session's in-memory cache).
+    // x-google-api-key-enc: RSA-encrypted blob (only server can decrypt).
+    const rawApiKey = request.headers.get("x-google-api-key");
+    const rawApiKeyEnc = request.headers.get("x-google-api-key-enc");
+    let apiKey = rawApiKey;
+    if (!apiKey && rawApiKeyEnc) {
+      const { decryptWithServerKey } = await import("@/lib/server-crypto");
+      apiKey = decryptWithServerKey(rawApiKeyEnc);
+    }
     const serverApiKey =
       process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
       process.env.GOOGLE_API_KEY ||

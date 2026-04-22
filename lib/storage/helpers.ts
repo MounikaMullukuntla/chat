@@ -57,6 +57,22 @@ export const apiKeyHelpers = {
   },
 
   /**
+   * Returns the raw "rsa:<base64>" blob for the provider if one exists in
+   * localStorage, otherwise null.  Use when getAPIKey() returns null but you
+   * need to send the key to the server for decryption.
+   */
+  getEncryptedBlob: (provider: APIProvider): string | null => {
+    return localStorageManager.getEncryptedBlob(provider);
+  },
+
+  /**
+   * Returns true if the provider has an RSA-encrypted key in localStorage.
+   */
+  hasServerEncryptedKey: (provider: APIProvider): boolean => {
+    return localStorageManager.hasServerEncryptedKey(provider);
+  },
+
+  /**
    * Validate API key format (basic validation)
    */
   validateFormat: (

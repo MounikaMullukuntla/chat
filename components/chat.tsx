@@ -109,8 +109,12 @@ export function Chat({
       api: "/api/chat",
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
-        // Get Google API key from localStorage
+        // Get Google API key — plaintext from session cache if available,
+        // otherwise the RSA-encrypted blob for server-side decryption.
         const googleApiKey = storage.apiKeys.get("google");
+        const googleApiKeyEnc = !googleApiKey
+          ? storage.apiKeys.getEncryptedBlob("google")
+          : null;
 
         // Get GitHub PAT from localStorage (for GitHub MCP agent)
         const githubPAT = storage.github.getToken();
@@ -135,6 +139,9 @@ export function Chat({
         const headers: Record<string, string> = {};
         if (googleApiKey) {
           headers["x-google-api-key"] = googleApiKey;
+        } else if (googleApiKeyEnc) {
+          // RSA blob — server decrypts it before calling the AI provider.
+          headers["x-google-api-key-enc"] = googleApiKeyEnc;
         }
         if (githubPAT) {
           headers["x-github-pat"] = githubPAT;
@@ -349,7 +356,7 @@ export function Chat({
 
   return (
     <>
-      <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
+      <div className="overscroll-behavior-contain flex h-[calc(100dvh-73px)] min-w-0 touch-pan-y flex-col bg-background">
         <ChatHeader
           chatId={id}
           isReadonly={isReadonly}
