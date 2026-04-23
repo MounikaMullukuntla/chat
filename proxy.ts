@@ -24,6 +24,7 @@ import {
   logPermissionError,
   logSystemError,
 } from "@/lib/errors/logger";
+import { isRepoWikiPath } from "@/lib/repo-wiki";
 
 // Route configuration
 const PUBLIC_ROUTES = [
@@ -62,6 +63,10 @@ const ADMIN_ROUTES = [
  * @returns true if the route is public, false otherwise
  */
 function isPublicRoute(pathname: string): boolean {
+  if (isRepoWikiPath(pathname)) {
+    return true;
+  }
+
   return PUBLIC_ROUTES.some((route) => {
     if (route === "/") {
       // Exact match for home page to avoid matching all routes

@@ -3,6 +3,7 @@
 import { GitBranch, GitFork, Globe, Lock, Search, Star, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { RepoWikiLink } from "@/components/repo-wiki-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -312,18 +313,27 @@ export function GitHubContextIntegration({
                     }
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center gap-2">
-                      <GitBranch className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <span className="truncate font-medium text-sm">
-                        {repo.full_name}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {repo.private ? (
-                          <Lock className="h-3 w-3 text-amber-500" />
-                        ) : (
-                          <Globe className="h-3 w-3 text-green-500" />
-                        )}
+                    <div className="mb-1 flex items-start gap-2">
+                      <GitBranch className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-2">
+                          <span className="truncate font-medium text-sm">
+                            {repo.full_name}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {repo.private ? (
+                              <Lock className="h-3 w-3 text-amber-500" />
+                            ) : (
+                              <Globe className="h-3 w-3 text-green-500" />
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      <RepoWikiLink
+                        repoName={repo.name}
+                        githubAccount={repo.owner.login}
+                        className="-mr-1 -mt-1"
+                      />
                     </div>
                     {repo.description && (
                       <p className="mb-2 line-clamp-2 text-muted-foreground text-xs">

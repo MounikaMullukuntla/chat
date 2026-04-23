@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { useLocalStorage } from "usehooks-ts";
+import { RepoWikiLink } from "@/components/repo-wiki-link";
 import { useRepos } from "@/hooks/use-repos";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import type { Repo } from "@/lib/repos";
+import { DEFAULT_CODECHAT_GITHUB_ACCOUNT } from "@/lib/repo-wiki";
 import { storage } from "@/lib/storage";
 import { GitHubContextIntegration } from "@/lib/github-components";
 import type { GitHubRepo } from "@/lib/types";
@@ -379,23 +381,31 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                       </p>
                     ) : (
                       availableRepos.map((repo) => (
-                        <label
+                        <div
                           key={repo.name}
-                          className="flex cursor-pointer items-center gap-2.5 rounded-md mx-1 px-2 py-1.5 hover:bg-muted transition-colors"
+                          className="mx-1 flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
                         >
                           <input
+                            id={`select-repo-${repo.name}`}
                             type="checkbox"
                             checked={isChecked(repo)}
                             onChange={() => handleToggleRepo(repo)}
                             className="size-4 flex-shrink-0 cursor-pointer accent-primary"
                           />
-                          <span className="truncate text-sm">
+                          <label
+                            htmlFor={`select-repo-${repo.name}`}
+                            className="min-w-0 flex-1 cursor-pointer truncate text-sm"
+                          >
                             {repo.name}
                             {repo.label.includes("(site)") && (
                               <span className="ml-1 text-xs text-blue-400">(site)</span>
                             )}
-                          </span>
-                        </label>
+                          </label>
+                          <RepoWikiLink
+                            repoName={repo.name}
+                            githubAccount={DEFAULT_CODECHAT_GITHUB_ACCOUNT}
+                          />
+                        </div>
                       ))
                     )}
                   </div>
