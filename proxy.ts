@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   "/chat/key", // Legacy key manager path - redirects to /chat/keys
   "/chat/keys", // Key manager widget
   "/keys", // Key manager asset route + root shortcut
+  "/api/repos",         // Public: available repos list (no auth needed, reads local files)
   "/api/server-keys",   // Public: which provider keys are present in server .env
   "/api/validate-key",  // Public: validate a user-supplied API key against provider
   "/api/github-token",  // Public: server GitHub PAT for the GitHub integration

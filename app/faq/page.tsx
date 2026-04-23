@@ -113,7 +113,7 @@ export default function FAQPage() {
         }
     ];
 
-    const sysMsg = `Console note: The "Unexpected token '<'" JSON parse error is expected for unauthenticated visitors. The /api/repos endpoint redirects to /login, which returns an HTML page instead of JSON — causing the parse failure. This is harmless and unrelated to any page changes.`;
+    const sysMsg = ``;
 
     return (
         <div className="min-h-screen bg-background">
