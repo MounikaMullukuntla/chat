@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 
 const DEV_TOOLS_OFFSET_PX = 30;
-const DEV_TOOLS_LEFT_OFFSET_PX = 6;
-const DEV_TOOLS_BADGE_SIZE_PX = 18;
-const DEV_TOOLS_MARK_SCALE = 0.25;
+const DEV_TOOLS_LEFT_OFFSET_PX = 2;
+const DEV_TOOLS_BADGE_SIZE_PX = 22;
+const DEV_TOOLS_MARK_SCALE = 0.75;
 
 export function NextDevToolsOffset() {
   useEffect(() => {
@@ -26,7 +26,7 @@ export function NextDevToolsOffset() {
         badgeRoot.style.marginBottom = `${DEV_TOOLS_OFFSET_PX}px`;
         badgeRoot.style.marginLeft = `-${DEV_TOOLS_LEFT_OFFSET_PX}px`;
         badgeRoot.style.setProperty("--size", `${DEV_TOOLS_BADGE_SIZE_PX}px`);
-        nextMark.style.transform = `scale(${DEV_TOOLS_MARK_SCALE})`;
+        nextMark.style.transform = `translateX(-5px) scale(${DEV_TOOLS_MARK_SCALE})`;
         nextMark.style.transformOrigin = "center";
       });
     };
