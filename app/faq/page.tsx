@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/site-footer";
 import { VercelIcon } from "@/components/icons";
 import {
-    DollarSign,
     Key,
     Shield,
     Zap,
@@ -17,8 +16,8 @@ import {
 export default function FAQPage() {
     const faqs = [
         {
-            category: "Pricing",
-            icon: DollarSign,
+            category: "Bring your own keys",
+            icon: Key,
             gradient: "from-green-500 to-emerald-500",
             questions: [
                 {
@@ -117,7 +116,7 @@ export default function FAQPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Hero Section */}
-            <section className="px-4 pt-8 pb-20">
+            <section className="px-4 pt-4 pb-20">
                 <div className="container mx-auto text-center">
                     <div className="animate-fade-in-up">
                         <h1 className="mb-6 font-bold text-5xl md:text-7xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
@@ -169,11 +168,12 @@ export default function FAQPage() {
             </section>
 
             {/* FAQ Categories */}
-            <section className="px-4 py-16">
+            <section className="px-4 pt-0 pb-16">
                 <div className="container mx-auto">
                     <div className="space-y-16">
                         {faqs.map((category, categoryIndex) => {
                             const CategoryIcon = category.icon;
+                            const isBringYourOwnKeys = category.category === "Bring your own keys";
                             return (
                                 <div
                                     key={category.category}
@@ -183,11 +183,21 @@ export default function FAQPage() {
                                     }}
                                 >
                                     {/* Category Header */}
-                                    <div className="mb-8 flex items-center gap-4">
-                                        <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${category.gradient}`}>
-                                            <CategoryIcon className="h-6 w-6 text-white" />
+                                    <div className="mb-8 flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${category.gradient}`}>
+                                                <CategoryIcon className="h-6 w-6 text-white" />
+                                            </div>
+                                            <h2 className="font-bold text-3xl">{category.category}</h2>
                                         </div>
-                                        <h2 className="font-bold text-3xl">{category.category}</h2>
+                                        {isBringYourOwnKeys && (
+                                            <Link
+                                                href="/keys"
+                                                className="ml-auto text-sm font-medium text-primary hover:underline"
+                                            >
+                                                Add Keys
+                                            </Link>
+                                        )}
                                     </div>
 
                                     {/* Questions */}

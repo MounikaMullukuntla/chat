@@ -19,12 +19,10 @@ export default async function ChatLayout({
   return (
     <DataStreamProvider>
       <TopNav isWebroot={isWebroot} isLoggedIn={true} />
-      <div className="pt-[73px]">
-        <SidebarProvider defaultOpen={!isCollapsed}>
-          <AppSidebar isWebroot={isWebroot} />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
-      </div>
+      <SidebarProvider defaultOpen={!isCollapsed}>
+        <AppSidebar isWebroot={isWebroot} />
+        <SidebarInset className="pt-[73px]">{children}</SidebarInset>
+      </SidebarProvider>
     </DataStreamProvider>
   );
 }

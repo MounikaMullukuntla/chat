@@ -25,7 +25,7 @@ export default function FeaturesPage() {
     const mainFeatures = [
         {
             icon: MessageSquare,
-            title: "Advanced AI Conversations",
+            title: "Flexible AI Integrations",
             description: "Engage with cutting-edge language models including GPT-4, Claude, and Gemini. Experience natural, context-aware conversations that understand nuance and maintain coherent dialogue across multiple turns.",
             gradient: "from-purple-500 to-pink-500",
             highlights: [
@@ -134,7 +134,7 @@ export default function FeaturesPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Hero Section */}
-            <section className="px-4 pt-8 pb-8">
+            <section className="px-4 pt-4 pb-8">
                 <div className="container mx-auto text-center">
                     <div className="animate-fade-in-up">
                         <h1 className="mb-6 font-bold text-5xl md:text-7xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">

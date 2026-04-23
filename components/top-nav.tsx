@@ -9,11 +9,11 @@ interface TopNavProps {
 export function TopNav({ isWebroot, isLoggedIn = false }: TopNavProps) {
   return (
     <nav className="fixed top-0 right-0 left-0 z-50 border-b bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex items-center justify-between px-4 py-4">
+      <div className="flex w-full items-center justify-between gap-4 px-4 py-4">
         <div className="font-bold text-xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           Earthscape
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button asChild variant="ghost">
             <Link href="/intro">Intro</Link>
           </Button>

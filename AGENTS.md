@@ -207,7 +207,7 @@ The sidebar (`components/app-sidebar.tsx`) has a top icon row defined in the `TA
 | `sources` | `Library` | Sources | Repo checklist for RAG context selection |
 | `chats` | `MessageSquare` | List Chats | Chat history (`SidebarHistory`) with New Chat and Delete All |
 | `kb` | `BookOpen` | Knowledge Base | Suggested questions that pre-populate the chat input |
-| `visibility` | `BrainCog` | AI Models & API Keys | All provider models with availability indicators + key management (`KeyManagerPanel`) |
+| `visibility` | `BrainCog` | AI Models & Keys | All provider models with availability indicators + key management (`KeyManagerPanel`) |
 
 The `visibility` tab (formerly using `Lock`, label "Visibility") is being repurposed to show the full AI model list and key management UI — see `team/key/PLAN.md` Phase 3. The Private/Public visibility toggle moves into that panel alongside the model list.
 

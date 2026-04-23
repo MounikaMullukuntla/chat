@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BookOpen, BrainCog, Check, Globe, Library, Loader2, Lock, MoreHorizontal, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, BrainCog, Check, Globe, Library, Loader2, Lock, MoreHorizontal, PanelLeft, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/hooks";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,15 +77,15 @@ const VISIBILITY_OPTIONS: Array<{
 ];
 
 const TABS = [
-  { id: "sources" as ActiveTab, icon: <Library size={15} />, label: "Sources" },
-  { id: "chats" as ActiveTab, icon: <MessageSquare size={15} />, label: "List Chats" },
-  { id: "kb" as ActiveTab, icon: <BookOpen size={15} />, label: "Knowledge Base" },
-  { id: "visibility" as ActiveTab, icon: <BrainCog size={15} />, label: "AI Models & API Keys" },
+  { id: "sources" as ActiveTab, icon: <Library size={16} />, label: "Sources", description: "Choose local and GitHub code sources." },
+  { id: "chats" as ActiveTab, icon: <MessageSquare size={16} />, label: "Chats", description: "Browse history and start a new chat." },
+  { id: "kb" as ActiveTab, icon: <BookOpen size={16} />, label: "Knowledge Base", description: "Use common prompts and starter questions." },
+  { id: "visibility" as ActiveTab, icon: <BrainCog size={16} />, label: "Models & Keys", description: "Open model settings and key management." },
 ];
 
 export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
   const router = useRouter();
-  const { setOpenMobile, setOpen } = useSidebar();
+  const { isMobile, setOpenMobile, setOpen, state, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const { user } = useAuth();
 
@@ -96,7 +97,7 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
     initialVisibilityType: "private",
   });
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("sources");
+  const [activeTab, setActiveTab] = useState<ActiveTab | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [broadened, setBroadened] = useState(false);
   const [noneSelected, setNoneSelected] = useState(false);
@@ -209,22 +210,43 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
 
   return (
     <>
-      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)] relative">
+      {state === "collapsed" && !isMobile && (
+        <Button
+          className="fixed top-[84px] left-3 z-30 h-9 w-9 rounded-full border border-border bg-background shadow-sm"
+          data-testid="sidebar-reopen-button"
+          onClick={toggleSidebar}
+          size="icon"
+          variant="outline"
+        >
+          <PanelLeft size={16} />
+          <span className="sr-only">Reopen Sidebar</span>
+        </Button>
+      )}
 
-        {/* ── Tab row ── */}
+      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)] relative">
         <SidebarHeader className="border-b border-sidebar-border p-2">
           <div className="flex items-center gap-1.5">
+            {activeTab && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(null)}
+                    className="flex size-8 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">All Topics</TooltipContent>
+              </Tooltip>
+            )}
             {TABS.map((tab) => (
               <Tooltip key={tab.id}>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex size-8 items-center justify-center rounded-full border transition-colors ${
-                      activeTab === tab.id
-                        ? "border-border bg-muted text-foreground"
-                        : "border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
+                    className="flex size-8 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     {tab.icon}
                   </button>
@@ -239,6 +261,29 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
         </SidebarHeader>
 
         <SidebarContent className="overflow-hidden">
+          {!activeTab && (
+            <div className="flex h-full flex-col overflow-y-auto p-2">
+              <div className="space-y-2">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-sidebar-border bg-background px-3 py-3 text-left transition-colors hover:bg-muted"
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+                      {tab.icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">{tab.label}</div>
+                      <div className="text-xs text-muted-foreground">{tab.description}</div>
+                    </div>
+                    <ArrowRight size={15} className="shrink-0 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Sources ── */}
           {activeTab === "sources" && (
@@ -439,11 +484,11 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
             </div>
           )}
 
-          {/* ── AI Models & API Keys ── */}
+          {/* ── AI Models & Keys ── */}
           {activeTab === "visibility" && (
             <div className="flex h-full flex-col overflow-hidden">
               <div className="flex items-center px-3 py-2 border-b border-sidebar-border">
-                <span className="text-sm font-semibold">AI Models &amp; API Keys</span>
+                <span className="text-sm font-semibold">AI Models &amp; Keys</span>
               </div>
               <div className="flex-1 overflow-y-auto py-1">
                 <div className="px-3 py-2 border-b border-sidebar-border flex items-center gap-3">

@@ -43,14 +43,6 @@ export default function KeysPage() {
 
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-css-tags */}
-      <link rel="stylesheet" href="/keys/style.css" />
-
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      />
-
       <div className="key-page">
         <div className="key-page-header">
           <h1>API Key Settings</h1>
@@ -69,8 +61,21 @@ export default function KeysPage() {
               }}
             >
               No server-side API keys detected. Set environment variables (e.g.{" "}
-              <code>ANTHROPIC_API_KEY</code>) in your Vercel project settings to
-              enable the server badge.
+              <code>ANTHROPIC_API_KEY</code>) in your{" "}
+              <a
+                href="https://vercel.com/docs/projects/environment-variables/managing-environment-variables"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Vercel project settings
+              </a>{" "}
+              to enable the server badge. Browser-saved keys stay encrypted in
+              local storage and IndexedDB, so they will not appear as server
+              {" "}
+              <code>.env</code>
+              {" "}
+              badges unless the deployed server can read the same provider keys
+              from its own environment.
             </p>
           )}
         </div>

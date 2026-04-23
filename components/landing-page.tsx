@@ -16,7 +16,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-background overflow-hidden">
 
       {/* Hero Section with Animated Background */}
-      <section className="relative px-4 pt-16 pb-24 overflow-hidden">
+      <section className="relative px-4 pt-8 pb-24 overflow-hidden">
         {/* Animated gradient orbs */}
         <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl animate-pulse" />
         <div className="absolute top-40 right-10 h-96 w-96 rounded-full bg-pink-500/20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -32,14 +32,13 @@ export function LandingPage() {
 
             {/* Main Heading */}
             <h1 className="mb-6 font-bold text-6xl md:text-8xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent leading-tight">
-              AI-Powered Chat
+              Earthscape Chat
             </h1>
 
             {/* Subheading */}
             <p className="mx-auto mb-8 max-w-3xl text-muted-foreground text-xl md:text-2xl leading-relaxed">
-              Experience the future of conversation with our advanced AI chatbot.
-              Get instant answers, creative assistance, and intelligent
-              conversations—completely <span className="font-semibold text-green-600">free</span>.
+              Abundance engineering, creative planning, and intelligent orchestration
+              —completely <span className="font-semibold text-green-600">free</span>.
             </p>
 
             {/* CTA Buttons */}

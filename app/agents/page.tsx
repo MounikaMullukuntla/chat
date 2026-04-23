@@ -155,7 +155,7 @@ export default function AgentsPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Hero Section */}
-            <section className="px-4 pt-8 pb-8">
+            <section className="px-4 pt-4 pb-8">
                 <div className="container mx-auto text-center">
                     <div className="animate-fade-in-up">
                         <h1 className="mb-6 font-bold text-5xl md:text-7xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">

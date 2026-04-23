@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Toaster } from "sonner";
+import { NextDevToolsOffset } from "@/components/next-dev-tools-offset";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth/context";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <Toaster position="top-center" />
+            <NextDevToolsOffset />
             {children}
           </AuthProvider>
         </ThemeProvider>

@@ -33,7 +33,13 @@
 
   // ── RSA-OAEP server-key encryption (Phase 9) ────────────────────────────────
 
-  var PUBLIC_KEY_URL = (location.port === '3000' || location.port === '8888')
+  var USE_APP_API = (
+    location.protocol === 'https:' ||
+    location.port === '3000' ||
+    location.port === '8888'
+  );
+
+  var PUBLIC_KEY_URL = USE_APP_API
     ? '/api/public-key'
     : null; // Not available when served from the Python static server
 
@@ -79,11 +85,11 @@
 
   // ── Server keys (.env) ──────────────────────────────────────────────────────
 
-  var SERVER_KEYS_URL = (location.port === '3000' || location.port === '8888')
+  var SERVER_KEYS_URL = USE_APP_API
     ? '/api/server-keys'
     : 'http://localhost:8081/api/config/current';
 
-  var VALIDATE_KEY_URL = (location.port === '3000' || location.port === '8888')
+  var VALIDATE_KEY_URL = USE_APP_API
     ? '/api/validate-key'
     : null;
 
