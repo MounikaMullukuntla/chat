@@ -1,14 +1,16 @@
 "use client";
 
-// /chat/keys — Key Manager page
+// /chat/keys — Key Manager page (inside the chat layout/navigation).
 //
-// In the webroot, server.mjs intercepts /chat/keys/ and serves the static
-// chat/keys/index.html directly (so this file is never reached there).
+// Accessible without login — listed as a public route in proxy.ts.
 //
-// On Vercel (or any plain `next start` deployment), server.mjs does not run,
-// so Next.js routing hits this page instead. It loads the same vanilla-JS
-// widget assets from the /keys/* route, which serves files directly from
-// chat/keys/ without relying on a public symlink that breaks Vercel builds.
+// In the webroot, server.mjs serves /keys/* statically (standalone form with
+// localsite navigation). /chat/keys falls through to Next.js so it renders
+// inside the sidebar layout, giving logged-out users the same key manager form
+// embedded in the chat navigation.
+//
+// On Vercel (or any plain `next start` deployment), server.mjs does not run;
+// Next.js routing hits this page for both /keys and /chat/keys.
 
 import Script from "next/script";
 import { useEffect, useState } from "react";

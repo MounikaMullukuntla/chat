@@ -16,7 +16,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-background overflow-hidden">
 
       {/* Hero Section with Animated Background */}
-      <section className="relative px-4 pt-8 pb-24 overflow-hidden">
+      <section className="relative px-4 pt-8 pb-24 overflow-hidden @container">
         {/* Animated gradient orbs */}
         <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl animate-pulse" />
         <div className="absolute top-40 right-10 h-96 w-96 rounded-full bg-pink-500/20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -31,7 +31,7 @@ export function LandingPage() {
             </div>
 
             {/* Main Heading */}
-            <h1 className="mb-6 font-bold text-6xl md:text-8xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent leading-tight">
+            <h1 className="mb-6 font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent leading-tight text-2xl @sm:text-4xl @md:text-5xl @xl:text-7xl">
               Earthscape Chat
             </h1>
 
@@ -45,7 +45,7 @@ export function LandingPage() {
             <div className="flex flex-wrap justify-center gap-4 mb-12">
               <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-lg px-8 py-6 group">
                 <Link href="/register">
-                  Get Started Free
+                  Get Started
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>

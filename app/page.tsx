@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { LandingPage } from "@/components/landing-page";
+import { PublicLayout } from "@/components/public-layout";
 
 export default async function RootPage() {
   const cookieStore = await cookies();
@@ -25,5 +26,9 @@ export default async function RootPage() {
     if (user) redirect("/chat");
   }
 
-  return <LandingPage />;
+  return (
+    <PublicLayout>
+      <LandingPage />
+    </PublicLayout>
+  );
 }

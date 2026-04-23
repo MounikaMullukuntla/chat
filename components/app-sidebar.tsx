@@ -149,11 +149,12 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
     }
   };
 
-  // Apply persisted sidebar width via CSS variable
+  // Keep --sidebar-width CSS variable in sync (used by any residual CSS; re-run on state change
+  // so React's SidebarProvider re-render doesn't reset it back to the default 16rem)
   useEffect(() => {
     const wrapper = document.querySelector(".group\\/sidebar-wrapper") as HTMLElement | null;
     if (wrapper) wrapper.style.setProperty("--sidebar-width", `${sidebarWidth}px`);
-  }, [sidebarWidth]);
+  }, [sidebarWidth, state]);
 
   // Open the GitHub sources panel when the toolbar button dispatches the event
   useEffect(() => {
@@ -181,7 +182,8 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
       const startX = e.clientX;
       const startWidth = sidebarWidth;
       const onMove = (ev: PointerEvent) => {
-        const w = Math.max(180, Math.min(560, startWidth + ev.clientX - startX));
+        const maxWidth = Math.floor(window.innerWidth * 0.75);
+        const w = Math.max(180, Math.min(maxWidth, startWidth + ev.clientX - startX));
         setSidebarWidth(w);
         const wrapper = document.querySelector(".group\\/sidebar-wrapper") as HTMLElement | null;
         if (wrapper) wrapper.style.setProperty("--sidebar-width", `${w}px`);
@@ -225,7 +227,7 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
         </Button>
       )}
 
-      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)] relative">
+      <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)]">
         <SidebarHeader className="border-b border-sidebar-border p-2">
           <div className="flex items-center gap-1.5">
             {activeTab && (

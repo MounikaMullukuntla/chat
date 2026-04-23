@@ -118,6 +118,7 @@ function serveFile(filePath, res) {
 
 function sendJson(res, statusCode, data) {
   res.statusCode = statusCode
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   res.end(JSON.stringify(data))
 }
@@ -200,6 +201,24 @@ async function validateProviderKey(provider, key) {
 }
 
 async function tryInternalApi(req, pathname, res) {
+  if (pathname === '/api/status' && req.method === 'GET') {
+    sendJson(res, 200, {
+      ok: true,
+      service: 'chat-webroot-dev-server',
+      server: 'node',
+      mode: dev ? 'development' : 'production',
+      port: PORT,
+      hostname: HOSTNAME,
+      chatRoot: '/',
+      chatRoutes: ['/chat', '/chat/keys/', '/settings'],
+      staticRoots: ['/localsite/', '/team/', '/requests/', '/realitystream/', '/data-pipeline/', '/home/'],
+      cwd: CHAT_DIR,
+      webroot: WEBROOT,
+      timestamp: new Date().toISOString(),
+    })
+    return true
+  }
+
   if (pathname === '/api/server-keys' && req.method === 'GET') {
     const keys = process.env.SERVER_KEYS_JSON ? JSON.parse(process.env.SERVER_KEYS_JSON) : []
     sendJson(res, 200, keys)
@@ -249,19 +268,18 @@ function tryStatic(pathname, res) {
   const segments = pathname.split('/').filter(Boolean)
   const top = segments[0]
 
-  // /chat/keys/ and /keys/ — standalone key manager widget.
-  // Must be checked before the generic static-repo logic because the Next.js
-  // route tree also handles /chat/* and /keys* in hosted deployments.
+  // /keys/ — standalone key manager widget (static HTML with localsite nav).
+  // /chat/key — legacy path, redirect to /chat/keys (handled by Next.js).
+  // /chat/keys — falls through to Next.js so it renders inside the chat layout.
   const isLegacyChatKeyRoute = top === 'chat' && segments[1] === 'key'
-  const isChatKeysRoute = top === 'chat' && segments[1] === 'keys'
   const isKeysRoute = top === 'keys'
   if (isLegacyChatKeyRoute) {
     redirect(pathname.replace(/^\/chat\/key(?=\/|$)/, '/chat/keys'), res)
     return true
   }
 
-  if (isChatKeysRoute || isKeysRoute) {
-    const relativeSegments = isChatKeysRoute ? segments.slice(2) : segments.slice(1)
+  if (isKeysRoute) {
+    const relativeSegments = segments.slice(1)
     const filePath = join(CHAT_DIR, 'keys', ...relativeSegments)
     try {
       const stat = statSync(filePath)
