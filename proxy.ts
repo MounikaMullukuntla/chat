@@ -171,45 +171,51 @@ export async function proxy(request: NextRequest) {
 
   // Handle session validation errors
   if (error) {
-    // Only log authentication errors for protected/admin routes
-    // For public routes, missing authentication is expected and not an error
-    const requiresAuth = !isPublicRoute(pathname);
+    // "Auth session missing" means no session cookie — treat as unauthenticated,
+    // not as a validation failure, so we fall through to normal unauth logic below.
+    const isSessionMissing =
+      error.name === "AuthSessionMissingError" ||
+      error.message?.includes("Auth session missing");
 
-    if (requiresAuth) {
-      console.error(
-        `Middleware session validation error on protected route ${pathname}:`,
-        error.message || error
-      );
+    if (!isSessionMissing) {
+      // Only log and surface real validation errors on protected routes
+      const requiresAuth = !isPublicRoute(pathname);
 
-      // Log the session validation error for protected routes
-      await logSystemError(
-        ErrorCategory.SESSION_EXPIRED,
-        `Middleware session validation failed on protected route: ${error.message}`,
-        {
-          pathname,
-          error: error.message,
-          userAgent: request.headers.get("user-agent"),
-          ip:
-            request.headers.get("x-forwarded-for") ||
-            request.headers.get("x-real-ip") ||
-            "unknown",
-          timestamp: new Date().toISOString(),
-        },
-        ErrorSeverity.WARNING
-      );
+      if (requiresAuth) {
+        console.error(
+          `Middleware session validation error on protected route ${pathname}:`,
+          error.message || error
+        );
 
-      // Redirect to login with error parameter
-      const redirectUrl = encodeURIComponent(pathname);
-      return NextResponse.redirect(
-        new URL(
-          `/login?redirectTo=${redirectUrl}&error=session_error`,
-          request.url
-        )
-      );
+        await logSystemError(
+          ErrorCategory.SESSION_EXPIRED,
+          `Middleware session validation failed on protected route: ${error.message}`,
+          {
+            pathname,
+            error: error.message,
+            userAgent: request.headers.get("user-agent"),
+            ip:
+              request.headers.get("x-forwarded-for") ||
+              request.headers.get("x-real-ip") ||
+              "unknown",
+            timestamp: new Date().toISOString(),
+          },
+          ErrorSeverity.WARNING
+        );
+
+        const redirectUrl = encodeURIComponent(pathname);
+        return NextResponse.redirect(
+          new URL(
+            `/login?redirectTo=${redirectUrl}&error=session_error`,
+            request.url
+          )
+        );
+      }
+
+      // Public route with non-missing error — allow through silently
+      return response;
     }
-
-    // For public routes, allow access silently (no logging needed)
-    return response;
+    // Session missing: fall through with user === null
   }
 
   // Check if user is authenticated

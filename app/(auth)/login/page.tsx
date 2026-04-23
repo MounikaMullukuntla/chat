@@ -162,9 +162,15 @@ function LoginForm() {
     );
   }
 
-  // Don't render form if user is already authenticated (will redirect)
+  // Keep showing spinner while redirect to /chat is in flight
   if (user) {
-    return null;
+    return (
+      <div className="flex h-dvh w-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2 dark:border-gray-100" />
+        </div>
+      </div>
+    );
   }
 
   return (
