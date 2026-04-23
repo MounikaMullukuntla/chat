@@ -13,7 +13,7 @@ import type {
   Session,
   User,
 } from "@supabase/supabase-js";
-import { createClient } from "@/lib/db/supabase-client";
+import { createClient, isSupabaseConfigured } from "@/lib/db/supabase-client";
 
 // Types for user metadata
 export type UserMetadata = {
@@ -242,6 +242,7 @@ export async function signOut(): Promise<{ error: AuthError | null }> {
  * }
  */
 export async function getSession(): Promise<Session | null> {
+  if (!isSupabaseConfigured) return null;
   try {
     const supabase = createClient();
     const {
@@ -268,6 +269,7 @@ export async function getSession(): Promise<Session | null> {
  * }
  */
 export async function getUser(): Promise<User | null> {
+  if (!isSupabaseConfigured) return null;
   try {
     const supabase = createClient();
     const {
@@ -355,13 +357,14 @@ export async function isAdmin(user?: User | null): Promise<boolean> {
 export function onAuthStateChange(
   callback: (event: AuthChangeEvent, session: Session | null) => void
 ) {
+  if (!isSupabaseConfigured) return () => {};
+
   const supabase = createClient();
 
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(callback);
 
-  // Return unsubscribe function
   return () => {
     subscription.unsubscribe();
   };
