@@ -499,17 +499,26 @@
     body.className = 'key-provider-body';
     body.hidden = !startOpen;
 
-    var keyPresent = hasKey(provider.id);
+    var browserKeyPresent = hasKey(provider.id);
+    var keyPresent = browserKeyPresent || _serverKeys.has(provider.id);
 
-    // Key input section — hidden by default when key is already set
+    // Key input section — hidden by default when browser key is already set
     var keyRow = document.createElement('div');
     keyRow.className = 'key-key-row';
-    keyRow.hidden = keyPresent;
+    keyRow.hidden = browserKeyPresent;
 
     var label = document.createElement('div');
     label.className = 'key-key-label';
-    label.innerHTML = '<span>API Key</span>' +
-      '<a class="key-get-key-link" href="' + escapeAttr(provider.getKeyUrl) + '" target="_blank" rel="noopener">Get key ↗</a>';
+    var labelSpan = document.createElement('span');
+    labelSpan.textContent = 'API Key';
+    var getKeyLink = document.createElement('a');
+    getKeyLink.className = 'key-get-key-link';
+    getKeyLink.href = provider.getKeyUrl;
+    getKeyLink.target = '_blank';
+    getKeyLink.rel = 'noopener';
+    getKeyLink.textContent = (keyPresent ? 'Get new key ↗' : 'Get key ↗');
+    label.appendChild(labelSpan);
+    label.appendChild(getKeyLink);
 
     var inputWrap = document.createElement('div');
     inputWrap.className = 'key-key-input-wrap';
@@ -577,6 +586,7 @@
         _validatedKeys.delete(provider.id);
         _invalidKeys.delete(provider.id);
         showStatus(statusMsg, 'Key removed.', 'ok');
+        getKeyLink.textContent = 'Get key ↗';
         refreshHeaderStatus();
         return;
       }
@@ -584,6 +594,7 @@
       _validatedKeys.delete(provider.id);
       _invalidKeys.delete(provider.id);
       showStatus(statusMsg, 'Key saved. Validating…', 'ok');
+      getKeyLink.textContent = 'Get new key ↗';
       refreshHeaderStatus();
       _validateKey(provider.id, val);
     }

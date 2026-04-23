@@ -17,6 +17,7 @@ import {
   getChatHistoryPaginationKey,
   SidebarHistory,
 } from "@/components/sidebar-history";
+import { SidebarToggle } from "@/components/sidebar-toggle";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import {
   Sidebar,
@@ -231,6 +232,9 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                 <TooltipContent side="bottom">{tab.label}</TooltipContent>
               </Tooltip>
             ))}
+            <div className="ml-auto">
+              <SidebarToggle />
+            </div>
           </div>
         </SidebarHeader>
 
@@ -257,13 +261,13 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                       onClick={() => { setBroadened(false); setShowGithubSources(false); }}
                       className={!showGithubSources ? "font-medium" : ""}
                     >
-                      {!showGithubSources && "✓ "}CodeChat Repos
+                      {!showGithubSources ? "✓ " : "\u00a0\u00a0 "}CodeChat Repos
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setShowGithubSources(true)}
                       className={showGithubSources ? "font-medium" : ""}
                     >
-                      {showGithubSources && "✓ "}Anyone's Repo
+                      {showGithubSources ? "✓ " : "\u00a0\u00a0 "}Anyone's Repo
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -442,13 +446,21 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                 <span className="text-sm font-semibold">AI Models &amp; API Keys</span>
               </div>
               <div className="flex-1 overflow-y-auto py-1">
-                <div className="px-3 py-2 border-b border-sidebar-border">
+                <div className="px-3 py-2 border-b border-sidebar-border flex items-center gap-3">
                   <a
                     href="/settings"
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <BrainCog size={14} />
-                    Manage API Keys &amp; Models →
+                    Settings
+                  </a>
+                  <span className="text-muted-foreground/40 select-none">·</span>
+                  <a
+                    href="/chat/key"
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Models and Keys
+                    <ArrowRight size={13} />
                   </a>
                 </div>
                 <p className="px-3 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Chat Visibility</p>

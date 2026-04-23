@@ -375,5 +375,6 @@
   flex-shrink: 0;
   font-size: 16px;
   color: var(--key-text-muted);
-  line-height: 1.5;
+  line-height: 1;
+  margin-top: 0.15em;
 }
