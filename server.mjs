@@ -29,6 +29,7 @@ import { createServer } from 'node:http'
 import { parse } from 'node:url'
 import { join, extname, resolve, dirname } from 'node:path'
 import { createReadStream, statSync, existsSync } from 'node:fs'
+import { createPrivateKey, createPublicKey } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import next from 'next'
 
@@ -53,6 +54,13 @@ try {
 process.env.WEBROOT = 'true'
 // Expose the webroot path so server code can locate shared files (.gitmodules, .siterepos).
 process.env.WEBROOT_PATH = WEBROOT
+// Use polling in the unified webroot server to avoid exhausting macOS file
+// watcher limits when developing inside the larger webroot checkout.
+process.env.WATCHPACK_POLLING = 'true'
+// Keep Next.js file watching scoped to the chat repo rather than the entire
+// surrounding webroot. The server is often launched from /webroot, which can
+// otherwise exhaust local file-watch limits and leave only _not-found mounted.
+process.chdir(CHAT_DIR)
 
 // Pre-compute which provider keys are present in the environment so the
 // /api/server-keys route can read a single env var without needing dotenv again.
@@ -108,16 +116,153 @@ function serveFile(filePath, res) {
   createReadStream(filePath).pipe(res)
 }
 
+function sendJson(res, statusCode, data) {
+  res.statusCode = statusCode
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  res.end(JSON.stringify(data))
+}
+
+function getServerPublicKeyJwk() {
+  const pem = process.env.BROWSER_ENCRYPTION_PRIVATE_KEY
+  if (!pem) return null
+  try {
+    const privateKey = createPrivateKey({
+      key: pem.replace(/\\n/g, '\n'),
+      format: 'pem',
+    })
+    const publicKey = createPublicKey(privateKey)
+    return publicKey.export({ format: 'jwk' })
+  } catch {
+    return null
+  }
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = ''
+    req.on('data', (chunk) => { body += chunk })
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {})
+      } catch (error) {
+        reject(error)
+      }
+    })
+    req.on('error', reject)
+  })
+}
+
+async function validateProviderKey(provider, key) {
+  switch (provider) {
+    case 'anthropic': {
+      const r = await fetch('https://api.anthropic.com/v1/models', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      })
+      if (r.status === 200) return true
+      if (r.status === 401 || r.status === 403) return false
+      return null
+    }
+    case 'openai': {
+      const r = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (r.status === 200) return true
+      if (r.status === 401 || r.status === 403) return false
+      return null
+    }
+    case 'google': {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`
+      )
+      if (r.status === 200) return true
+      if (r.status === 400 || r.status === 403) return false
+      return null
+    }
+    case 'xai': {
+      const r = await fetch('https://api.x.ai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (r.status === 200) return true
+      if (r.status === 401 || r.status === 403) return false
+      return null
+    }
+    case 'github': {
+      const r = await fetch('https://api.github.com/user', {
+        headers: { Authorization: `Bearer ${key}`, 'User-Agent': 'codechat-key-validator' },
+      })
+      if (r.status === 200) return true
+      if (r.status === 401 || r.status === 403) return false
+      return null
+    }
+    default:
+      return 'unsupported'
+  }
+}
+
+async function tryInternalApi(req, pathname, res) {
+  if (pathname === '/api/server-keys' && req.method === 'GET') {
+    const keys = process.env.SERVER_KEYS_JSON ? JSON.parse(process.env.SERVER_KEYS_JSON) : []
+    sendJson(res, 200, keys)
+    return true
+  }
+
+  if (pathname === '/api/public-key' && req.method === 'GET') {
+    const jwk = getServerPublicKeyJwk()
+    if (!jwk) {
+      res.statusCode = 404
+      res.end('Server encryption key not configured')
+      return true
+    }
+    sendJson(res, 200, jwk)
+    return true
+  }
+
+  if (pathname === '/api/validate-key' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req)
+      const { provider, key } = body || {}
+
+      if (!provider || !key) {
+        sendJson(res, 400, { error: 'Missing provider or key' })
+        return true
+      }
+
+      const valid = await validateProviderKey(provider, key)
+      if (valid === 'unsupported') {
+        sendJson(res, 200, { valid: null, error: 'Unsupported provider' })
+        return true
+      }
+
+      sendJson(res, 200, { valid })
+      return true
+    } catch {
+      sendJson(res, 200, { valid: null })
+      return true
+    }
+  }
+
+  return false
+}
+
 /** Returns true if the request was handled as a static file. */
 function tryStatic(pathname, res) {
   const segments = pathname.split('/').filter(Boolean)
   const top = segments[0]
 
-  // chat/key/ — the standalone key manager widget.
-  // Must be checked before the STATIC_REPOS logic because the Next.js
-  // (chat) route group catches /chat/[id] and would treat "key" as a chat ID.
-  if (top === 'chat' && segments[1] === 'key') {
-    const filePath = join(CHAT_DIR, 'key', ...segments.slice(2))
+  // /chat/keys/ and /keys/ — standalone key manager widget.
+  // Must be checked before the generic static-repo logic because the Next.js
+  // route tree also handles /chat/* and /keys* in hosted deployments.
+  const isLegacyChatKeyRoute = top === 'chat' && segments[1] === 'key'
+  const isChatKeysRoute = top === 'chat' && segments[1] === 'keys'
+  const isKeysRoute = top === 'keys'
+  if (isLegacyChatKeyRoute) {
+    redirect(pathname.replace(/^\/chat\/key(?=\/|$)/, '/chat/keys'), res)
+    return true
+  }
+
+  if (isChatKeysRoute || isKeysRoute) {
+    const relativeSegments = isChatKeysRoute ? segments.slice(2) : segments.slice(1)
+    const filePath = join(CHAT_DIR, 'keys', ...relativeSegments)
     try {
       const stat = statSync(filePath)
       if (stat.isFile()) { serveFile(filePath, res); return true }
@@ -153,15 +298,17 @@ const HOSTNAME = 'localhost'
 const dev      = process.env.NODE_ENV !== 'production'
 
 // hostname + port must be passed so Next.js binds HMR WebSockets correctly.
-// turbopack: true enables Turbopack in the custom server (Next.js 15+).
-const app    = next({ dev, dir: CHAT_DIR, hostname: HOSTNAME, port: PORT, turbopack: true })
+// Keep the custom webroot server on the standard Next.js dev server rather than
+// Turbopack here. Turbopack's watcher footprint can exceed local file limits in
+// the full webroot and cause the route manifest to collapse to only _not-found.
+const app    = next({ dev, dir: CHAT_DIR, hostname: HOSTNAME, port: PORT })
 const handle = app.getRequestHandler()
 
 app.prepare().then(() => {
   createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true)
-      if (!tryStatic(parsedUrl.pathname, res)) {
+      if (!(await tryInternalApi(req, parsedUrl.pathname, res)) && !tryStatic(parsedUrl.pathname, res)) {
         await handle(req, res, parsedUrl)
       }
     } catch (err) {
@@ -174,7 +321,7 @@ app.prepare().then(() => {
     .listen(PORT, HOSTNAME, () => {
       console.log(`\n> Ready on http://${HOSTNAME}:${PORT}`)
       console.log(`  Chat        : http://${HOSTNAME}:${PORT}/chat`)
-      console.log(`  Key manager : http://${HOSTNAME}:${PORT}/chat/key/`)
+      console.log(`  Key manager : http://${HOSTNAME}:${PORT}/chat/keys/`)
       console.log(`  Static      : all webroot dirs except /chat`)
     })
 })

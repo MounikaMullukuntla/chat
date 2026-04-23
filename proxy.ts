@@ -29,8 +29,9 @@ import {
 const PUBLIC_ROUTES = [
   "/", // Home page - accessible to all users
   "/intro", // Intro/landing page - accessible to all users
-  "/chat/key", // Key manager widget - accessible to all users
-  "/chat/keys", // Alias for key manager
+  "/chat/key", // Legacy key manager path - redirects to /chat/keys
+  "/chat/keys", // Key manager widget
+  "/keys", // Key manager asset route + root shortcut
   "/api/server-keys",   // Public: which provider keys are present in server .env
   "/api/validate-key",  // Public: validate a user-supplied API key against provider
   "/api/github-token",  // Public: server GitHub PAT for the GitHub integration

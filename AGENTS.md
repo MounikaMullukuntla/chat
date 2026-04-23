@@ -8,8 +8,8 @@ Guidance for Claude Code and other AI CLI agents working in this repository.
 
 This repo is a **Next.js AI chat application** and the source of truth for:
 - API key storage and management UI (canonical store: `localStorage['settings_api-keys']`)
-- Provider and model registry (`lib/providers.ts` + `chat/key/providers.js`)
-- The embeddable key manager widget (`chat/key/key-manager.js`)
+- Provider and model registry (`lib/providers.ts` + `chat/keys/providers.js`)
+- The embeddable key manager widget (`chat/keys/key-manager.js`)
 
 It lives inside the webroot container at `webroot/chat/` alongside static-file repos (`team/`, `requests/`, `localsite/`, etc.) which are served at `localhost:8887` by a Python HTTP server. **This repo is NOT served by that Python server** — it requires its own Next.js process.
 
@@ -45,7 +45,7 @@ The **chat app occupies the root** — no path prefix:
 | `localhost:8888/chat` | chat list / new chat |
 | `localhost:8888/chat/[id]` | a conversation |
 | `localhost:8888/settings` | settings |
-| `localhost:8888/chat/key/` | standalone key manager widget |
+| `localhost:8888/chat/keys/` | standalone key manager widget |
 | `localhost:8888/localsite/…` | `localsite/` static files |
 | `localhost:8888/team/…` | `team/` static files |
 | `localhost:8888/requests/…` | `requests/` static files |
@@ -174,7 +174,7 @@ Keys are stored encrypted in `localStorage['settings_api-keys']` using a non-ext
 ### Database / Model Config
 Provider and model configuration is stored in the `model_config` table. Queries are in `lib/db/queries/model-config.ts`. The DB seed is at `lib/db/migrations/0007_seed_data_model_config.sql`.
 
-The **static provider registry** at `chat/key/providers.js` must be kept manually in sync with the DB seed when models are added or removed.
+The **static provider registry** at `chat/keys/providers.js` must be kept manually in sync with the DB seed when models are added or removed.
 
 ### AI Providers
 Provider implementations live in `lib/ai/providers/{google,anthropic,openai}/`. Each has agent variants (chat, document, mermaid, python, etc.). The resolver `lib/ai/chat-agent-resolver.ts` selects the right agent at runtime.
@@ -182,7 +182,7 @@ Provider implementations live in `lib/ai/providers/{google,anthropic,openai}/`. 
 ### Client vs Server API Calls
 In this Vercel repo, the main chat goes through the app server because of architecture, not because browser JavaScript is inherently incapable of calling external APIs.
 
-Within independent static widget folders (like chat/key), you can add static javascript that calls provider APIs directly from browser JavaScript for some flows. The current chat path uses `/api/chat` because:
+Within independent static widget folders (like chat/keys), you can add static javascript that calls provider APIs directly from browser JavaScript for some flows. The current chat path uses `/api/chat` because:
 
 - the client intentionally sends the key to the app server: `components/chat.tsx`
 - the server reads that header and runs the chat agent there: `app/(chat)/api/chat/route.ts`
@@ -228,12 +228,12 @@ App Router (`app/` directory). Route groups:
 
 ---
 
-## The `chat/key/` Static Subfolder
+## The `chat/keys/` Static Subfolder
 
-`chat/key/` contains a **vanilla JS embeddable key manager** served statically at `localhost:8887/chat/key/` by the Python HTTP server — no Next.js build required.
+`chat/keys/` contains a **vanilla JS embeddable key manager** served statically at `localhost:8887/chat/keys/` by the Python HTTP server — no Next.js build required.
 
 ```
-chat/key/
+chat/keys/
   index.html        # Standalone settings page, no build needed
   key-manager.js    # Vanilla JS widget (no React, no bundler)
   providers.js      # Static copy of provider + model registry
@@ -242,11 +242,11 @@ chat/key/
 
 ### Keeping `key-manager.js` in sync
 
-**Whenever you update key management logic in the Next.js app, also update `chat/key/key-manager.js`** to match. The two share the same `localStorage['settings_api-keys']` format and encryption scheme (`lib/storage/crypto.ts` logic is duplicated in vanilla JS in `key-manager.js`). Non-Next.js pages (`team/projects/index.html`, `requests/engine/`) embed this file via:
+**Whenever you update key management logic in the Next.js app, also update `chat/keys/key-manager.js`** to match. The two share the same `localStorage['settings_api-keys']` format and encryption scheme (`lib/storage/crypto.ts` logic is duplicated in vanilla JS in `key-manager.js`). Non-Next.js pages (`team/projects/index.html`, `requests/engine/`) embed this file via:
 
 ```html
-<script src="/chat/key/providers.js"></script>
-<script src="/chat/key/key-manager.js"></script>
+<script src="/chat/keys/providers.js"></script>
+<script src="/chat/keys/key-manager.js"></script>
 ```
 
 The public API is `window.KeyManager`:

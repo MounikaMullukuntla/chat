@@ -167,7 +167,7 @@ export default function AgentsPage() {
                         </p>
                         <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 px-4 py-2 border border-purple-500/20">
                             <Sparkles className="h-4 w-4 text-purple-600" />
-                            <Link href="/chat/key/" className="text-sm font-medium text-purple-600">Model Key Setup</Link>
+                            <Link href="/keys" className="text-sm font-medium text-purple-600">Model Key Setup</Link>
                         </div>
                     </div>
                 </div>

@@ -456,7 +456,7 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                   </a>
                   <span className="text-muted-foreground/40 select-none">·</span>
                   <a
-                    href="/chat/key"
+                    href="/keys"
                     className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Models and Keys
