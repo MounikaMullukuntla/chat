@@ -55,6 +55,9 @@ export async function signUp(
   password: string,
   metadata: Partial<UserMetadata> = {}
 ): Promise<AuthResult> {
+  if (!isSupabaseConfigured) {
+    return { user: null, session: null, error: new Error("Supabase is not configured") as AuthError };
+  }
   try {
     const supabase = createClient();
 
@@ -134,6 +137,9 @@ export async function signIn(
   email: string,
   password: string
 ): Promise<AuthResult> {
+  if (!isSupabaseConfigured) {
+    return { user: null, session: null, error: new Error("Supabase is not configured") as AuthError };
+  }
   try {
     const supabase = createClient();
 
@@ -190,6 +196,7 @@ export async function signIn(
  * // User is now signed out and session is cleared
  */
 export async function signOut(): Promise<{ error: AuthError | null }> {
+  if (!isSupabaseConfigured) return { error: null };
   try {
     const supabase = createClient();
 
