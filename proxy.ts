@@ -30,6 +30,7 @@ import { isRepoWikiPath } from "@/lib/repo-wiki";
 const PUBLIC_ROUTES = [
   "/", // Home page - accessible to all users
   "/intro", // Intro/landing page - accessible to all users
+  "/key",       // Key manager inside chat navigation
   "/chat/key", // Legacy key manager path - redirects to /chat/keys
   "/chat/keys", // Key manager widget
   "/keys", // Key manager asset route + root shortcut

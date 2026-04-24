@@ -1,1 +1,1 @@
-export { default } from "../chat/keys/page";
+export { default } from "../key/page";

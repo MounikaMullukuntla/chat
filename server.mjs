@@ -80,7 +80,7 @@ process.env.SERVER_KEYS_JSON = JSON.stringify(
 // ── Static file serving ──────────────────────────────────────────────────────
 
 // Directories in the webroot that are reserved for Next.js — never served statically.
-const NEXTJS_DIRS = new Set(['chat'])
+const NEXTJS_DIRS = new Set(['chat', 'key'])
 
 const MIME_TYPES = {
   '.html':  'text/html; charset=utf-8',
@@ -268,27 +268,22 @@ function tryStatic(pathname, res) {
   const segments = pathname.split('/').filter(Boolean)
   const top = segments[0]
 
-  // /keys/ — standalone key manager widget (static HTML with localsite nav).
-  // /chat/key — legacy path, redirect to /chat/keys (handled by Next.js).
-  // /chat/keys — falls through to Next.js so it renders inside the chat layout.
-  const isLegacyChatKeyRoute = top === 'chat' && segments[1] === 'key'
-  const isKeysRoute = top === 'keys'
-  if (isLegacyChatKeyRoute) {
-    redirect(pathname.replace(/^\/chat\/key(?=\/|$)/, '/chat/keys'), res)
-    return true
-  }
+  // /keys/ and /chat/keys — both serve the static key manager widget (localsite nav).
+  const isChatKeysRoute = top === 'chat' && segments[1] === 'keys'
+  const isKeysRoute = top === 'keys' || isChatKeysRoute
 
   if (isKeysRoute) {
-    const relativeSegments = segments.slice(1)
+    // Strip the leading path prefix to get segments relative to chat/keys/
+    const relativeSegments = isChatKeysRoute ? segments.slice(2) : segments.slice(1)
+
+    // Root /keys and /chat/keys fall through to Next.js (chat navigation).
+    // Sub-paths like /keys/style.css, /keys/key-manager.js are served statically.
+    if (relativeSegments.length === 0) return false
+
     const filePath = join(CHAT_DIR, 'keys', ...relativeSegments)
     try {
       const stat = statSync(filePath)
       if (stat.isFile()) { serveFile(filePath, res); return true }
-      if (stat.isDirectory()) {
-        if (!pathname.endsWith('/')) { redirect(pathname + '/', res); return true }
-        const idx = join(filePath, 'index.html')
-        if (existsSync(idx)) { serveFile(idx, res); return true }
-      }
     } catch { /* not found */ }
     return false
   }
