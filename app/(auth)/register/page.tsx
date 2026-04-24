@@ -12,10 +12,14 @@ import {
   ErrorSeverity,
   logAuthError,
 } from "@/lib/errors/logger";
+import { isSupabaseConfigured } from "@/lib/db/supabase-client";
+
+const isVercel = !!process.env.NEXT_PUBLIC_VERCEL_URL;
 
 export default function Page() {
   const _router = useRouter();
   const { signUp, loading, error, clearError } = useAuth();
+  const dbUnavailable = !isSupabaseConfigured;
 
   const [email, setEmail] = useState("");
   const [isSuccessful, _setIsSuccessful] = useState(false);
@@ -147,7 +151,7 @@ export default function Page() {
   // Show email verification message if needed
   if (showEmailVerification) {
     return (
-      <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
+      <div className="flex min-h-full w-full items-start justify-center bg-background pt-12 md:items-center md:pt-0">
         <div className="flex w-full max-w-md flex-col gap-8 overflow-hidden rounded-2xl">
           <div className="flex flex-col items-center justify-center gap-4 px-4 text-center sm:px-16">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
@@ -205,32 +209,44 @@ export default function Page() {
   }
 
   return (
-    <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
-      <div className="flex w-full max-w-md flex-col gap-12 overflow-hidden rounded-2xl">
-        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
-          <h3 className="font-semibold text-xl dark:text-zinc-50">Sign Up</h3>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">
-            Create an account with your email and password
-          </p>
+    <div className="flex min-h-full w-full flex-col bg-background">
+      <div className="flex flex-1 items-start justify-center pt-12 md:items-center md:pt-0">
+        <div className="flex w-full max-w-md flex-col gap-8 overflow-hidden rounded-2xl">
+          {dbUnavailable && (
+            <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              Database connection unavailable.{" "}
+              {isVercel
+                ? "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel environment variables."
+                : "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in docker/.env."}
+            </div>
+          )}
+          <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
+            <h3 className="font-semibold text-xl dark:text-zinc-50">Sign Up</h3>
+            <p className="text-gray-500 text-sm dark:text-zinc-400">
+              Create an account with your email and password
+            </p>
+          </div>
+          <div className={dbUnavailable ? "pointer-events-none select-none opacity-40" : ""}>
+            <AuthForm action={handleSubmit} defaultEmail={email}>
+              <SubmitButton
+                disabled={isSubmitting || loading || dbUnavailable}
+                isSuccessful={isSuccessful}
+              >
+                {isSubmitting || loading ? "Creating Account..." : "Sign Up"}
+              </SubmitButton>
+              <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
+                {"Already have an account? "}
+                <Link
+                  className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
+                  href="/login"
+                >
+                  Sign in
+                </Link>
+                {" instead."}
+              </p>
+            </AuthForm>
+          </div>
         </div>
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton
-            disabled={isSubmitting || loading}
-            isSuccessful={isSuccessful}
-          >
-            {isSubmitting || loading ? "Creating Account..." : "Sign Up"}
-          </SubmitButton>
-          <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
-            {"Already have an account? "}
-            <Link
-              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-              href="/login"
-            >
-              Sign in
-            </Link>
-            {" instead."}
-          </p>
-        </AuthForm>
       </div>
     </div>
   );

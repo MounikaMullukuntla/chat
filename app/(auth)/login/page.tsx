@@ -13,6 +13,9 @@ import {
   ErrorSeverity,
   logAuthError,
 } from "@/lib/errors/logger";
+import { isSupabaseConfigured } from "@/lib/db/supabase-client";
+
+const isVercel = !!process.env.NEXT_PUBLIC_VERCEL_URL;
 
 function LoginForm() {
   const router = useRouter();
@@ -23,6 +26,8 @@ function LoginForm() {
   const [isSuccessful, setIsSuccessful] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const dbUnavailable = !isSupabaseConfigured;
+
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading) {
@@ -32,7 +37,6 @@ function LoginForm() {
   }, [user, loading, router, searchParams]);
 
   const getErrorMessage = useCallback((authError: string): string => {
-    // Map Supabase auth errors to user-friendly messages
     if (authError.includes("Invalid login credentials")) {
       return "Invalid email or password. Please try again.";
     }
@@ -55,7 +59,6 @@ function LoginForm() {
       let errorCategory = ErrorCategory.LOGIN_FAILED;
       let severity = ErrorSeverity.ERROR;
 
-      // Categorize the error
       if (error.includes("Invalid login credentials")) {
         errorCategory = ErrorCategory.LOGIN_FAILED;
         severity = ErrorSeverity.WARNING;
@@ -70,7 +73,6 @@ function LoginForm() {
         severity = ErrorSeverity.ERROR;
       }
 
-      // Log the error
       logAuthError(
         errorCategory,
         `Login failed: ${error}`,
@@ -80,7 +82,7 @@ function LoginForm() {
           originalError: error,
           timestamp: new Date().toISOString(),
         },
-        undefined, // No user_id since login failed
+        undefined,
         severity
       );
 
@@ -121,13 +123,11 @@ function LoginForm() {
       await signIn(emailValue, password);
       setIsSuccessful(true);
 
-      // Redirect will be handled by the useEffect above
       toast({
         type: "success",
         description: "Successfully signed in!",
       });
     } catch (err) {
-      // Log unexpected errors
       const errorMessage =
         err instanceof Error ? err.message : "Unknown login error";
 
@@ -174,32 +174,44 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
-      <div className="flex w-full max-w-md flex-col gap-12 overflow-hidden rounded-2xl">
-        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
-          <h3 className="font-semibold text-xl dark:text-zinc-50">Sign In</h3>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">
-            Use your email and password to sign in
-          </p>
+    <div className="flex min-h-full w-full flex-col bg-background">
+      <div className="flex flex-1 items-start justify-center pt-12 md:items-center md:pt-0">
+        <div className="flex w-full max-w-md flex-col gap-8 overflow-hidden rounded-2xl">
+          {dbUnavailable && (
+            <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              Database connection unavailable.{" "}
+              {isVercel
+                ? "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel environment variables."
+                : "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in docker/.env."}
+            </div>
+          )}
+          <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
+            <h3 className="font-semibold text-xl dark:text-zinc-50">Sign In</h3>
+            <p className="text-gray-500 text-sm dark:text-zinc-400">
+              Use your email and password to sign in
+            </p>
+          </div>
+          <div className={dbUnavailable ? "pointer-events-none select-none opacity-40" : ""}>
+            <AuthForm action={handleSubmit} defaultEmail={email}>
+              <SubmitButton
+                disabled={isSubmitting || loading || dbUnavailable}
+                isSuccessful={isSuccessful}
+              >
+                {isSubmitting ? "Signing in..." : "Sign in"}
+              </SubmitButton>
+              <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
+                {"Don't have an account? "}
+                <Link
+                  className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
+                  href="/register"
+                >
+                  Sign up
+                </Link>
+                {" for free."}
+              </p>
+            </AuthForm>
+          </div>
         </div>
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton
-            disabled={isSubmitting || loading}
-            isSuccessful={isSuccessful}
-          >
-            {isSubmitting ? "Signing in..." : "Sign in"}
-          </SubmitButton>
-          <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
-            {"Don't have an account? "}
-            <Link
-              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-              href="/register"
-            >
-              Sign up
-            </Link>
-            {" for free."}
-          </p>
-        </AuthForm>
       </div>
     </div>
   );

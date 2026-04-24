@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 interface TopNavProps {
@@ -7,6 +10,7 @@ interface TopNavProps {
 }
 
 export function TopNav({ isWebroot, isLoggedIn = false }: TopNavProps) {
+  const pathname = usePathname();
   return (
     <nav className="fixed top-0 right-0 left-0 z-50 border-b bg-background/80 backdrop-blur-md">
       <div className="flex w-full items-center justify-between gap-4 px-4 py-4">
@@ -39,15 +43,15 @@ export function TopNav({ isWebroot, isLoggedIn = false }: TopNavProps) {
               </Button>
             </>
           )}
-          {!isLoggedIn && (
-            <>
-              <Button asChild variant="ghost">
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90">
-                <Link href="/register">Sign Up</Link>
-              </Button>
-            </>
+          {!isLoggedIn && pathname !== "/login" && (
+            <Button asChild variant="ghost">
+              <Link href="/login">Sign In</Link>
+            </Button>
+          )}
+          {!isLoggedIn && pathname !== "/register" && (
+            <Button asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90">
+              <Link href="/register">Sign Up</Link>
+            </Button>
           )}
         </div>
       </div>
