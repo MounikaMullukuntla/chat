@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       selectedVisibilityType,
       thinkingEnabled = false,
       selectedRepos = [],
+      ragDisabled = false,
     } = requestBody;
 
     // Authenticate user
@@ -108,11 +109,44 @@ export async function POST(request: Request) {
       .join("\n")
       .trim();
 
-    const ragContextResult = await buildRagContext({
-      queryText: latestUserText,
-      limitToRepoNames:
-        selectedRepos.length > 0 ? selectedRepos : undefined,
-    });
+    // RAG retrieval credentials may come from the browser via headers
+    // (x-pinecone-api-key / x-voyage-api-key, plus their `-enc` RSA-encrypted
+    // variants). Server `.env` always wins inside buildRagContext.
+    let pineconeApiKeyOverride =
+      request.headers.get("x-pinecone-api-key") ?? undefined;
+    let voyageApiKeyOverride =
+      request.headers.get("x-voyage-api-key") ?? undefined;
+    const pineconeApiKeyEnc = request.headers.get("x-pinecone-api-key-enc");
+    const voyageApiKeyEnc = request.headers.get("x-voyage-api-key-enc");
+    if (
+      (!pineconeApiKeyOverride && pineconeApiKeyEnc) ||
+      (!voyageApiKeyOverride && voyageApiKeyEnc)
+    ) {
+      const { decryptWithServerKey } = await import("@/lib/server-crypto");
+      if (!pineconeApiKeyOverride && pineconeApiKeyEnc) {
+        pineconeApiKeyOverride =
+          decryptWithServerKey(pineconeApiKeyEnc) ?? undefined;
+      }
+      if (!voyageApiKeyOverride && voyageApiKeyEnc) {
+        voyageApiKeyOverride =
+          decryptWithServerKey(voyageApiKeyEnc) ?? undefined;
+      }
+    }
+
+    const ragContextResult = ragDisabled
+      ? {
+          context: "",
+          sourceCount: 0,
+          sources: [],
+          skippedReason: "disabled" as const,
+        }
+      : await buildRagContext({
+          queryText: latestUserText,
+          limitToRepoNames:
+            selectedRepos.length > 0 ? selectedRepos : undefined,
+          pineconeApiKey: pineconeApiKeyOverride,
+          voyageApiKey: voyageApiKeyOverride,
+        });
 
     const ragContext = ragContextResult.context;
 
@@ -307,6 +341,10 @@ export async function POST(request: Request) {
       thinkingMode: thinkingEnabled,
       user,
       generateId: generateUUID,
+      ragStatus: {
+        skippedReason: ragContextResult.skippedReason,
+        sourceCount: ragContextResult.sourceCount,
+      },
       onFinish: async ({ messages }) => {
         // Save all assistant messages to database
         const assistantMessages = messages.filter(

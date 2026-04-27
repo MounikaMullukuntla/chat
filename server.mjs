@@ -21,8 +21,9 @@
  * Or via pnpm (from webroot/ or from inside chat/):
  *   pnpm --prefix chat dev:webroot
  *
- * Note: uses the standard Next.js dev server (not Turbopack).
- * For fastest chat-only development use `pnpm --prefix chat dev` instead.
+ * Note: pins the bundler to webpack (not Turbopack) — see the `webpack: true`
+ * option below. For fastest chat-only development use `pnpm --prefix chat dev`
+ * instead, which uses the Next.js default bundler.
  */
 
 import { createServer } from 'node:http'
@@ -70,6 +71,8 @@ const PROVIDER_ENV_VARS = {
   openai:    'OPENAI_API_KEY',
   xai:       'XAI_API_KEY',
   github:    'GITHUB_PERSONAL_ACCESS_TOKEN',
+  pinecone:  'PINECONE_API_KEY',
+  voyage:    'VOYAGE_API_KEY',
 }
 process.env.SERVER_KEYS_JSON = JSON.stringify(
   Object.entries(PROVIDER_ENV_VARS)
@@ -311,14 +314,18 @@ const HOSTNAME = 'localhost'
 const dev      = process.env.NODE_ENV !== 'production'
 
 // hostname + port must be passed so Next.js binds HMR WebSockets correctly.
-// Keep the custom webroot server on the standard Next.js dev server rather than
-// Turbopack here. Turbopack's watcher footprint can exceed local file limits in
-// the full webroot and cause the route manifest to collapse to only _not-found.
-const app    = next({ dev, dir: CHAT_DIR, hostname: HOSTNAME, port: PORT })
+// `webpack: true` pins this custom server to webpack. Next 16 defaults custom
+// servers to Turbopack via `process.env.TURBOPACK ??= 'auto'` (see
+// next/dist/server/next.js), and Turbopack's watcher footprint can exceed local
+// file limits in the full webroot, causing the route manifest to collapse to
+// only `_not-found` and spiking CPU on the watcher itself.
+const app    = next({ dev, dir: CHAT_DIR, hostname: HOSTNAME, port: PORT, webpack: true })
 const handle = app.getRequestHandler()
 
 app.prepare().then(() => {
-  createServer(async (req, res) => {
+  const upgradeHandler = app.getUpgradeHandler?.()
+
+  const server = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true)
       if (!(await tryInternalApi(req, parsedUrl.pathname, res)) && !tryStatic(parsedUrl.pathname, res)) {
@@ -330,6 +337,12 @@ app.prepare().then(() => {
       res.end('Internal server error')
     }
   })
+
+  if (upgradeHandler) {
+    server.on('upgrade', upgradeHandler)
+  }
+
+  server
     .once('error', (err) => { console.error(err); process.exit(1) })
     .listen(PORT, HOSTNAME, () => {
       console.log(`\n> Ready on http://${HOSTNAME}:${PORT}`)

@@ -218,6 +218,14 @@ export class GoogleChatAgent {
       // Create proper UI message stream using AI SDK
       const stream = createUIMessageStream({
         execute: ({ writer: dataStream }) => {
+          if (params.ragStatus) {
+            dataStream.write({
+              type: "data-rag-status",
+              data: params.ragStatus,
+              transient: true,
+            });
+          }
+
           // Use streamText directly with Google model from chat agent
           const model = this.getModel(params.modelId);
 

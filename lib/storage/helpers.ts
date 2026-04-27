@@ -113,6 +113,10 @@ export const apiKeyHelpers = {
           };
         }
         break;
+      case "pinecone":
+      case "voyage":
+        // No format prefix to enforce — accept any non-empty trimmed key.
+        break;
       default:
         return { valid: false, error: "Unknown provider" };
     }

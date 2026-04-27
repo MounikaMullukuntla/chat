@@ -102,7 +102,11 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
   const [activeTab, setActiveTab] = useState<ActiveTab | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [broadened, setBroadened] = useState(false);
-  const [noneSelected, setNoneSelected] = useState(false);
+  // Persisted so chat.tsx can read it and tell the server to skip RAG entirely.
+  const [noneSelected, setNoneSelected] = useLocalStorage<boolean>(
+    "rag-disabled",
+    false
+  );
   const [showGithubSources, setShowGithubSources] = useState(false);
   const [githubSelectedRepos, setGithubSelectedRepos] = useState<GitHubRepo[]>([]);
   const [sidebarWidth, setSidebarWidth] = useLocalStorage("sidebar-width", 256);

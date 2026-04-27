@@ -45,6 +45,8 @@ type BuildRagContextParams = {
   queryText: string;
   limitToRepoName?: string;
   limitToRepoNames?: string[];
+  pineconeApiKey?: string;
+  voyageApiKey?: string;
 };
 
 const DEFAULT_INDEX_NAME = "repo-chunks";
@@ -412,8 +414,11 @@ export async function buildRagContext(
     };
   }
 
-  const pineconeApiKey = process.env.PINECONE_API_KEY?.trim();
-  const voyageApiKey = process.env.VOYAGE_API_KEY?.trim();
+  // Server `.env` wins; fall back to caller-provided keys (e.g. browser-cached).
+  const pineconeApiKey =
+    process.env.PINECONE_API_KEY?.trim() || params.pineconeApiKey?.trim();
+  const voyageApiKey =
+    process.env.VOYAGE_API_KEY?.trim() || params.voyageApiKey?.trim();
 
   if (!pineconeApiKey || !voyageApiKey) {
     return {

@@ -125,4 +125,22 @@ window.KeyManagerProviders = [
     tokenOnly: true,
     models: [],
   },
+  {
+    id: 'pinecone',
+    name: 'Pinecone',
+    keyPlaceholder: 'pcsk_...',
+    keyHint: 'Vector DB for repository retrieval (PINECONE_API_KEY)',
+    getKeyUrl: 'https://app.pinecone.io/organizations/-/keys',
+    tokenOnly: true,
+    models: [],
+  },
+  {
+    id: 'voyage',
+    name: 'Voyage AI',
+    keyPlaceholder: 'pa-...',
+    keyHint: 'Embedding model for repository retrieval (VOYAGE_API_KEY)',
+    getKeyUrl: 'https://dash.voyageai.com/api-keys',
+    tokenOnly: true,
+    models: [],
+  },
 ];

@@ -194,6 +194,15 @@ export type ChatParams = {
   dataStream?: any; // UIMessageStreamWriter for tool execution
   artifactContext?: string; // Context about artifacts in the conversation
   user?: any; // User object for tool execution context
+  ragStatus?: {
+    skippedReason?:
+      | "disabled"
+      | "empty_query"
+      | "missing_credentials"
+      | "no_matches"
+      | "error";
+    sourceCount?: number;
+  };
 };
 
 /**

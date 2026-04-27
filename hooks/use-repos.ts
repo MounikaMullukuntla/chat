@@ -10,7 +10,7 @@ type UseReposResult = {
 };
 
 const CACHE_KEY = "repos-cache";
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = process.env.NODE_ENV === "production" ? 8000 : 60000;
 
 function readCache(): Repo[] {
   if (typeof window === "undefined") return [];

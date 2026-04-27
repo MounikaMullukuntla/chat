@@ -97,7 +97,9 @@ export type APIProvider =
   | "perplexity"
   | "deepseek"
   | "discord"
-  | "github";
+  | "github"
+  | "pinecone"
+  | "voyage";
 
 // Storage manager interface
 export type StorageManager = {

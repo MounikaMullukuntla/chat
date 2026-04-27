@@ -64,6 +64,7 @@ export function Chat({
   const [input, setInput] = useState<string>("");
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
+  const [ragSkippedReason, setRagSkippedReason] = useState<string | null>(null);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
   const currentModelIdRef = useRef(currentModelId);
 
@@ -87,6 +88,14 @@ export function Chat({
   useEffect(() => {
     ragSelectedReposRef.current = ragSelectedRepos;
   }, [ragSelectedRepos]);
+
+  // When the user explicitly unchecks every source, skip RAG entirely on the server.
+  const [ragDisabled] = useLocalStorage<boolean>("rag-disabled", false);
+  const ragDisabledRef = useRef(ragDisabled);
+
+  useEffect(() => {
+    ragDisabledRef.current = ragDisabled;
+  }, [ragDisabled]);
 
   // Fetch available repos for the selector
   const { repos: availableRepos, isLoading: reposLoading } = useRepos();
@@ -119,6 +128,17 @@ export function Chat({
         // Get GitHub PAT from localStorage (for GitHub MCP agent)
         const githubPAT = storage.github.getToken();
 
+        // RAG retrieval credentials — Pinecone (vector DB) and Voyage (embeddings).
+        // Fall back to RSA-encrypted blobs when the plaintext cache is empty.
+        const pineconeApiKey = storage.apiKeys.get("pinecone");
+        const pineconeApiKeyEnc = !pineconeApiKey
+          ? storage.apiKeys.getEncryptedBlob("pinecone")
+          : null;
+        const voyageApiKey = storage.apiKeys.get("voyage");
+        const voyageApiKeyEnc = !voyageApiKey
+          ? storage.apiKeys.getEncryptedBlob("voyage")
+          : null;
+
         // Extract thinking mode from the last message's experimental metadata
         const lastMessage = request.messages.at(-1);
         const thinkingEnabled =
@@ -132,6 +152,7 @@ export function Chat({
           selectedVisibilityType: visibilityType,
           thinkingEnabled,
           selectedRepos: ragSelectedReposRef.current,
+          ragDisabled: ragDisabledRef.current,
           ...request.body,
         };
 
@@ -146,6 +167,16 @@ export function Chat({
         if (githubPAT) {
           headers["x-github-pat"] = githubPAT;
         }
+        if (pineconeApiKey) {
+          headers["x-pinecone-api-key"] = pineconeApiKey;
+        } else if (pineconeApiKeyEnc) {
+          headers["x-pinecone-api-key-enc"] = pineconeApiKeyEnc;
+        }
+        if (voyageApiKey) {
+          headers["x-voyage-api-key"] = voyageApiKey;
+        } else if (voyageApiKeyEnc) {
+          headers["x-voyage-api-key-enc"] = voyageApiKeyEnc;
+        }
 
         return {
           body: requestBody,
@@ -157,6 +188,11 @@ export function Chat({
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
       if (dataPart.type === "data-usage") {
         setUsage(dataPart.data);
+      }
+      if (dataPart.type === "data-rag-status") {
+        const reason = (dataPart.data as { skippedReason?: string } | null)
+          ?.skippedReason ?? null;
+        setRagSkippedReason(reason);
       }
     },
     onFinish: () => {
@@ -374,6 +410,23 @@ export function Chat({
           status={status}
           votes={votes}
         />
+
+        {ragSkippedReason === "missing_credentials" && !ragDisabled && (
+          <div className="mx-auto w-full max-w-4xl px-2 pb-2 md:px-4">
+            <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">
+              Repository search is unavailable: the server is missing Pinecone
+              and/or Voyage credentials, so prompts are answered without your
+              indexed code.{" "}
+              <a
+                href="/chat/keys"
+                className="underline font-medium hover:no-underline"
+              >
+                Add keys
+              </a>{" "}
+              or uncheck all sources to silence this notice.
+            </div>
+          </div>
+        )}
 
         <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
           {!isReadonly && (
