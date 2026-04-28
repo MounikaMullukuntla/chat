@@ -83,21 +83,28 @@ export async function getCurrentUser(): Promise<User | null> {
     } = await supabase.auth.getUser();
 
     if (error) {
-      console.error("Error getting current user:", error);
+      // "Auth session missing" is the normal anonymous case; only treat
+      // unexpected errors as failures worth logging.
+      const isSessionMissing =
+        error.name === "AuthSessionMissingError" ||
+        error.message?.includes("Auth session missing");
 
-      // Log authentication error
-      await logUserActivity({
-        user_id: "unknown",
-        activity_type: UserActivityType.AUTH_LOGIN,
-        activity_category: ActivityCategory.AUTHENTICATION,
-        activity_metadata: {
-          description: "Failed to get current user",
-          error_message: error.message,
-          error_code: error.status,
-        },
-        correlation_id: correlationId,
-        success: false,
-      });
+      if (!isSessionMissing) {
+        console.error("Error getting current user:", error);
+
+        await logUserActivity({
+          user_id: "unknown",
+          activity_type: UserActivityType.AUTH_LOGIN,
+          activity_category: ActivityCategory.AUTHENTICATION,
+          activity_metadata: {
+            description: "Failed to get current user",
+            error_message: error.message,
+            error_code: error.status,
+          },
+          correlation_id: correlationId,
+          success: false,
+        });
+      }
 
       return null;
     }

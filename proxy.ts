@@ -127,6 +127,34 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Honor REQUIRE_AUTH (and host-based default) to decide whether the
+  // middleware should redirect anonymous users to /login. Mirrors the helper
+  // in `lib/auth/server.ts:isAuthRequired`. When auth isn't required, fall
+  // through with whatever session the user has (server logs may still gate
+  // private chats, but anonymous /chat browsing is allowed).
+  const authFlag = process.env.REQUIRE_AUTH?.trim().toLowerCase();
+  let authRequired: boolean;
+  if (authFlag === "true") {
+    authRequired = true;
+  } else if (authFlag === "false") {
+    authRequired = false;
+  } else {
+    const host =
+      request.headers.get("x-forwarded-host") ??
+      request.headers.get("host") ??
+      "";
+    const hostname = host.split(":")[0].toLowerCase();
+    authRequired = !(
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "[::1]"
+    );
+  }
+  if (!authRequired) {
+    return NextResponse.next();
+  }
+
   // Skip middleware for system routes and static files
   if (
     pathname.startsWith("/api/auth") || // Supabase auth endpoints
