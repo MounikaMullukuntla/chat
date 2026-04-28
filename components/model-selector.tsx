@@ -73,8 +73,12 @@ function PureModelSelector({
     );
   }
 
-  if (error || (dbStatus && !dbStatus.ok) || !adminConfig) {
-    const dbDown = dbStatus && !dbStatus.ok ? dbStatus : null;
+  const dbDown = dbStatus && !dbStatus.ok ? dbStatus : null;
+
+  // Only fall back to the error-only UI when there's no admin config to render.
+  // If DB is offline but a fallback config was returned, fall through to the
+  // normal dropdown so the user can still pick and chat with a model.
+  if (!adminConfig) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -86,28 +90,11 @@ function PureModelSelector({
           >
             <AlertTriangle size={16} className="text-amber-500" />
             <span className="hidden font-medium text-amber-500 text-xs sm:block">
-              {dbDown ? "DB Offline" : "Config Error"}
+              Config Error
             </span>
             <ChevronDownIcon size={16} />
           </button>
         </DropdownMenuTrigger>
-        {dbDown && (
-          <DropdownMenuContent className="max-w-[340px] p-3">
-            <div className="flex items-start gap-2 mb-2">
-              <Database size={15} className="text-amber-500 mt-0.5 flex-shrink-0" />
-              <p className="font-medium text-sm">{dbDown.message}</p>
-            </div>
-            <p className="text-muted-foreground text-xs mb-2">To restore model config:</p>
-            <ol className="space-y-1.5">
-              {dbDown.steps.map((step, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <span className="flex-shrink-0 font-medium text-foreground">{i + 1}.</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-          </DropdownMenuContent>
-        )}
       </DropdownMenu>
     );
   }
@@ -249,7 +236,11 @@ function PureModelSelector({
             className
           )}
         >
-          <CpuIcon size={16} />
+          {dbDown ? (
+            <AlertTriangle size={16} className="text-amber-500" />
+          ) : (
+            <CpuIcon size={16} />
+          )}
           <div className="flex items-center gap-2">
             <span className="hidden font-medium text-xs sm:block">
               {currentModel?.name || "Select Model"}
@@ -259,12 +250,41 @@ function PureModelSelector({
                 ({currentProvider})
               </span>
             )}
+            {dbDown && (
+              <span className="hidden font-medium text-[10px] text-amber-500 sm:block">
+                DB Offline
+              </span>
+            )}
           </div>
           <ChevronDownIcon size={16} />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="max-h-[400px] min-w-[320px] overflow-y-auto">
+        {dbDown && (
+          <div className="border-b border-border p-3">
+            <div className="mb-2 flex items-start gap-2">
+              <Database size={15} className="mt-0.5 flex-shrink-0 text-amber-500" />
+              <p className="font-medium text-sm">{dbDown.message}</p>
+            </div>
+            <p className="mb-2 text-muted-foreground text-xs">
+              Chats won't be saved until the database is restored.
+            </p>
+            <ol className="space-y-1.5">
+              {dbDown.steps.map((step, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-muted-foreground text-xs"
+                >
+                  <span className="flex-shrink-0 font-medium text-foreground">
+                    {i + 1}.
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         {providerGroups.map((group) => {
           const hasBrowserKey = keyedProviders.has(group.providerId);
           const hasServerKey = serverKeys.has(group.providerId);

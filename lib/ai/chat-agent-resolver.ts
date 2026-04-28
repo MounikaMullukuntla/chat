@@ -9,6 +9,7 @@ import {
 } from "@/lib/logging/activity-logger";
 import { getAdminConfig } from "../db/queries/admin";
 import { getActiveModelsByProvider } from "../db/queries/model-config";
+import { FALLBACK_GOOGLE_CHAT_AGENT_CONFIG } from "./fallback-config";
 import { GoogleChatAgent } from "./providers/google/chat-agent";
 
 // Simple agent config interface
@@ -126,32 +127,54 @@ export class ChatAgentResolver {
     });
 
     try {
-      // Load Google chat agent config from database
-      const adminConfig = await getAdminConfig({
-        configKey: "chat_model_agent_google",
-      });
-
-      if (!adminConfig?.configData) {
-        throw new Error("Google chat agent configuration not found");
+      // Load Google chat agent config from database. If the DB is unreachable
+      // we fall back to a hardcoded config so the chat route can still stream
+      // model responses without persistence.
+      let adminConfig: Awaited<ReturnType<typeof getAdminConfig>> | null = null;
+      let dbAvailable = true;
+      try {
+        adminConfig = await getAdminConfig({
+          configKey: "chat_model_agent_google",
+        });
+      } catch (dbError) {
+        console.warn(
+          "Database unavailable for chat agent config, using fallback:",
+          dbError
+        );
+        dbAvailable = false;
       }
 
-      const configData = adminConfig.configData as any;
+      const configData = (adminConfig?.configData as any) ?? {};
 
-      // Load model configurations from model_config table
-      const models = await getActiveModelsByProvider("google");
+      // Load model configurations from model_config table (also DB-backed)
+      let models: Awaited<ReturnType<typeof getActiveModelsByProvider>> = [];
+      if (dbAvailable) {
+        try {
+          models = await getActiveModelsByProvider("google");
+        } catch (dbError) {
+          console.warn(
+            "Failed to load models from DB, using fallback list:",
+            dbError
+          );
+          dbAvailable = false;
+        }
+      }
 
-      // Convert database models to availableModels array
-      const availableModels = models.map((model) => ({
-        id: model.modelId,
-        name: model.name,
-        description: model.description || "",
-        enabled: model.isActive !== false,
-        isDefault: model.isDefault || false,
-        thinkingEnabled: model.thinkingEnabled !== false,
-        supportsThinkingMode: model.thinkingEnabled !== false,
-        fileInputEnabled: false, // TODO: Add to model_config table
-        allowedFileTypes: [],
-      }));
+      // Convert database models to availableModels array; fall back to the
+      // hardcoded list when the DB query failed or returned nothing.
+      const availableModels = dbAvailable && models.length > 0
+        ? models.map((model) => ({
+            id: model.modelId,
+            name: model.name,
+            description: model.description || "",
+            enabled: model.isActive !== false,
+            isDefault: model.isDefault || false,
+            thinkingEnabled: model.thinkingEnabled !== false,
+            supportsThinkingMode: model.thinkingEnabled !== false,
+            fileInputEnabled: false,
+            allowedFileTypes: [],
+          }))
+        : FALLBACK_GOOGLE_CHAT_AGENT_CONFIG.availableModels;
 
       // Find default model
       const defaultModel = availableModels.find((m) => m.isDefault);

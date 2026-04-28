@@ -28,16 +28,25 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     notFound();
   }
 
-  const chat = await getChatById({ id });
+  // When the DB is offline these throw — render an empty chat shell instead
+  // of crashing the page, so the user can still talk to a model.
+  let chat: Awaited<ReturnType<typeof getChatById>> | null = null;
+  let dbAvailable = true;
+  try {
+    chat = await getChatById({ id });
+  } catch (err) {
+    console.warn("Database unavailable in chat page, rendering offline shell:", err);
+    dbAvailable = false;
+  }
 
-  if (!chat) {
+  if (dbAvailable && !chat) {
     notFound();
   }
 
   const user = await getCurrentUser();
 
-  // Check if user can access this chat
-  if (chat.visibility === "private") {
+  // Check if user can access this chat (only when DB is reachable and we have one)
+  if (chat && chat.visibility === "private") {
     if (!user) {
       return notFound();
     }
@@ -48,7 +57,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   // Log chat view activity (async, non-blocking)
-  if (user) {
+  if (user && chat) {
     logUserActivity({
       user_id: user.id,
       activity_type: UserActivityType.CHAT_VIEW,
@@ -63,44 +72,34 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     });
   }
 
-  const messagesFromDb = await getMessagesByChatId({
-    id,
-  });
-
-  const uiMessages = convertToUIMessages(messagesFromDb);
+  let uiMessages: ReturnType<typeof convertToUIMessages> = [];
+  try {
+    const messagesFromDb = await getMessagesByChatId({ id });
+    uiMessages = convertToUIMessages(messagesFromDb);
+  } catch (err) {
+    console.warn("Failed to load messages (DB offline?), starting empty:", err);
+  }
 
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
 
-  // Determine if chat should be readonly based on user ownership
-  const isReadonly = !user || user.id !== chat.user_id;
-
-  if (!chatModelFromCookie) {
-    return (
-      <>
-        <Chat
-          autoResume={true}
-          id={chat.id}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialLastContext={(chat.lastContext as any) ?? undefined}
-          initialMessages={uiMessages}
-          initialVisibilityType={chat.visibility as any}
-          isReadonly={isReadonly}
-        />
-        <DataStreamHandler />
-      </>
-    );
-  }
+  // Readonly only when we have a real chat and the viewer doesn't own it.
+  // When DB is offline we treat the page as a fresh editable session.
+  const isReadonly = !!chat && (!user || user.id !== chat.user_id);
+  const chatId = chat?.id ?? id;
+  const visibility = (chat?.visibility as any) ?? "private";
+  const lastContext = (chat?.lastContext as any) ?? undefined;
+  const initialChatModel = chatModelFromCookie?.value ?? DEFAULT_CHAT_MODEL;
 
   return (
     <>
       <Chat
         autoResume={true}
-        id={chat.id}
-        initialChatModel={chatModelFromCookie.value}
-        initialLastContext={(chat.lastContext as any) ?? undefined}
+        id={chatId}
+        initialChatModel={initialChatModel}
+        initialLastContext={lastContext}
         initialMessages={uiMessages}
-        initialVisibilityType={chat.visibility as any}
+        initialVisibilityType={visibility}
         isReadonly={isReadonly}
       />
       <DataStreamHandler />

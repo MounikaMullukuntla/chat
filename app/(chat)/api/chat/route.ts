@@ -10,7 +10,7 @@ import {
   buildFileContext,
   getFileContextSummary,
 } from "@/lib/ai/file-context-builder";
-import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
+import { createAuthErrorResponse, getCurrentUser, requireAuth } from "@/lib/auth/server";
 import {
   deleteChatById,
   getChatById,
@@ -22,6 +22,7 @@ import {
   getLastDocumentInChat,
   getLatestDocumentVersionsByChat,
 } from "@/lib/db/queries/document";
+import type { DBMessage } from "@/lib/db/drizzle-schema";
 import { ChatSDKError } from "@/lib/errors";
 import {
   ActivityCategory,
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
+  // Track when DB operations have failed so we skip downstream persistence.
+  let dbAvailable = true;
+
   try {
     const {
       id,
@@ -69,38 +73,82 @@ export async function POST(request: Request) {
       ragDisabled = false,
     } = requestBody;
 
-    // Authenticate user
-    const authResult = await requireAuth();
-    user = authResult.user;
-
-    // Chat management
-    chat = await getChatById({ id });
-    if (chat) {
-      if (chat.user_id !== user.id) {
-        return new ChatSDKError("forbidden:chat").toResponse();
+    // Authenticate user. If Supabase Auth is unreachable we still allow the
+    // request through so the user can interact with models without DB.
+    try {
+      const authResult = await requireAuth();
+      user = authResult.user;
+    } catch (authError) {
+      console.warn(
+        "Auth unavailable, attempting to continue without DB persistence:",
+        authError
+      );
+      try {
+        user = (await getCurrentUser()) ?? undefined;
+      } catch {
+        // Ignore — we'll proceed unauthenticated.
       }
-    } else {
-      const title = await generateTitleFromUserMessage({ message });
-      await saveChat({
-        id,
-        userId: user.id,
-        title,
-        visibility: selectedVisibilityType,
-      });
     }
 
-    // Get messages and process files
-    const messagesFromDb = await getMessagesByChatId({ id });
+    // Chat management — DB-backed; tolerate failures.
+    if (user) {
+      try {
+        chat = await getChatById({ id });
+        if (chat) {
+          if (chat.user_id !== user.id) {
+            return new ChatSDKError("forbidden:chat").toResponse();
+          }
+        } else {
+          const title = await generateTitleFromUserMessage({ message });
+          await saveChat({
+            id,
+            userId: user.id,
+            title,
+            visibility: selectedVisibilityType,
+          });
+        }
+      } catch (dbError) {
+        console.warn("Chat lookup/save failed (DB offline?):", dbError);
+        dbAvailable = false;
+      }
+    } else {
+      dbAvailable = false;
+    }
+
+    // Get messages and process files (best-effort)
+    let messagesFromDb: DBMessage[] = [];
+    if (dbAvailable) {
+      try {
+        messagesFromDb = await getMessagesByChatId({ id });
+      } catch (dbError) {
+        console.warn("Failed to load prior messages:", dbError);
+        dbAvailable = false;
+      }
+    }
     const uiMessages = [...convertToUIMessages(messagesFromDb), message];
 
-    // Fetch all artifacts in the conversation
-    const allArtifacts = await getLatestDocumentVersionsByChat({ chatId: id });
-    const lastDocument = await getLastDocumentInChat({ chatId: id });
+    // Fetch all artifacts in the conversation (best-effort)
+    let allArtifacts: Awaited<ReturnType<typeof getLatestDocumentVersionsByChat>> = [];
+    let lastDocument: Awaited<ReturnType<typeof getLastDocumentInChat>> | null = null;
+    if (dbAvailable) {
+      try {
+        allArtifacts = await getLatestDocumentVersionsByChat({ chatId: id });
+        lastDocument = await getLastDocumentInChat({ chatId: id });
+      } catch (dbError) {
+        console.warn("Failed to load artifacts:", dbError);
+      }
+    }
     const artifactContext = buildArtifactContext(allArtifacts, lastDocument);
 
-    // Build file context from ALL messages (cached files from previous uploads)
-    // This retrieves files from cache or storage and builds formatted context
-    const fileContext = await buildFileContext(messagesFromDb, id, user.id);
+    // Build file context (storage-backed; safe to skip on DB outage)
+    let fileContext = "";
+    if (dbAvailable && user) {
+      try {
+        fileContext = await buildFileContext(messagesFromDb, id, user.id);
+      } catch (fileErr) {
+        console.warn("Failed to build file context:", fileErr);
+      }
+    }
 
     // Build retrieval-augmented context from vector index using latest user text
     const latestUserText = message.parts
@@ -221,58 +269,67 @@ export async function POST(request: Request) {
       storagePath: filePart.storagePath || "", // Use storagePath if provided
     }));
 
-    // Save user message
-    await saveMessages({
-      messages: [
-        {
-          chatId: id,
-          id: message.id,
-          role: "user",
-          parts: message.parts,
-          attachments: fileAttachments,
-          createdAt: new Date(),
-          modelUsed: null,
-          inputTokens: null,
-          outputTokens: null,
-          cost: null,
-        },
-      ],
-    });
+    // Save user message (best-effort)
+    if (dbAvailable) {
+      try {
+        await saveMessages({
+          messages: [
+            {
+              chatId: id,
+              id: message.id,
+              role: "user",
+              parts: message.parts,
+              attachments: fileAttachments,
+              createdAt: new Date(),
+              modelUsed: null,
+              inputTokens: null,
+              outputTokens: null,
+              cost: null,
+            },
+          ],
+        });
+      } catch (dbError) {
+        console.warn("Failed to persist user message:", dbError);
+        dbAvailable = false;
+      }
+    }
 
-    // Log user activity - chat message sent
-    await logUserActivity({
-      user_id: user.id,
-      correlation_id: correlationId,
-      activity_type: chat
-        ? UserActivityType.CHAT_MESSAGE_SEND
-        : UserActivityType.CHAT_CREATE,
-      activity_category: ActivityCategory.CHAT,
-      activity_metadata: {
-        chat_id: id,
-        model_selected: selectedChatModel,
-        thinking_enabled: thinkingEnabled,
-        file_count: fileParts.length,
-        total_files_in_context: fileSummary.fileCount,
-        total_file_size: fileSummary.totalSize,
-        message_length: message.parts
-          .filter((p: any) => p.type === "text")
-          .reduce((sum: number, p: any) => sum + (p.text?.length || 0), 0),
-        has_artifact_context: allArtifacts.length > 0,
-        has_file_context: fileSummary.fileCount > 0,
-        has_rag_context: ragContextResult.sourceCount > 0,
-        rag_source_count: ragContextResult.sourceCount,
-        rag_skipped_reason: ragContextResult.skippedReason || null,
-      },
-      resource_id: id,
-      resource_type: "chat",
-      request_path: request.url,
-      request_method: "POST",
-      success: true,
-    });
+    // Log user activity - chat message sent (skip when unauthenticated)
+    if (user) {
+      await logUserActivity({
+        user_id: user.id,
+        correlation_id: correlationId,
+        activity_type: chat
+          ? UserActivityType.CHAT_MESSAGE_SEND
+          : UserActivityType.CHAT_CREATE,
+        activity_category: ActivityCategory.CHAT,
+        activity_metadata: {
+          chat_id: id,
+          model_selected: selectedChatModel,
+          thinking_enabled: thinkingEnabled,
+          file_count: fileParts.length,
+          total_files_in_context: fileSummary.fileCount,
+          total_file_size: fileSummary.totalSize,
+          message_length: message.parts
+            .filter((p: any) => p.type === "text")
+            .reduce((sum: number, p: any) => sum + (p.text?.length || 0), 0),
+          has_artifact_context: allArtifacts.length > 0,
+          has_file_context: fileSummary.fileCount > 0,
+          has_rag_context: ragContextResult.sourceCount > 0,
+          rag_source_count: ragContextResult.sourceCount,
+          rag_skipped_reason: ragContextResult.skippedReason || null,
+        },
+        resource_id: id,
+        resource_type: "chat",
+        request_path: request.url,
+        request_method: "POST",
+        success: true,
+      });
+    }
 
     // Create performance tracker for AI operation
     const aiTracker = new PerformanceTracker({
-      user_id: user.id,
+      user_id: user?.id,
       correlation_id: correlationId,
       agent_type: AgentType.CHAT_MODEL_AGENT,
       operation_type: AgentOperationType.STREAMING,
@@ -351,13 +408,14 @@ export async function POST(request: Request) {
           (msg) => msg.role === "assistant"
         );
 
-        if (assistantMessages.length > 0) {
+        if (assistantMessages.length > 0 && dbAvailable) {
           console.log(
             "🔍 [FINISH] Processing",
             assistantMessages.length,
             "assistant messages"
           );
 
+          try {
           await saveMessages({
             messages: assistantMessages.map((msg) => {
               console.log("🔍 [FINISH] Message has", msg.parts.length, "parts");
@@ -414,6 +472,9 @@ export async function POST(request: Request) {
               };
             }),
           });
+          } catch (dbError) {
+            console.warn("Failed to persist assistant messages:", dbError);
+          }
         }
 
         // Log agent activity completion (Note: Token counts not available from chat agent interface)

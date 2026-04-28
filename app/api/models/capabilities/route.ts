@@ -1,30 +1,28 @@
 import type { User } from "@supabase/supabase-js";
-import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
+import { requireAuth } from "@/lib/auth/server";
 import { getAdminConfigSummary } from "@/lib/db/queries/admin";
+import {
+  FALLBACK_ADMIN_CONFIG_SUMMARY,
+  FALLBACK_DB_OFFLINE_STATUS,
+} from "@/lib/ai/fallback-config";
 import { ErrorCategory, ErrorSeverity, logApiError } from "@/lib/errors/logger";
 
 // GET /api/models/capabilities - Public model capabilities for authenticated users
 export async function GET(request: Request) {
-  let user: User;
+  let user: User | undefined;
 
   try {
     const authResult = await requireAuth();
     user = authResult.user;
   } catch (error) {
+    // Auth uses Supabase too — if it's unreachable we still want the dropdown
+    // populated with fallback models so the user can chat without persistence.
     await logApiError(
       ErrorCategory.UNAUTHORIZED_ACCESS,
-      `Model capabilities GET request authentication failed: ${error instanceof Error ? error.message : "Unknown auth error"}`,
-      {
-        request: {
-          method: "GET",
-          url: request.url,
-          headers: Object.fromEntries(request.headers.entries()),
-        },
-      },
+      `Model capabilities auth failed (continuing with fallback): ${error instanceof Error ? error.message : "Unknown auth error"}`,
+      { request: { method: "GET", url: request.url } },
       ErrorSeverity.WARNING
     );
-
-    return createAuthErrorResponse(error as Error);
   }
 
   try {
@@ -55,16 +53,8 @@ export async function GET(request: Request) {
 
     return Response.json(
       {
-        capabilities: null,
-        dbStatus: {
-          ok: false,
-          message: "The model configuration database is unreachable.",
-          steps: [
-            "Create and add a Supabase key, or have your site admin log in to supabase.com and restore the paused project.",
-            "Verify that POSTGRES_URL, NEXT_PUBLIC_SUPABASE_URL, and NEXT_PUBLIC_SUPABASE_ANON_KEY in docker/.env point to the correct project.",
-            "Restart the server: kill $(lsof -ti:8888) && node chat/server.mjs",
-          ],
-        },
+        capabilities: FALLBACK_ADMIN_CONFIG_SUMMARY,
+        dbStatus: FALLBACK_DB_OFFLINE_STATUS,
       },
       { status: 200 }
     );
