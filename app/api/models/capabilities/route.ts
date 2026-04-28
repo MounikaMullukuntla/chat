@@ -4,6 +4,7 @@ import { getAdminConfigSummary } from "@/lib/db/queries/admin";
 import {
   FALLBACK_ADMIN_CONFIG_SUMMARY,
   FALLBACK_DB_OFFLINE_STATUS,
+  FALLBACK_DB_OFFLINE_STATUS_LOCALHOST,
 } from "@/lib/ai/fallback-config";
 import { ErrorCategory, ErrorSeverity, logApiError } from "@/lib/errors/logger";
 
@@ -51,10 +52,18 @@ export async function GET(request: Request) {
       ErrorSeverity.ERROR
     );
 
+    const hostname = new URL(request.url).hostname;
+    const isLocalhost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1";
+
     return Response.json(
       {
         capabilities: FALLBACK_ADMIN_CONFIG_SUMMARY,
-        dbStatus: FALLBACK_DB_OFFLINE_STATUS,
+        dbStatus: isLocalhost
+          ? FALLBACK_DB_OFFLINE_STATUS_LOCALHOST
+          : FALLBACK_DB_OFFLINE_STATUS,
       },
       { status: 200 }
     );

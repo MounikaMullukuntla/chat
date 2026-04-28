@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
@@ -7,7 +7,7 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 // Default model constant
 const DEFAULT_CHAT_MODEL = "gemini-2.5-flash";
 
-import { getCurrentUser } from "@/lib/auth/server";
+import { getCurrentUser, isAuthRequired } from "@/lib/auth/server";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import {
   ActivityCategory,
@@ -44,6 +44,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   const user = await getCurrentUser();
+
+  // Redirect unauthenticated users to login when this host requires auth.
+  if (!user && (await isAuthRequired())) {
+    redirect(`/login?returnTo=/chat/${id}`);
+  }
 
   // Check if user can access this chat (only when DB is reachable and we have one)
   if (chat && chat.visibility === "private") {

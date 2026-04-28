@@ -118,7 +118,9 @@ export class AgentConfigLoader {
         },
       });
 
-      throw error; // Re-throw to ensure errors are not silently ignored
+      // Specialized agents are best-effort — when the admin_config DB is
+      // unreachable we let the base chat agent stream without them rather
+      // than failing the entire request.
     }
   }
 
@@ -187,7 +189,9 @@ export class AgentConfigLoader {
         },
       });
 
-      throw error; // Re-throw to ensure errors are not silently ignored
+      // Specialized agents are best-effort — when the admin_config DB is
+      // unreachable we let the base chat agent stream without them rather
+      // than failing the entire request.
     }
   }
 
@@ -256,7 +260,9 @@ export class AgentConfigLoader {
         },
       });
 
-      throw error; // Re-throw to ensure errors are not silently ignored
+      // Specialized agents are best-effort — when the admin_config DB is
+      // unreachable we let the base chat agent stream without them rather
+      // than failing the entire request.
     }
   }
 
@@ -325,7 +331,9 @@ export class AgentConfigLoader {
         },
       });
 
-      throw error; // Re-throw to ensure errors are not silently ignored
+      // Specialized agents are best-effort — when the admin_config DB is
+      // unreachable we let the base chat agent stream without them rather
+      // than failing the entire request.
     }
   }
 
@@ -394,7 +402,9 @@ export class AgentConfigLoader {
         },
       });
 
-      throw error; // Re-throw to ensure errors are not silently ignored
+      // Specialized agents are best-effort — when the admin_config DB is
+      // unreachable we let the base chat agent stream without them rather
+      // than failing the entire request.
     }
   }
 

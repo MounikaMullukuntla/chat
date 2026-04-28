@@ -10,7 +10,12 @@ import {
   buildFileContext,
   getFileContextSummary,
 } from "@/lib/ai/file-context-builder";
-import { createAuthErrorResponse, getCurrentUser, requireAuth } from "@/lib/auth/server";
+import {
+  createAuthErrorResponse,
+  getCurrentUser,
+  isAuthRequired,
+  requireAuth,
+} from "@/lib/auth/server";
 import {
   deleteChatById,
   getChatById,
@@ -88,6 +93,13 @@ export async function POST(request: Request) {
       } catch {
         // Ignore — we'll proceed unauthenticated.
       }
+    }
+
+    // Reject unauthenticated requests when this host (or REQUIRE_AUTH) demands
+    // a logged-in user. On localhost without REQUIRE_AUTH, anonymous use is
+    // allowed so the model can still respond without DB persistence.
+    if (!user && (await isAuthRequired(request.headers))) {
+      return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
     // Chat management — DB-backed; tolerate failures.

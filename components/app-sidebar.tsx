@@ -103,9 +103,11 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [broadened, setBroadened] = useState(false);
   // Persisted so chat.tsx can read it and tell the server to skip RAG entirely.
+  // Default to "none selected" so the first prompt skips RAG retrieval and
+  // gets a faster response; the user's persisted choice (if any) still wins.
   const [noneSelected, setNoneSelected] = useLocalStorage<boolean>(
     "rag-disabled",
-    false
+    true
   );
   const [showGithubSources, setShowGithubSources] = useState(false);
   const [githubSelectedRepos, setGithubSelectedRepos] = useState<GitHubRepo[]>([]);

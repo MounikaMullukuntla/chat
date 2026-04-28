@@ -6,6 +6,7 @@
  */
 
 import type { Session, User } from "@supabase/supabase-js";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@/lib/db/supabase-client";
 import {
@@ -24,6 +25,35 @@ export type ServerAuthResult = {
 export interface ServerAuthError extends Error {
   code: "UNAUTHORIZED" | "FORBIDDEN" | "SESSION_EXPIRED" | "UNKNOWN_ERROR";
   statusCode: number;
+}
+
+/**
+ * Decide whether the current request must be authenticated.
+ *
+ * Resolution:
+ *   1. `REQUIRE_AUTH=true`  → always require login.
+ *   2. `REQUIRE_AUTH=false` → never require login.
+ *   3. Unset → fall back to host-based default: non-localhost requires login,
+ *      localhost (and 127.0.0.1 / ::1) does not.
+ *
+ * Pass a `Headers` object when calling from an API route. From a Server
+ * Component, omit it and the helper reads `next/headers` itself.
+ */
+export async function isAuthRequired(reqHeaders?: Headers): Promise<boolean> {
+  const flag = process.env.REQUIRE_AUTH?.trim().toLowerCase();
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+
+  const headerStore = reqHeaders ?? (await headers());
+  const host =
+    headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
+  const hostname = host.split(":")[0].toLowerCase();
+  const isLocalhost =
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]";
+  return !isLocalhost;
 }
 
 /**
