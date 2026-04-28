@@ -4,10 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorCategory, ErrorSeverity, logAppError } from "@/lib/errors/logger";
 import type { AdminConfigSummary } from "@/lib/types";
 
+export type DbStatus =
+  | { ok: true }
+  | { ok: false; message: string; steps: string[] };
+
 type UseModelCapabilitiesResult = {
   modelCapabilities: AdminConfigSummary | null;
   isLoading: boolean;
   error: string | null;
+  dbStatus: DbStatus | null;
   refetch: () => void;
 };
 
@@ -16,6 +21,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
     useState<AdminConfigSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
   const fetchModelCapabilities = useCallback(async () => {
     try {
@@ -81,6 +87,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
       }
 
       const data = await response.json();
+      setDbStatus(data.dbStatus ?? null);
       // Extract capabilities from the consolidated response
       setModelCapabilities(data.capabilities);
     } catch (err) {
@@ -129,6 +136,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
 
       setError(errorMessage);
       setModelCapabilities(null);
+      setDbStatus(null);
     } finally {
       setIsLoading(false);
     }
@@ -146,6 +154,7 @@ export function useModelCapabilities(): UseModelCapabilitiesResult {
     modelCapabilities,
     isLoading,
     error,
+    dbStatus,
     refetch,
   };
 }

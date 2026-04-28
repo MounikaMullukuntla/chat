@@ -201,6 +201,7 @@ function PureMultimodalInput({
     modelCapabilities: adminConfig,
     isLoading: configLoading,
     error: configError,
+    dbStatus,
   } = useModelCapabilities();
 
   // Determine current provider from selected model
@@ -744,6 +745,7 @@ function PureMultimodalInput({
 
             <ModelSelector
               adminConfig={adminConfig || undefined}
+              dbStatus={dbStatus}
               error={configError}
               isLoading={configLoading}
               onModelChange={onModelChange || (() => {})}

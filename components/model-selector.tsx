@@ -2,7 +2,7 @@
 
 import { memo, startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Server } from "lucide-react";
+import { AlertTriangle, Database, Lock, Server } from "lucide-react";
 import useSWR from "swr";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { DbStatus } from "@/hooks/use-model-capabilities";
 import type { AdminConfigSummary } from "@/lib/types";
 import { storage } from "@/lib/storage";
 import { cn, fetcher } from "@/lib/utils";
@@ -25,6 +26,7 @@ type ModelSelectorProps = {
   adminConfig?: AdminConfigSummary | null;
   isLoading?: boolean;
   error?: string | null;
+  dbStatus?: DbStatus | null;
   onModelChange: (model: string) => void;
   className?: string;
 };
@@ -34,6 +36,7 @@ function PureModelSelector({
   adminConfig,
   isLoading = false,
   error,
+  dbStatus,
   onModelChange,
   className,
 }: ModelSelectorProps) {
@@ -70,19 +73,42 @@ function PureModelSelector({
     );
   }
 
-  if (error || !adminConfig) {
+  if (error || (dbStatus && !dbStatus.ok) || !adminConfig) {
+    const dbDown = dbStatus && !dbStatus.ok ? dbStatus : null;
     return (
-      <div
-        className={cn(
-          "flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none",
-          className
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-lg border-0 bg-background px-2 text-foreground shadow-none transition-colors hover:bg-accent focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0",
+              className
+            )}
+          >
+            <AlertTriangle size={16} className="text-amber-500" />
+            <span className="hidden font-medium text-amber-500 text-xs sm:block">
+              {dbDown ? "DB Offline" : "Config Error"}
+            </span>
+            <ChevronDownIcon size={16} />
+          </button>
+        </DropdownMenuTrigger>
+        {dbDown && (
+          <DropdownMenuContent className="max-w-[340px] p-3">
+            <div className="flex items-start gap-2 mb-2">
+              <Database size={15} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <p className="font-medium text-sm">{dbDown.message}</p>
+            </div>
+            <p className="text-muted-foreground text-xs mb-2">To restore model config:</p>
+            <ol className="space-y-1.5">
+              {dbDown.steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <span className="flex-shrink-0 font-medium text-foreground">{i + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </DropdownMenuContent>
         )}
-      >
-        <CpuIcon size={16} />
-        <span className="hidden font-medium text-muted-foreground text-xs sm:block">
-          Config Error
-        </span>
-      </div>
+      </DropdownMenu>
     );
   }
 

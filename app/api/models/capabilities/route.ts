@@ -1,7 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { createAuthErrorResponse, requireAuth } from "@/lib/auth/server";
 import { getAdminConfigSummary } from "@/lib/db/queries/admin";
-import { ChatSDKError } from "@/lib/errors";
 import { ErrorCategory, ErrorSeverity, logApiError } from "@/lib/errors/logger";
 
 // GET /api/models/capabilities - Public model capabilities for authenticated users
@@ -32,7 +31,7 @@ export async function GET(request: Request) {
     const capabilities = await getAdminConfigSummary();
 
     return Response.json(
-      { capabilities },
+      { capabilities, dbStatus: { ok: true } },
       {
         status: 200,
         headers: {
@@ -54,9 +53,20 @@ export async function GET(request: Request) {
       ErrorSeverity.ERROR
     );
 
-    return new ChatSDKError(
-      "bad_request:database",
-      "Failed to retrieve model capabilities"
-    ).toResponse();
+    return Response.json(
+      {
+        capabilities: null,
+        dbStatus: {
+          ok: false,
+          message: "The model configuration database is unreachable.",
+          steps: [
+            "Create and add a Supabase key, or have your site admin log in to supabase.com and restore the paused project.",
+            "Verify that POSTGRES_URL, NEXT_PUBLIC_SUPABASE_URL, and NEXT_PUBLIC_SUPABASE_ANON_KEY in docker/.env point to the correct project.",
+            "Restart the server: kill $(lsof -ti:8888) && node chat/server.mjs",
+          ],
+        },
+      },
+      { status: 200 }
+    );
   }
 }
