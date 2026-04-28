@@ -63,10 +63,10 @@ For complete Supabase setup details, see [docs/database-design.md](./docs/databa
 
 ### 4. Configure Environment Variables
 
-Create a `.env.local` file in the project root by copying `.env.example`:
+The canonical sample lives at the webroot root: `docker/.env.example`. Copy it to `docker/.env` (which `chat/server.mjs` and `lib/env-loader.ts` read automatically):
 
 ```bash
-cp .env.example .env.local
+cp ../docker/.env.example ../docker/.env
 ```
 
 Update the values with your Supabase credentials:

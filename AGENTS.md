@@ -136,9 +136,19 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 POSTGRES_URL
 BETTER_AUTH_SECRET
+REQUIRE_AUTH          # optional — true/false to override host-based auth gate
 ```
 
 The `lib/env-loader.ts` file handles reading these at runtime.
+
+### Where to document new env vars
+
+There is **no `chat/.env.example`**. The canonical sample env file for this app lives at the webroot root: **`../docker/.env.example`**. Add new variable placeholders and explanatory comments there, not inside `chat/`.
+
+Agent behavior when adding a new env var example:
+
+1. Add the placeholder + comment to `docker/.env.example`.
+2. **Ask the user** whether the same placeholder should also be appended to `docker/.env` (the live config). Don't add it silently — the live file may already be populated and the user may want to set a real value rather than a placeholder.
 
 ---
 

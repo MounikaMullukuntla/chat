@@ -456,9 +456,9 @@ python ingestion/vector_db_sync.py --from-commit HEAD~1 --to-commit HEAD
 echo $VOYAGE_API_KEY
 echo $PINECONE_API_KEY
 
-# Or use .env file
-cp .env.example .env
-# Edit .env
+# Or use the shared docker/.env file at the webroot root
+cp ../../docker/.env.example ../../docker/.env
+# Edit ../../docker/.env
 ```
 
 **4. "Pinecone index not found"**
