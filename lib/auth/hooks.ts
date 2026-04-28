@@ -10,7 +10,7 @@
 "use client";
 
 import type { Session, User } from "@supabase/supabase-js";
-import type { UserMetadata } from "./client";
+import type { SignUpEmailStatus, UserMetadata } from "./client";
 import {
   useRequireAdmin as contextRequireAdmin,
   useRequireAuth as contextRequireAuth,
@@ -28,7 +28,7 @@ export type UseAuthReturn = {
     email: string,
     password: string,
     metadata?: Partial<UserMetadata>
-  ) => Promise<void>;
+  ) => Promise<SignUpEmailStatus>;
   signOut: () => Promise<void>;
   clearError: () => void;
 };

@@ -17,6 +17,8 @@ export type LocalStorageSchema = {
     deepseek?: string;
     discord?: string;
     github?: string;
+    pinecone?: string;
+    voyage?: string;
   };
   integrations: {
     github?: {

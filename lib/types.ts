@@ -24,6 +24,15 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   usage: AppUsage;
+  "rag-status": {
+    skippedReason?:
+      | "disabled"
+      | "empty_query"
+      | "missing_credentials"
+      | "no_matches"
+      | "error";
+    sourceCount?: number;
+  } | null;
 };
 
 export type ChatMessage = UIMessage<MessageMetadata, CustomUIDataTypes>;

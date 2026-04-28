@@ -33,6 +33,76 @@ export type AuthResult = {
   error: AuthError | null;
 };
 
+// Status of the verification email after signUp.
+// - sent: a verification email was (or should have been) dispatched
+// - already_registered: Supabase returned success but identities is empty,
+//     which is its security-by-obscurity signal that the email is in use
+// - rate_limited: Supabase or its SMTP provider rejected for rate limit
+// - smtp_failed: SMTP send error (custom SMTP misconfigured, etc.)
+// - unknown: signUp returned an error we couldn't categorize
+export type SignUpEmailStatus =
+  | "sent"
+  | "already_registered"
+  | "rate_limited"
+  | "smtp_failed"
+  | "unknown";
+
+export type SignUpResult = AuthResult & {
+  emailStatus: SignUpEmailStatus;
+};
+
+function classifySignUpError(error: AuthError): SignUpEmailStatus {
+  const message = error.message?.toLowerCase() ?? "";
+  const code = (error as AuthError & { code?: string }).code?.toLowerCase() ?? "";
+  const status = error.status ?? 0;
+
+  if (
+    status === 429 ||
+    message.includes("rate limit") ||
+    message.includes("too many") ||
+    code.includes("over_email_send_rate_limit") ||
+    code.includes("rate_limit")
+  ) {
+    return "rate_limited";
+  }
+
+  if (
+    message.includes("smtp") ||
+    message.includes("send email") ||
+    message.includes("email send") ||
+    code.includes("email_send_failed") ||
+    code.includes("smtp")
+  ) {
+    return "smtp_failed";
+  }
+
+  if (
+    message.includes("already registered") ||
+    message.includes("already exists") ||
+    code.includes("user_already_exists")
+  ) {
+    return "already_registered";
+  }
+
+  return "unknown";
+}
+
+function classifySignUpSuccess(user: User | null, session: Session | null): SignUpEmailStatus {
+  // If a session is returned, email confirmation is disabled in this project,
+  // so no verification email is expected — treat as "sent" so the UI doesn't
+  // confusingly show a remediation banner.
+  if (session) return "sent";
+
+  // Supabase's security-by-obscurity: when the email is already taken, it
+  // returns a User shell with an empty identities array and no session.
+  // No verification email is dispatched in this case.
+  if (user && Array.isArray(user.identities) && user.identities.length === 0) {
+    return "already_registered";
+  }
+
+  return "sent";
+}
+
 /**
  * Sign up a new user with email and password
  * Assigns default 'user' role in metadata
@@ -54,9 +124,14 @@ export async function signUp(
   email: string,
   password: string,
   metadata: Partial<UserMetadata> = {}
-): Promise<AuthResult> {
+): Promise<SignUpResult> {
   if (!isSupabaseConfigured) {
-    return { user: null, session: null, error: new Error("Supabase is not configured") as AuthError };
+    return {
+      user: null,
+      session: null,
+      error: new Error("Supabase is not configured") as AuthError,
+      emailStatus: "unknown",
+    };
   }
   try {
     const supabase = createClient();
@@ -72,11 +147,19 @@ export async function signUp(
       ...metadata,
     };
 
+    // emailRedirectTo makes the verification link in the email return to
+    // the origin the user signed up from. Without this, Supabase falls back
+    // to its "Site URL" project setting, which on localhost typically points
+    // at production and breaks the dev round-trip.
+    const emailRedirectTo =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: defaultMetadata,
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
     });
 
@@ -104,17 +187,57 @@ export async function signUp(
       }
     }
 
+    const emailStatus: SignUpEmailStatus = error
+      ? classifySignUpError(error)
+      : classifySignUpSuccess(data.user, data.session);
+
     return {
       user: data.user,
       session: data.session,
       error,
+      emailStatus,
     };
   } catch (err) {
     return {
       user: null,
       session: null,
       error: err as AuthError,
+      emailStatus: "unknown",
     };
+  }
+}
+
+/**
+ * Resend the signup verification email for an unconfirmed user.
+ *
+ * Used by the post-signup screen so the user can retry without re-entering
+ * their password. Returns the same emailStatus shape as signUp so the UI
+ * can render the same remediation paths.
+ */
+export async function resendSignupEmail(
+  email: string
+): Promise<{ error: AuthError | null; emailStatus: SignUpEmailStatus }> {
+  if (!isSupabaseConfigured) {
+    return {
+      error: new Error("Supabase is not configured") as AuthError,
+      emailStatus: "unknown",
+    };
+  }
+  try {
+    const supabase = createClient();
+    const emailRedirectTo =
+      typeof window !== "undefined" ? window.location.origin : undefined;
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      ...(emailRedirectTo ? { options: { emailRedirectTo } } : {}),
+    });
+    return {
+      error,
+      emailStatus: error ? classifySignUpError(error) : "sent",
+    };
+  } catch (err) {
+    return { error: err as AuthError, emailStatus: "unknown" };
   }
 }
 
