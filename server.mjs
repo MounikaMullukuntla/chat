@@ -74,9 +74,12 @@ const PROVIDER_ENV_VARS = {
   pinecone:  'PINECONE_API_KEY',
   voyage:    'VOYAGE_API_KEY',
 }
+const PLACEHOLDER_PATTERNS = /^(your_|sk-your|<|example|placeholder|xxx|changeme|todo|test|dummy)/i;
+const isRealKey = (val) => val && val.trim().length > 0 && !PLACEHOLDER_PATTERNS.test(val.trim()) && !val.includes('_here') && !val.includes('_key_here');
+
 process.env.SERVER_KEYS_JSON = JSON.stringify(
   Object.entries(PROVIDER_ENV_VARS)
-    .filter(([, v]) => !!process.env[v])
+    .filter(([, v]) => isRealKey(process.env[v]))
     .map(([id]) => id)
 )
 

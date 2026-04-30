@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 export default function KeyPage() {
   const [serverKeys, setServerKeys] = useState<string[]>([]);
+  const [browserKeyProviders, setBrowserKeyProviders] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -12,6 +13,18 @@ export default function KeyPage() {
       .then((r) => r.json())
       .then((keys: string[]) => setServerKeys(keys))
       .catch(() => {});
+
+    try {
+      const stored = localStorage.getItem("api-keys");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, string>;
+        setBrowserKeyProviders(
+          Object.entries(parsed)
+            .filter(([, v]) => v && v.trim().length > 0)
+            .map(([k]) => k)
+        );
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -25,6 +38,7 @@ export default function KeyPage() {
 
   const isVercel = !!process.env.NEXT_PUBLIC_VERCEL_ENV;
   const noServerKeys = serverKeys.length === 0;
+  const noKeys = noServerKeys && browserKeyProviders.length === 0;
 
   return (
     <>
@@ -33,6 +47,40 @@ export default function KeyPage() {
         <div className="key-page-header">
           <h1>API Key Settings</h1>
           <p>Add your API keys to unlock AI models and Github integration.</p>
+
+          {noKeys && (
+            <p style={{ marginTop: "10px", fontSize: "0.9rem" }}>
+              Get yourself a{" "}
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-600"
+              >
+                free Google Gemini key
+              </a>
+              .
+            </p>
+          )}
+
+          {browserKeyProviders.length > 0 && (
+            <p
+              style={{
+                marginTop: "10px",
+                padding: "8px 12px",
+                background: "#f0fdf4",
+                border: "1px solid #86efac",
+                borderRadius: "6px",
+                fontSize: "0.85rem",
+                color: "#166534",
+              }}
+            >
+              Browser keys active for: {browserKeyProviders.join(", ")}. These
+              are saved locally in your browser and used directly from your
+              device.
+            </p>
+          )}
+
           {isVercel && noServerKeys && (
             <p
               style={{
