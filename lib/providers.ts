@@ -1,0 +1,139 @@
+/**
+ * Canonical provider + model registry.
+ *
+ * Single source of truth for provider metadata used by:
+ *   - Next.js app code (imported as an ES module)
+ *   - chat/keys/providers.js (vanilla JS mirror — update both files together)
+ *
+ * Model lists here are the static/offline fallback. The runtime source of
+ * truth is the model_config DB table seeded by lib/db/migrations/0007_seed_data_model_config.sql.
+ */
+
+import type { APIProvider } from "@/lib/storage/types";
+
+export type ProviderModel = {
+  id: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+  active: boolean;
+};
+
+export type ProviderInfo = {
+  id: APIProvider;
+  name: string;
+  keyPlaceholder: string;
+  keyHint: string;
+  getKeyUrl: string;
+  tokenOnly?: boolean;
+  models: ProviderModel[];
+};
+
+export const PROVIDERS: ProviderInfo[] = [
+  {
+    id: "github",
+    name: "GitHub",
+    keyPlaceholder: "ghp_... or github_pat_...",
+    keyHint: "Personal Access Token (GITHUB_PERSONAL_ACCESS_TOKEN)",
+    getKeyUrl: "https://github.com/settings/tokens",
+    tokenOnly: true,
+    models: [],
+  },
+  {
+    id: "google",
+    name: "Google AI",
+    keyPlaceholder: "AIza...",
+    keyHint: "Google AI Studio key",
+    getKeyUrl: "https://aistudio.google.com/app/apikey",
+    models: [
+      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Enhanced flash model with better performance", isDefault: true,  active: true  },
+      { id: "gemini-2.5-pro",   name: "Gemini 2.5 Pro",   description: "Most capable model for complex tasks",         isDefault: false, active: true  },
+      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "Fast, efficient model for most tasks",         isDefault: false, active: true  },
+      { id: "gemma-3",          name: "Gemma 3",           description: "Open source model for basic tasks",           isDefault: false, active: false },
+    ],
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    keyPlaceholder: "sk-ant-...",
+    keyHint: "Anthropic Console key",
+    getKeyUrl: "https://console.anthropic.com/settings/keys",
+    models: [
+      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", description: "Most capable Claude model",        isDefault: true,  active: true  },
+      { id: "claude-3-5-haiku-20241022",  name: "Claude 3.5 Haiku",  description: "Fast and efficient Claude model", isDefault: false, active: true  },
+      { id: "claude-3-opus-20240229",     name: "Claude 3 Opus",     description: "Previous generation flagship",    isDefault: false, active: false },
+    ],
+  },
+  {
+    id: "openai",
+    name: "OpenAI",
+    keyPlaceholder: "sk-...",
+    keyHint: "OpenAI platform key",
+    getKeyUrl: "https://platform.openai.com/api-keys",
+    models: [
+      { id: "gpt-4o",      name: "GPT-4o",      description: "Most capable GPT-4 model",      isDefault: true,  active: true  },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini", description: "Faster, more affordable GPT-4", isDefault: false, active: true  },
+      { id: "gpt-4-turbo", name: "GPT-4 Turbo", description: "Previous generation GPT-4",     isDefault: false, active: false },
+    ],
+  },
+  {
+    id: "xai",
+    name: "xAI",
+    keyPlaceholder: "xai-...",
+    keyHint: "xAI Console key",
+    getKeyUrl: "https://console.x.ai/",
+    models: [
+      { id: "grok-3",      name: "Grok 3",      description: "Most capable Grok model", isDefault: true,  active: true },
+      { id: "grok-3-mini", name: "Grok 3 Mini", description: "Fast and efficient Grok", isDefault: false, active: true },
+    ],
+  },
+  {
+    id: "groq",
+    name: "Groq",
+    keyPlaceholder: "gsk_...",
+    keyHint: "Groq Console key",
+    getKeyUrl: "https://console.groq.com/keys",
+    models: [
+      { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", description: "Fast open-source model via Groq", isDefault: true, active: true },
+    ],
+  },
+  {
+    id: "perplexity",
+    name: "Perplexity",
+    keyPlaceholder: "pplx-...",
+    keyHint: "Perplexity API key",
+    getKeyUrl: "https://www.perplexity.ai/settings/api",
+    models: [],
+  },
+  {
+    id: "discord",
+    name: "Discord Bot",
+    keyPlaceholder: "",
+    keyHint: "Discord bot token (DISCORD_BOT_TOKEN)",
+    getKeyUrl: "https://discord.com/developers/applications",
+    tokenOnly: true,
+    models: [],
+  },
+  {
+    id: "pinecone",
+    name: "Pinecone",
+    keyPlaceholder: "pcsk_...",
+    keyHint: "Vector DB for repository retrieval (PINECONE_API_KEY)",
+    getKeyUrl: "https://app.pinecone.io/organizations/-/keys",
+    tokenOnly: true,
+    models: [],
+  },
+  {
+    id: "voyage",
+    name: "Voyage AI",
+    keyPlaceholder: "pa-...",
+    keyHint: "Embedding model for repository retrieval (VOYAGE_API_KEY)",
+    getKeyUrl: "https://dash.voyageai.com/api-keys",
+    tokenOnly: true,
+    models: [],
+  },
+];
+
+export const PROVIDER_MAP: Record<string, ProviderInfo> = Object.fromEntries(
+  PROVIDERS.map((p) => [p.id, p])
+);

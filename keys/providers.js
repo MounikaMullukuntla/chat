@@ -1,7 +1,13 @@
 /**
- * providers.js — Static provider + model registry
- * Kept in sync with chat/lib/db/migrations/0007_seed_data_model_config.sql
- * and chat/lib/storage/types.ts APIProvider type.
+ * providers.js — Static provider + model registry (vanilla JS mirror)
+ *
+ * Canonical source: chat/lib/providers.ts (ES module, used by Next.js app code)
+ * This file mirrors that data for no-build static pages that load it via <script>.
+ * When adding or changing providers/models, update lib/providers.ts first, then
+ * reflect the change here.
+ *
+ * Also kept in sync with lib/db/migrations/0007_seed_data_model_config.sql
+ * and lib/storage/types.ts APIProvider type.
  */
 
 window.KeyManagerProviders = [
@@ -73,48 +79,12 @@ window.KeyManagerProviders = [
     ],
   },
   {
-    id: 'mistral',
-    name: 'Mistral',
-    keyPlaceholder: '',
-    keyHint: 'Mistral platform key',
-    getKeyUrl: 'https://console.mistral.ai/api-keys/',
-    models: [
-      { id: 'mistral-large-latest', name: 'Mistral Large', description: 'Most capable Mistral model', isDefault: true, active: true },
-    ],
-  },
-  {
-    id: 'together',
-    name: 'Together AI',
-    keyPlaceholder: '',
-    keyHint: 'Together AI key',
-    getKeyUrl: 'https://api.together.xyz/settings/api-keys',
-    models: [],
-  },
-  {
-    id: 'fireworks',
-    name: 'Fireworks',
-    keyPlaceholder: '',
-    keyHint: 'Fireworks AI key',
-    getKeyUrl: 'https://fireworks.ai/account/api-keys',
-    models: [],
-  },
-  {
     id: 'perplexity',
     name: 'Perplexity',
     keyPlaceholder: 'pplx-...',
     keyHint: 'Perplexity API key',
     getKeyUrl: 'https://www.perplexity.ai/settings/api',
     models: [],
-  },
-  {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    keyPlaceholder: '',
-    keyHint: 'DeepSeek platform key',
-    getKeyUrl: 'https://platform.deepseek.com/api_keys',
-    models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat', description: 'DeepSeek V3 chat model', isDefault: true, active: true },
-    ],
   },
   {
     id: 'discord',

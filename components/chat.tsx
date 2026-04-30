@@ -35,6 +35,7 @@ import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "sonner";
 import type { VisibilityType } from "./visibility-selector";
+import { PROVIDER_MAP } from "@/lib/providers";
 
 export function Chat({
   id,
@@ -285,6 +286,61 @@ export function Chat({
         });
       }
 
+      const isMissingKey =
+        (msgLower.includes("missing") && msgLower.includes("api key")) ||
+        (msgLower.includes("api key") && (msgLower.includes("required") || msgLower.includes("invalid"))) ||
+        msgLower.includes("please check your api key") ||
+        (msgLower.includes("authentication failed") && msgLower.includes("api"));
+
+      if (isMissingKey) {
+        const providerKey =
+          msgLower.includes("google") || msgLower.includes("gemini") ? "google" :
+          msgLower.includes("anthropic") || msgLower.includes("claude") ? "anthropic" :
+          msgLower.includes("openai") || msgLower.includes("gpt") ? "openai" :
+          msgLower.includes("xai") || msgLower.includes("grok") ? "xai" :
+          null;
+
+        const info = PROVIDER_MAP[providerKey ?? ""];
+        const providerName = info?.name ?? "the selected AI provider";
+
+        const keyMessage = [
+          `**API key required for ${providerName}**`,
+          "",
+          info ? `1. [Get a ${providerName} API key](${info.getKeyUrl})` : "",
+          `${info ? "2." : "1."} [Add it in Settings → API Keys](/settings)`,
+        ].filter(Boolean).join("\n");
+
+        setMessages((prev) => {
+          const assistantMsg = {
+            id: generateUUID(),
+            role: "assistant" as const,
+            parts: [{ type: "text" as const, text: keyMessage }],
+          } as ChatMessage;
+
+          if (prev.length === 0) return [assistantMsg];
+
+          let idx = prev.length - 1;
+          while (idx >= 0 && prev[idx].role !== "assistant") idx--;
+
+          if (idx < 0) return [...prev, assistantMsg];
+
+          const last = prev[idx];
+          const hasMeaningfulPart = last.parts?.some((part: any) =>
+            part.type === "text" ? (part.text ?? "").trim().length > 0 : true
+          );
+
+          if (hasMeaningfulPart) return [...prev, assistantMsg];
+
+          const next = [...prev];
+          next[idx] = { ...last, parts: [{ type: "text", text: keyMessage }] } as ChatMessage;
+          return next;
+        });
+
+        setDataStream([]);
+        clearError();
+        return;
+      }
+
       if (error instanceof ChatSDKError) {
         if (error.message?.includes("AI Gateway requires a valid credit card")) {
           setShowCreditCardAlert(true);
@@ -292,11 +348,7 @@ export function Chat({
           toast.error(error.message);
         }
       } else if (error instanceof Error) {
-        if (error.message?.includes("Google API key is required")) {
-          toast.error("Please configure your Google API key in Settings to use the chat.");
-        } else {
-          toast.error(error.message || "An unexpected error occurred");
-        }
+        toast.error(error.message || "An unexpected error occurred");
       } else {
         toast.error(messageText || "An unexpected error occurred");
       }
