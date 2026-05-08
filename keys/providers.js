@@ -1,16 +1,19 @@
 /**
- * providers.js — Static provider + model registry (vanilla JS mirror)
+ * providers.js — Static provider + model registry (canonical source).
  *
- * Canonical source: chat/lib/providers.ts (ES module, used by Next.js app code)
- * This file mirrors that data for no-build static pages that load it via <script>.
- * When adding or changing providers/models, update lib/providers.ts first, then
- * reflect the change here.
+ * Single source of truth for provider metadata used by:
+ *   - Static pages via window.KeyManagerProviders (set when loaded as <script>)
+ *   - chat/lib/providers.ts (imported via module.exports for Next.js app code)
+ *   - requests/engine/js/app.js (reads window.KeyManagerProviders for model picker)
  *
  * Also kept in sync with lib/db/migrations/0007_seed_data_model_config.sql
  * and lib/storage/types.ts APIProvider type.
+ *
+ * outputs field (optional): non-text capabilities a model supports.
+ * Text output is assumed for all models; only list 'image' and/or 'video' here.
  */
 
-window.KeyManagerProviders = [
+const _providers = [
   {
     id: 'github',
     name: 'GitHub',
@@ -29,8 +32,8 @@ window.KeyManagerProviders = [
     models: [
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Enhanced flash model with better performance', isDefault: true,  active: true  },
       { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',   description: 'Most capable model for complex tasks',         isDefault: false, active: true  },
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast, efficient model for most tasks',         isDefault: false, active: true  },
-      { id: 'gemma-3',          name: 'Gemma 3',           description: 'Open source model for basic tasks',           isDefault: false, active: true },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast, efficient model for most tasks',         isDefault: false, active: true,  outputs: ['image'] },
+      { id: 'gemma-3',          name: 'Gemma 3',           description: 'Open source model for basic tasks',           isDefault: false, active: true  },
     ],
   },
   {
@@ -52,9 +55,9 @@ window.KeyManagerProviders = [
     keyHint: 'OpenAI platform key',
     getKeyUrl: 'https://platform.openai.com/api-keys',
     models: [
-      { id: 'gpt-4o',      name: 'GPT-4o',      description: 'Most capable GPT-4 model',       isDefault: true,  active: true  },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Faster, more affordable GPT-4',  isDefault: false, active: true  },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous generation GPT-4',      isDefault: false, active: false },
+      { id: 'gpt-4o',      name: 'GPT-4o',      description: 'Most capable GPT-4 model',      isDefault: true,  active: true,  outputs: ['image'] },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Faster, more affordable GPT-4', isDefault: false, active: true  },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous generation GPT-4',     isDefault: false, active: false },
     ],
   },
   {
@@ -64,8 +67,8 @@ window.KeyManagerProviders = [
     keyHint: 'xAI Console key',
     getKeyUrl: 'https://console.x.ai/',
     models: [
-      { id: 'grok-3',      name: 'Grok 3',      description: 'Most capable Grok model',  isDefault: true,  active: true },
-      { id: 'grok-3-mini', name: 'Grok 3 Mini', description: 'Fast and efficient Grok',  isDefault: false, active: true },
+      { id: 'grok-3',      name: 'Grok 3',      description: 'Most capable Grok model', isDefault: true,  active: true, outputs: ['image', 'video'] },
+      { id: 'grok-3-mini', name: 'Grok 3 Mini', description: 'Fast and efficient Grok', isDefault: false, active: true, outputs: ['image', 'video'] },
     ],
   },
   {
@@ -115,9 +118,15 @@ window.KeyManagerProviders = [
   },
 ];
 
+// Browser global (loaded via <script> tag)
+if (typeof window !== 'undefined') window.KeyManagerProviders = _providers;
+
+// Node.js / CommonJS (imported by chat/lib/providers.ts)
+if (typeof module !== 'undefined' && module.exports) module.exports = _providers;
+
 // CLI providers — shown only on localhost (no API key required)
-if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-  window.KeyManagerProviders.push(
+if (typeof location !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  _providers.push(
     {
       id: 'claude-code-cli',
       name: 'Claude Code CLI',

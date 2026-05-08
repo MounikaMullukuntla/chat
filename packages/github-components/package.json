@@ -1,0 +1,27 @@
+{
+  "name": "@shared/github-components",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "build:watch": "vite build --watch"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "react": "19.0.0-rc-45804af1-20241021",
+    "react-dom": "19.0.0-rc-45804af1-20241021",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^5.1.1",
+    "tailwindcss": "^4.1.13",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5",
+    "vite": "^5",
+    "vite-plugin-css-injected-by-js": "^3"
+  }
+}

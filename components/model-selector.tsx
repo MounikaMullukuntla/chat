@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { DbStatus } from "@/hooks/use-model-capabilities";
 import type { AdminConfigSummary } from "@/lib/types";
+import { PROVIDER_MAP } from "@/lib/providers";
 import { storage } from "@/lib/storage";
 import { cn, fetcher } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, CpuIcon } from "./icons";
@@ -116,8 +117,8 @@ function PureModelSelector({
 
   Object.entries(adminConfig.providers || {}).forEach(
     ([providerId, providerConfig]) => {
-      const providerName =
-        providerId.charAt(0).toUpperCase() + providerId.slice(1);
+      const providerName = PROVIDER_MAP[providerId]?.name ??
+        (providerId.charAt(0).toUpperCase() + providerId.slice(1));
       const models: any[] = [];
 
       // Collect all models (enabled or not)
@@ -290,8 +291,8 @@ function PureModelSelector({
           const hasServerKey = serverKeys.has(group.providerId);
           const hasKey = hasBrowserKey || hasServerKey;
           return (
-            <div id={`key-provider-${group.providerId}`}>
-            <DropdownMenuSub key={group.providerId}>
+            <div key={group.providerId} id={`key-provider-${group.providerId}`}>
+            <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 className="flex items-center justify-between px-3 py-2"
                 onClick={!hasKey ? () => router.push("/settings") : undefined}

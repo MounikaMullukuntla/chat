@@ -8,6 +8,7 @@ const PROVIDER_ENV_VARS: Record<string, string> = {
   google:    "GEMINI_API_KEY",
   openai:    "OPENAI_API_KEY",
   xai:       "XAI_API_KEY",
+  groq:      "GROQ_API_KEY",
   github:    "GITHUB_PERSONAL_ACCESS_TOKEN",
   pinecone:  "PINECONE_API_KEY",
   voyage:    "VOYAGE_API_KEY",

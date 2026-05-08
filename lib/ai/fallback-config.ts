@@ -1,6 +1,6 @@
 import type { AdminConfigSummary } from "@/lib/types";
 
-// Hardcoded model list mirroring lib/db/migrations/0007_seed_data_model_config.sql
+// Hardcoded model list mirroring lib/db/migrations/0007-0008 seed data.
 // Used when the Supabase admin_config / model_config tables are unreachable so the
 // model dropdown and chat route can still operate without DB connectivity.
 export const FALLBACK_ADMIN_CONFIG_SUMMARY: AdminConfigSummary = {
@@ -42,6 +42,64 @@ export const FALLBACK_ADMIN_CONFIG_SUMMARY: AdminConfigSummary = {
           fileInputEnabled: false,
           allowedFileTypes: [],
           pricingPerMillionTokens: { input: 0.075, output: 0.3 },
+        },
+      },
+    },
+    xai: {
+      enabled: false,
+      fileInputEnabled: false,
+      allowedFileTypes: [],
+      models: {
+        "grok-3": {
+          id: "grok-3",
+          name: "Grok 3",
+          description: "Most capable Grok model",
+          enabled: true,
+          isDefault: true,
+          supportsThinkingMode: false,
+          fileInputEnabled: false,
+          allowedFileTypes: [],
+          pricingPerMillionTokens: { input: 3.0, output: 15.0 },
+        },
+        "grok-3-mini": {
+          id: "grok-3-mini",
+          name: "Grok 3 Mini",
+          description: "Fast and efficient Grok",
+          enabled: true,
+          isDefault: false,
+          supportsThinkingMode: false,
+          fileInputEnabled: false,
+          allowedFileTypes: [],
+          pricingPerMillionTokens: { input: 0.3, output: 0.5 },
+        },
+      },
+    },
+    groq: {
+      enabled: false,
+      fileInputEnabled: false,
+      allowedFileTypes: [],
+      models: {
+        "llama-3.3-70b-versatile": {
+          id: "llama-3.3-70b-versatile",
+          name: "Llama 3.3 70B",
+          description: "Fast open-source model via Groq",
+          enabled: true,
+          isDefault: true,
+          supportsThinkingMode: false,
+          fileInputEnabled: false,
+          allowedFileTypes: [],
+          pricingPerMillionTokens: { input: 0.059, output: 0.079 },
+        },
+        "llama-3.1-8b-instant": {
+          id: "llama-3.1-8b-instant",
+          name: "Llama 3.1 8B",
+          description: "Fastest Groq model",
+          enabled: true,
+          isDefault: false,
+          supportsThinkingMode: false,
+          fileInputEnabled: false,
+          allowedFileTypes: [],
+          pricingPerMillionTokens: { input: 0.005, output: 0.008 },
         },
       },
     },

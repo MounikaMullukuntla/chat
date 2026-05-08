@@ -207,8 +207,7 @@ CORS is not the reason for Vercel's server-side emphasis. The chat repo already 
 
 Browser-direct calls include:
 
-  - GitHub repo search/user repo fetch is done from client code with the PAT in the request header: chat/lib/github-components/github-context-
-    integration.tsx
+  - GitHub repo search/user repo fetch is done from client code with the PAT in the request header: `chat/lib/github-components/github-context-integration.tsx` — these same components are bundled as web components for use on non-React static pages; see the `chat/packages/github-components/` section below.
   - API key verification for Google/OpenAI/Anthropic is also client-side fetch code: chat/components/settings/settings-page.tsx, chat/lib/verification/
     google-verification-service.ts:24, chat/lib/verification/openai-verification-service.ts:22, chat/lib/verification/anthropic-verification-service.ts
 
@@ -276,6 +275,12 @@ Changes that require a `key-manager.js` update:
 - Any change to the encryption/decryption logic in `crypto.ts`
 - Any new provider added to `providers.ts` / `providers.js`
 - Any UX change to the key entry widget that should also apply in non-Next.js contexts
+
+---
+
+## `chat/packages/github-components/` Web Component Bundle
+
+Wraps `chat/lib/github-components/` React components as Custom Elements for use in plain HTML pages via a single `<script>` tag. The built `dist/github-components.js` is committed to git — no build step needed to use it. Rebuild only when the source components change. See `chat/packages/github-components/AGENTS.md` for build instructions and architecture notes.
 
 ---
 
