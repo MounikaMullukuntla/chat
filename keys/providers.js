@@ -90,6 +90,17 @@ const _providers = [
     models: [],
   },
   {
+    id: 'pollinations',
+    name: 'Pollinations',
+    keyPlaceholder: 'pol-...',
+    keyHint: 'Pollinations API token (auth.pollinations.ai) for higher tiers',
+    getKeyUrl: 'https://auth.pollinations.ai',
+    models: [
+      { id: 'flux-schnell',  name: 'Flux Schnell',  description: 'Fast Black Forest Labs Flux model', isDefault: true,  active: true, outputs: ['image'] },
+      { id: 'z-image-turbo', name: 'Z-Image Turbo', description: 'Z-Image Turbo image model',         isDefault: false, active: true, outputs: ['image'] },
+    ],
+  },
+  {
     id: 'discord',
     name: 'Discord Bot',
     keyPlaceholder: '',
