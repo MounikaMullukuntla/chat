@@ -37,7 +37,7 @@ export async function signIn(email: string, password: string): Promise<AuthResul
     if (error) return { user: null, session: null, error: friendlyError(error) };
     return {
       user: (data?.user as unknown as User) ?? null,
-      session: (data?.session as unknown as Session) ?? null,
+      session: null,
       error: null,
     };
   } catch (err) {
@@ -65,7 +65,7 @@ export async function signUp(
     }
     return {
       user: (data?.user as unknown as User) ?? null,
-      session: (data?.session as unknown as Session) ?? null,
+      session: null,
       error: null,
       emailStatus: "sent",
     };
