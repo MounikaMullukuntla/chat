@@ -166,6 +166,13 @@
   display: none;
 }
 
+/* Key hint (shown above the API Key label) */
+.key-key-hint {
+  font-size: 0.78rem;
+  color: var(--key-text-muted);
+  line-height: 1.4;
+}
+
 /* Key input row */
 .key-key-row {
   display: flex;
