@@ -75,10 +75,13 @@ const _providers = [
     id: 'groq',
     name: 'Groq',
     keyPlaceholder: 'gsk_...',
-    keyHint: 'Groq Console key',
+    keyHint: 'Groq Console key — free tier includes Whisper transcription (7,200 audio sec/hr)',
     getKeyUrl: 'https://console.groq.com/keys',
     models: [
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Fast open-source model via Groq', isDefault: true, active: true },
+      { id: 'llama-3.3-70b-versatile',     name: 'Llama 3.3 70B',         description: 'Fast open-source model via Groq',                  isDefault: true,  active: true },
+      { id: 'whisper-large-v3',            name: 'Whisper Large v3',       description: 'Free speech-to-text transcription, 99 languages',  isDefault: false, active: true },
+      { id: 'whisper-large-v3-turbo',      name: 'Whisper Large v3 Turbo', description: 'Whisper at 216× real-time speed via Groq',         isDefault: false, active: true },
+      { id: 'distil-whisper-large-v3-en',  name: 'Distil-Whisper v3 EN',   description: 'Lightweight English-only Whisper model',           isDefault: false, active: true },
     ],
   },
   {
@@ -98,6 +101,44 @@ const _providers = [
     models: [
       { id: 'flux',   name: 'Flux Schnell',  description: 'Fast Black Forest Labs Flux model', isDefault: true,  active: true, outputs: ['image'] },
       { id: 'zimage', name: 'Z-Image Turbo', description: 'Alibaba Z-Image Turbo',             isDefault: false, active: true, outputs: ['image'] },
+    ],
+  },
+  {
+    id: 'meshy',
+    name: 'Meshy',
+    keyPlaceholder: 'msy-...',
+    keyHint: '100 free credits/month — Pro plan required for API access',
+    getKeyUrl: 'https://www.meshy.ai/api',
+    models: [
+      { id: 'text-to-3d',        name: 'Text to 3D',         description: 'Generate 3D models from text prompts (meshy-6)',      isDefault: true,  active: true, outputs: ['3d'] },
+      { id: 'image-to-3d',       name: 'Image to 3D',        description: 'Generate 3D models from a reference image',          isDefault: false, active: true, outputs: ['3d'] },
+      { id: 'multiimage-to-3d',  name: 'Multi-Image to 3D',  description: 'Generate 3D from multiple reference images',         isDefault: false, active: true, outputs: ['3d'] },
+      { id: 'ai-texturing',      name: 'AI Texturing',       description: 'Apply AI-generated textures to existing 3D meshes',  isDefault: false, active: true, outputs: ['3d'] },
+    ],
+  },
+  {
+    id: 'tripo',
+    name: 'Tripo',
+    keyPlaceholder: 'tsk_...',
+    keyHint: '300 free credits/month (~24 models) — platform.tripo3d.ai',
+    getKeyUrl: 'https://platform.tripo3d.ai/api-keys',
+    models: [
+      { id: 'v3.0',  name: 'Tripo v3.0',  description: 'Stable text/image-to-3D generation',             isDefault: true,  active: true, outputs: ['3d'] },
+      { id: 'v3.1',  name: 'Tripo v3.1',  description: 'Enhanced quality 3D generation',                 isDefault: false, active: true, outputs: ['3d'] },
+      { id: 'p1',    name: 'Tripo P1',    description: 'Premium game-ready 3D with higher fidelity',     isDefault: false, active: true, outputs: ['3d'] },
+    ],
+  },
+  {
+    id: 'elevenlabs',
+    name: 'ElevenLabs',
+    keyPlaceholder: '',
+    keyHint: '10,000 free characters/month TTS — elevenlabs.io',
+    getKeyUrl: 'https://elevenlabs.io/app/settings/api-keys',
+    models: [
+      { id: 'eleven_flash_v2_5',      name: 'Flash v2.5',          description: 'Fast TTS included in free tier',                  isDefault: true,  active: true, outputs: ['audio'] },
+      { id: 'eleven_multilingual_v2', name: 'Multilingual v2',     description: 'High-quality TTS in 29+ languages',              isDefault: false, active: true, outputs: ['audio'] },
+      { id: 'eleven_turbo_v2_5',      name: 'Turbo v2.5',          description: 'Low-latency TTS for real-time applications',     isDefault: false, active: true, outputs: ['audio'] },
+      { id: 'scribe_v1',              name: 'Scribe v1 (STT)',      description: 'Accurate speech-to-text with speaker diarization', isDefault: false, active: true },
     ],
   },
   {
