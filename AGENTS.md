@@ -44,10 +44,10 @@ at https://dashboard.clerk.com. Without them the Next.js middleware crashes on s
 [ ! -d workflow/comfyui-deploy/web/node_modules ] && \
   pnpm --prefix workflow/comfyui-deploy/web install
 
-# Only start if Clerk key is configured:
+# Only start if Clerk key is configured (source docker/.env so Clerk vars are in scope):
 grep -q "CLERK_SECRET_KEY=sk_" docker/.env 2>/dev/null && \
   { lsof -ti:3001 > /dev/null 2>&1 || \
-    nohup env PORT=3001 pnpm --prefix workflow/comfyui-deploy/web dev \
+    nohup bash -c 'set -a; source docker/.env; set +a; PORT=3001 pnpm --prefix workflow/comfyui-deploy/web dev' \
       > /tmp/comfydeploy-dev.log 2>&1 &; }
 ```
 
