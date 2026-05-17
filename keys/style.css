@@ -171,6 +171,7 @@
   font-size: 0.78rem;
   color: var(--key-text-muted);
   line-height: 1.4;
+  margin-bottom: 6px;
 }
 
 /* Key input row */
