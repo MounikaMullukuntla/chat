@@ -126,18 +126,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 999px;
 }
 
 .key-status-icon .material-icons {
   font-size: 18px;
 }
 
-.key-status-icon.no-key        svg { color: var(--key-text-muted); }
-.key-status-icon.pending-key   svg { color: var(--key-warning); }
-.key-status-icon.validated-key svg { color: var(--key-success); }
-.key-status-icon.invalid-key   svg { color: var(--key-danger); }
+.key-status-icon.no-key {
+  color: var(--key-text-muted);
+}
+
+.key-status-icon.server-key {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.key-status-icon.browser-key {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.key-status-icon.server-key .material-icons,
+.key-status-icon.browser-key .material-icons {
+  font-size: 14px;
+}
+
+.key-status-icon.pending-key,
+.key-status-icon.validated-key,
+.key-status-icon.invalid-key {
+  color: inherit;
+}
 /* legacy alias kept for any external callers */
-.key-status-icon.has-key svg { color: var(--key-success); }
+.key-status-icon.has-key { color: var(--key-success); }
 
 /* Chevron */
 .key-chevron {

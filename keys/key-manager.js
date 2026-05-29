@@ -393,10 +393,8 @@
     return '<span class="material-icons" style="font-size:18px;vertical-align:middle">' + name + '</span>';
   }
 
-  var ICON_CHECK   = mi('check_circle');
+  var ICON_CHECK_SMALL = mi('check');
   var ICON_CIRCLE  = mi('radio_button_unchecked');
-  var ICON_PENDING = mi('radio_button_checked');
-  var ICON_CANCEL  = mi('cancel');
   var ICON_CHEVRON = mi('expand_more');
   var ICON_EYE     = mi('visibility');
   var ICON_EYE_OFF = mi('visibility_off');
@@ -405,19 +403,17 @@
   // ── Key validation ───────────────────────────────────────────────────────────
 
   function _updateStatusIcon(icon, providerId) {
-    var present = hasKey(providerId);
-    if (!present) {
+    var browserKey = hasKey(providerId);
+    var serverKey = _serverKeys.has(providerId);
+    if (browserKey) {
+      icon.className = 'key-status-icon browser-key';
+      icon.innerHTML = ICON_CHECK_SMALL;
+    } else if (serverKey) {
+      icon.className = 'key-status-icon server-key';
+      icon.innerHTML = ICON_CHECK_SMALL;
+    } else {
       icon.className = 'key-status-icon no-key';
       icon.innerHTML = ICON_CIRCLE;
-    } else if (_invalidKeys.has(providerId)) {
-      icon.className = 'key-status-icon invalid-key';
-      icon.innerHTML = ICON_CANCEL;
-    } else if (_validatedKeys.has(providerId)) {
-      icon.className = 'key-status-icon validated-key';
-      icon.innerHTML = ICON_CHECK;
-    } else {
-      icon.className = 'key-status-icon pending-key';
-      icon.innerHTML = ICON_PENDING;
     }
   }
 
