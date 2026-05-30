@@ -7,6 +7,25 @@ A multimodal AI chat application built on the [Vercel AI Chatbot](https://github
 
 ---
 
+## Deploy Your Own
+
+Deploy the chat app on its own:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FModelEarth%2Fchat&env=BETTER_AUTH_SECRET,POSTGRES_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,GOOGLE_GENERATIVE_AI_API_KEY&project-name=modelearth-chat)
+
+Deploy the full ModelEarth webroot (builds from the `chat` submodule):
+
+[![Deploy ModelEarth](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FModelEarth%2Fwebroot&root-directory=chat&env=BETTER_AUTH_SECRET,POSTGRES_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,GOOGLE_GENERATIVE_AI_API_KEY&project-name=modelearth-chat)
+
+> **Note — Deploy ModelEarth is a work in progress.**
+> Vercel clones the webroot repo without initializing git submodules, so `chat/` is empty at
+> build time. A `vercel.json` at the webroot root with a custom install command
+> (`git submodule update --init chat`) may resolve this once Vercel's build environment
+> can authenticate submodule refs. Until resolved, use the **Deploy with Vercel** button
+> above and follow [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md).
+
+---
+
 ## What We Added
 
 ### API Key Management
