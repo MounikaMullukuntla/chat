@@ -19,6 +19,12 @@ export type ProviderModel = {
   active: boolean;
   outputs?: string[];
   supportsThinkingMode?: boolean;
+  /** Exact model/version identifier sent to the provider API (e.g. Tripo's
+   *  date-stamped "v3.0-20250812"). Falls back to `id` when omitted. */
+  apiModel?: string;
+  /** User-facing message shown when the provider reports the account has no
+   *  API credits (e.g. Tripo code 2010 / free trial not activated). */
+  noCreditsHint?: string;
 };
 
 export type ProviderInfo = {

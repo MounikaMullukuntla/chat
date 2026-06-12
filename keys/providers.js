@@ -11,7 +11,22 @@
  *
  * outputs field (optional): non-text capabilities a model supports.
  * Text output is assumed for all models; only list 'image' and/or 'video' here.
+ *
+ * apiModel field (optional): the exact model/version identifier to send to the
+ * provider's API when it differs from the human-friendly `id`. Example: Tripo
+ * requires date-stamped versions like "v3.0-20250812". Consumers fall back to
+ * `id` when this is absent, so the API-specific strings live here in config
+ * rather than being hardcoded in backend code.
+ *
+ * noCreditsHint field (optional): user-facing message shown when the provider
+ * reports the account has no API credits. Kept here in config so the wording
+ * and any links are editable without touching backend/frontend code.
  */
+
+// Shared across all Tripo models — shown when Tripo returns "no credits" (code 2010).
+const TRIPO_NO_CREDITS_HINT =
+  'Your Tripo account has no API credits — activate your 14-day free trial at ' +
+  'https://platform.tripo3d.ai/billing, then retry.';
 
 const _providers = [
   {
@@ -123,9 +138,9 @@ const _providers = [
     keyHint: '300 free credits/month (~24 models) — platform.tripo3d.ai',
     getKeyUrl: 'https://platform.tripo3d.ai/api-keys',
     models: [
-      { id: 'v3.0',  name: 'Tripo v3.0',  description: 'Stable text/image-to-3D generation',             isDefault: true,  active: true, outputs: ['3d'] },
-      { id: 'v3.1',  name: 'Tripo v3.1',  description: 'Enhanced quality 3D generation',                 isDefault: false, active: true, outputs: ['3d'] },
-      { id: 'p1',    name: 'Tripo P1',    description: 'Premium game-ready 3D with higher fidelity',     isDefault: false, active: true, outputs: ['3d'] },
+      { id: 'v3.0',  name: 'Tripo v3.0',  description: 'Stable text/image-to-3D generation',             isDefault: true,  active: true, outputs: ['3d'], apiModel: 'v3.0-20250812', noCreditsHint: TRIPO_NO_CREDITS_HINT },
+      { id: 'v3.1',  name: 'Tripo v3.1',  description: 'Enhanced quality 3D generation',                 isDefault: false, active: true, outputs: ['3d'], apiModel: 'v3.1-20260211', noCreditsHint: TRIPO_NO_CREDITS_HINT },
+      { id: 'p1',    name: 'Tripo P1',    description: 'Premium game-ready 3D with higher fidelity',     isDefault: false, active: true, outputs: ['3d'], apiModel: 'P1-20260311', noCreditsHint: TRIPO_NO_CREDITS_HINT },
     ],
   },
   {
