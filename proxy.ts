@@ -138,6 +138,7 @@ export async function proxy(request: NextRequest) {
   // Skip middleware for system routes and static files
   if (
     pathname.startsWith("/api/auth") || // BetterAuth auth endpoints
+    pathname.startsWith("/api/oauth") || // OAuth navigation proxy (incognito-safe)
     pathname.startsWith("/_next") || // Next.js internal files
     pathname.startsWith("/favicon.ico") || // Favicon
     pathname.startsWith("/sitemap.xml") || // SEO files
