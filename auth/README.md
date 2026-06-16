@@ -63,19 +63,23 @@ OAuth provider buttons call `/api/oauth/:provider` which uses top-level navigati
 ## First-time setup
 
 `BETTER_AUTH_SECRET` is required before any provider will work — without it the
-server won't start. Generate one:
+server won't start.
+
+**Local** (`docker/.env`): any strong random value works. Sessions stay local
+because `api_url_development` in `docker/webroot.yaml` always points to
+`localhost:3700`, never to Vercel.
 
 ```
-openssl rand -base64 32
+BETTER_AUTH_SECRET=$(openssl rand -base64 32)
 ```
 
-**Local:** add it to `docker/.env` as `BETTER_AUTH_SECRET=<value>`.
+**Vercel** (Settings → Environment Variables): set its own independent
+`BETTER_AUTH_SECRET` (generate a separate value). Also set:
+- `BETTER_AUTH_BASE_URL` → `https://modelearth.vercel.app`
+- each provider's `CLIENT_ID` / `CLIENT_SECRET` pair
 
-**Vercel:** go to the project → **Settings → Environment Variables**, add
-`BETTER_AUTH_SECRET` with the generated value. Also set `BETTER_AUTH_BASE_URL`
-to your production URL (e.g. `https://modelearth.vercel.app`) and add each provider's
-`CLIENT_ID` / `CLIENT_SECRET` pair there. Vercel env vars override anything in
-`.env` at build/runtime.
+The two secrets do not need to match — local and Vercel are separate deployments
+with separate sessions.
 
 See [oauth-setup.md — Environment Variables](oauth-setup.md#env-vars) for the
 full variable list.
