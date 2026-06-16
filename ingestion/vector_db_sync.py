@@ -790,6 +790,9 @@ def parse_args():
                              "Automatically handles the empty-tree comparison.")
     parser.add_argument("--skip-on-missing-keys", action="store_true",
                         help="Exit gracefully (code 0) if API keys are missing instead of raising an error")
+    parser.add_argument("--repo-name", dest="repo_name", default=None,
+                        help="Override the repo_name metadata tag (e.g. 'team', 'localsite'). "
+                             "Defaults to GITHUB_REPOSITORY env var or the repo root directory name.")
     return parser.parse_args()
 
 
@@ -916,7 +919,7 @@ def _run_git(args: List[str], cwd: str) -> str:
         cmd.extend(["-c", f"safe.directory={d}"])
     cmd.extend(args)
 
-    cp = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    cp = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
     if cp.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {cp.stderr.strip()}")
     return cp.stdout
@@ -924,7 +927,7 @@ def _run_git(args: List[str], cwd: str) -> str:
 
 def _parse_submodule_short(diff_text: str) -> List[Tuple[str, str, str]]:
     results: List[Tuple[str, str, str]] = []
-    for line in diff_text.splitlines():
+    for line in (diff_text or "").splitlines():
         # `git diff --submodule=short` may use either `..` or `...` between SHAs.
         m = re.match(r"^Submodule\s+([^\s]+)\s+([0-9a-f]{7,})\.{2,3}([0-9a-f]{7,}).*$", line.strip())
         if m:
@@ -1172,6 +1175,15 @@ def main_entry():
         else:
             raise RuntimeError("Usage: provide one of: --files, --retry-errors, --from-commit, --reindex-all, or changed_files path")
 
+    # Prefix file paths with repo_root when it's not the current directory,
+    # so that file existence checks resolve correctly from the webroot CWD.
+    if args.repo_root and args.repo_root not in (".", "./"):
+        root_prefix = args.repo_root.rstrip("/") + "/"
+        files_to_process = [
+            (st, fp) if fp.startswith(root_prefix) else (st, root_prefix + fp)
+            for st, fp in files_to_process
+        ]
+
     files_to_process, skip_summary = apply_skip_paths(
         files_to_process,
         args.skip_paths,
@@ -1202,6 +1214,7 @@ def main_entry():
         repo_root=args.repo_root,
         wipe_first=args.reindex_all,
         skip_summary=skip_summary,
+        repo_name=args.repo_name,
     )
 
 
@@ -1212,10 +1225,12 @@ def run_sync(
     repo_root: str,
     wipe_first: bool = False,
     skip_summary: Optional[dict] = None,
+    repo_name: Optional[str] = None,
 ):
     # Environment context - repo_name used for metadata tagging
-    github_repo = (os.getenv("GITHUB_REPOSITORY") or "").strip()
-    repo_name = github_repo.split("/")[-1] if github_repo else ""
+    if not repo_name:
+        github_repo = (os.getenv("GITHUB_REPOSITORY") or "").strip()
+        repo_name = github_repo.split("/")[-1] if github_repo else ""
     if not repo_name:
         # Local runs may not have GitHub env; fall back to the repo root directory name.
         repo_name = Path(repo_root).resolve().name or "unknown"
