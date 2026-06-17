@@ -10,8 +10,12 @@ import {
 
 function requireSecret(): string {
   const secret = process.env.BETTER_AUTH_SECRET;
-  if (!secret) throw new Error("BETTER_AUTH_SECRET is required (min 32 chars)");
-  if (secret.length < 32) throw new Error("BETTER_AUTH_SECRET must be at least 32 characters");
+  // Skip validation during `next build` — the secret is only needed at request
+  // time, not during static analysis. NEXT_PHASE is set by Next.js during build.
+  if (process.env.NEXT_PHASE === 'phase-production-build') return secret ?? '';
+  if (!secret || secret.length < 32) {
+    throw new Error("BETTER_AUTH_SECRET is required (min 32 chars)");
+  }
   return secret;
 }
 
