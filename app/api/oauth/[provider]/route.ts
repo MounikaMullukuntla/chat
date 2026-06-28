@@ -89,7 +89,11 @@ export async function GET(
 
   if (!data.url) {
     console.error("[OAuth proxy] no URL from Better Auth", data);
-    return new NextResponse("Failed to get OAuth URL", { status: 500 });
+    const errorUrl = new URL(redirect);
+    const authPage = new URL("/auth", errorUrl.origin);
+    authPage.searchParams.set("error", "provider_not_configured");
+    authPage.searchParams.set("provider", provider);
+    return NextResponse.redirect(authPage.toString());
   }
 
   const response = NextResponse.redirect(data.url);
