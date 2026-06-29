@@ -2,7 +2,28 @@ import { Suspense } from "react";
 import { PublicLayout } from "@/components/public-layout";
 import { SocialLoginButtons } from "@/components/social-login-buttons";
 
-export default async function AuthPage() {
+function getErrorMessage(error: string, provider?: string): string | null {
+  if (error === "account_not_linked") {
+    return "An account with this email already exists. Please sign in with your email and password instead.";
+  }
+  if (error === "provider_not_configured") {
+    const name = provider ? `${provider.charAt(0).toUpperCase() + provider.slice(1)}` : "This provider";
+    return `${name} login is not configured. Add ${provider?.toUpperCase()}_CLIENT_ID and ${provider?.toUpperCase()}_CLIENT_SECRET to your .env.local file and restart the server.`;
+  }
+  if (error) {
+    return "Sign-in failed. Please try again.";
+  }
+  return null;
+}
+
+export default async function AuthPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; provider?: string }>;
+}) {
+  const { error, provider } = await searchParams;
+  const errorMessage = error ? getErrorMessage(error, provider) : null;
+
   return (
     <PublicLayout>
       <div className="flex flex-1 items-start justify-center pt-12 md:items-center md:pt-0 min-h-[60vh]">
@@ -13,6 +34,11 @@ export default async function AuthPage() {
               Sign in with any social account to save chat history and access team features.
             </p>
           </div>
+          {errorMessage && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              {errorMessage}
+            </div>
+          )}
           <Suspense
             fallback={
               <div className="flex justify-center py-8">

@@ -57,6 +57,12 @@ function createAuth() {
     enabled: true,
     requireEmailVerification: false,
   },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["github", "google", "linkedin", "microsoft", "discord", "facebook"],
+    },
+  },
   user: {
     additionalFields: {
       role: {
@@ -78,6 +84,9 @@ function createAuth() {
       httpOnly: true,
       path: "/",
     },
+  },
+  onAPIError: {
+    errorURL: "/auth",
   },
   trustedOrigins: resolveTrustedOrigins(),
   session: {
