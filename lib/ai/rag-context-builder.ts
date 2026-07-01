@@ -497,28 +497,14 @@ export async function buildRagContext(
       queryPayload.filter = filter;
     }
 
-    let response = await queryPinecone(
+    const response = await queryPinecone(
       pineconeHost,
       pineconeApiKey,
       queryPayload,
       timeoutMs
     );
-    let rawMatches = extractMatches(response);
-    let normalized = normalizeMatches(rawMatches, scoreThreshold).slice(0, topK);
-
-    // If the repo-name filter produced no matches, retry with only the base filter
-    // (chunk_type + embedded, no repo_name restriction). This handles the common case
-    // where the ingestion script tagged all files with the superproject name (e.g.
-    // "webroot") rather than individual submodule repo names.
-    if (normalized.length === 0 && repoNames && repoNames.length > 0) {
-      console.log(
-        `[RAG] No matches for repo filter ${JSON.stringify(repoNames)}, retrying across all indexed repos`
-      );
-      const broadPayload = { ...queryPayload, filter: buildPineconeFilter() };
-      response = await queryPinecone(pineconeHost, pineconeApiKey, broadPayload, timeoutMs);
-      rawMatches = extractMatches(response);
-      normalized = normalizeMatches(rawMatches, scoreThreshold).slice(0, topK);
-    }
+    const rawMatches = extractMatches(response);
+    const normalized = normalizeMatches(rawMatches, scoreThreshold).slice(0, topK);
 
     const context = formatRagContext(
       normalized,
