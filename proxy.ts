@@ -43,6 +43,7 @@ const PUBLIC_ROUTES = [
   "/features", // Features page - accessible to all users
   "/agents", // Agents page - accessible to all users
   "/faq", // FAQ page - accessible to all users
+  "/know", // Trade map embed demo (page + its /know/embed.html static asset) - accessible to all users
   "/about", // About page (if implemented)
   "/privacy", // Privacy policy (if implemented)
   "/terms", // Terms of service (if implemented)
