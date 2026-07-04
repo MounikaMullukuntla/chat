@@ -628,7 +628,7 @@ function waitForTradeEmbedReady(timeoutMs) {
             waited += stepMs;
             if (waited >= timeoutMs) {
                 reject(new Error(
-                    "trade.js never loaded from either the relative ../../localsite path " +
+                    "trade.js never loaded from either the relative ../localsite path " +
                     "or the jsDelivr CDN fallback within " + timeoutMs + "ms."
                 ));
                 return;
