@@ -4,23 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth-form";
+import { DbStatusBanner } from "@/components/db-status-banner";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
 import { useAuth } from "@/lib/auth/hooks";
 import { resendSignupEmail, type SignUpEmailStatus } from "@/lib/auth/client";
+import { useDbStatus } from "@/lib/auth/use-db-status";
 import {
   ErrorCategory,
   ErrorSeverity,
   logAuthError,
 } from "@/lib/errors/logger";
-import { isSupabaseConfigured } from "@/lib/db/supabase-client";
 
 const isVercel = !!process.env.NEXT_PUBLIC_VERCEL_URL;
 
 export default function Page() {
   const _router = useRouter();
   const { signUp, loading, error, clearError } = useAuth();
-  const dbUnavailable = !isSupabaseConfigured;
+  const dbStatus = useDbStatus();
+  const dbUnavailable = dbStatus !== "ok";
 
   const [email, setEmail] = useState("");
   const [isSuccessful, _setIsSuccessful] = useState(false);
@@ -287,7 +289,7 @@ export default function Page() {
     }
 
     return (
-      <div className="flex min-h-full w-full items-start justify-center bg-background pt-12 md:items-center md:pt-0">
+      <div className="flex min-h-full w-full items-start justify-center bg-background p-[18px] pt-12 md:items-center md:pt-0">
         <div className="flex w-full max-w-md flex-col gap-6 overflow-hidden rounded-2xl">
           <div className="flex flex-col items-center justify-center gap-4 px-4 text-center sm:px-16">
             <div className={iconWrapClass}>
@@ -459,17 +461,10 @@ export default function Page() {
   }
 
   return (
-    <div className="flex min-h-full w-full flex-col bg-background">
+    <div className="flex min-h-full w-full flex-col bg-background p-[18px]">
       <div className="flex flex-1 items-start justify-center pt-12 md:items-center md:pt-0">
         <div className="flex w-full max-w-md flex-col gap-8 overflow-hidden rounded-2xl">
-          {dbUnavailable && (
-            <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-              Database connection unavailable.{" "}
-              {isVercel
-                ? "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel environment variables."
-                : "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in docker/.env."}
-            </div>
-          )}
+          <DbStatusBanner status={dbStatus} isVercel={isVercel} className="mx-4 sm:mx-16" />
           <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
             <h3 className="font-semibold text-xl dark:text-zinc-50">Sign Up</h3>
             <p className="text-gray-500 text-sm dark:text-zinc-400">
@@ -484,18 +479,21 @@ export default function Page() {
               >
                 {isSubmitting || loading ? "Creating Account..." : "Sign Up"}
               </SubmitButton>
-              <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
-                {"Already have an account? "}
-                <Link
-                  className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-                  href="/login"
-                >
-                  Sign in
-                </Link>
-                {" instead."}
-              </p>
             </AuthForm>
           </div>
+          {/* Outside the disabled/faded wrapper — navigating to /login
+              doesn't touch the database, so it should stay clickable even
+              when Supabase/POSTGRES_URL isn't configured or reachable. */}
+          <p className="mt-4 px-4 text-center text-gray-600 text-sm sm:px-16 dark:text-zinc-400">
+            {"Already have an account? "}
+            <Link
+              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
+              href="/login"
+            >
+              Sign in
+            </Link>
+            {" instead."}
+          </p>
         </div>
       </div>
     </div>

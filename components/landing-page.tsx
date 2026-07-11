@@ -16,7 +16,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-background overflow-hidden">
 
       {/* Hero Section with Animated Background */}
-      <section className="relative px-4 pt-8 pb-24 overflow-hidden @container">
+      <section className="relative px-[34px] pt-8 pb-24 overflow-hidden @container">
         {/* Animated gradient orbs */}
         <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl animate-pulse" />
         <div className="absolute top-40 right-10 h-96 w-96 rounded-full bg-pink-500/20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -38,12 +38,11 @@ export function LandingPage() {
             {/* Subheading */}
             <p className="mx-auto mb-8 max-w-3xl text-muted-foreground text-xl md:text-2xl leading-relaxed">
               Abundance engineering, creative planning, and intelligence orchestration
-              —completely <span className="font-semibold text-green-600">free</span>.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-lg px-8 py-6 group">
+              <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-white text-lg px-8 py-6 group">
                 <Link href="/register">
                   Get Started
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -62,7 +61,7 @@ export function LandingPage() {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span>Free forever</span>
+                <span>BYOM - Bring Your Own Models</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -74,7 +73,7 @@ export function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="px-4 py-20" id="features">
+      <section className="px-[34px] py-20" id="features">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="mb-4 font-bold text-4xl md:text-5xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -150,7 +149,7 @@ export function LandingPage() {
       </section>
 
       {/* Why Free Section */}
-      <section className="px-4 py-20 bg-muted/50">
+      <section className="px-[34px] py-20 bg-muted/50">
         <div className="container mx-auto">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 p-12 md:p-16 text-white">
             <div className="absolute inset-0 bg-grid-white/10" />
@@ -196,7 +195,7 @@ export function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="px-4 py-20">
+      <section className="px-[34px] py-20">
         <div className="container mx-auto">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 p-12 md:p-16 text-center text-white">
             <div className="absolute inset-0 bg-grid-white/10" />

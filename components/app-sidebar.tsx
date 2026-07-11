@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BookOpen, BrainCog, Check, Globe, Library, Loader2, Lock, MoreHorizontal, PanelLeft, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, BrainCog, Check, Globe, Key, Library, Loader2, Lock, Menu, MoreHorizontal, PanelLeft, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import { DEFAULT_CODECHAT_GITHUB_ACCOUNT } from "@/lib/repo-wiki";
 import { storage } from "@/lib/storage";
 import { GitHubContextIntegration } from "@/lib/github-components";
 import type { GitHubRepo } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -84,7 +85,7 @@ const TABS = [
   { id: "sources" as ActiveTab, icon: <Library size={16} />, label: "Sources", description: "Choose local and GitHub code sources." },
   { id: "chats" as ActiveTab, icon: <MessageSquare size={16} />, label: "Chats", description: "Browse history and start a new chat." },
   { id: "kb" as ActiveTab, icon: <BookOpen size={16} />, label: "Knowledge Base", description: "Use common prompts and starter questions." },
-  { id: "visibility" as ActiveTab, icon: <BrainCog size={16} />, label: "Models & Keys", description: "Open model settings and key management." },
+  { id: "visibility" as ActiveTab, icon: <Key size={16} />, label: "Models & Keys", description: "Open model settings and key management." },
 ];
 
 export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
@@ -248,7 +249,7 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
       <Sidebar className="group-data-[side=left]:border-r-0 top-[73px] h-[calc(100svh-73px)]">
         <SidebarHeader className="border-b border-sidebar-border p-2">
           <div className="flex items-center gap-1.5">
-            {activeTab && (
+            {activeTab ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -259,7 +260,21 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                     <ArrowLeft size={16} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">All Topics</TooltipContent>
+                <TooltipContent side="top">All Topics</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    aria-label="Close sidebar"
+                    className="flex size-8 items-center justify-center rounded-full border border-border bg-transparent text-foreground transition-colors hover:bg-muted dark:bg-background"
+                  >
+                    <Menu size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Toggle Sidebar</TooltipContent>
               </Tooltip>
             )}
             {TABS.map((tab) => (
@@ -268,12 +283,18 @@ export function AppSidebar({ isWebroot = false }: { isWebroot?: boolean }) {
                   <button
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className="flex size-8 items-center justify-center rounded-full border border-border bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-pressed={activeTab === tab.id}
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-full border border-border transition-colors",
+                      activeTab === tab.id
+                        ? "bg-transparent text-foreground dark:bg-background"
+                        : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
                   >
                     {tab.icon}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">{tab.label}</TooltipContent>
+                <TooltipContent side="top">{tab.label}</TooltipContent>
               </Tooltip>
             ))}
             <div className="ml-auto">

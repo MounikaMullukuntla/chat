@@ -39,14 +39,9 @@ export function TopNav({ isWebroot, isLoggedIn = false }: TopNavProps) {
               <Link href="/faq">FAQ</Link>
             </Button>
             {isWebroot && (
-              <>
-                <Button asChild variant="ghost" className="shrink-0">
-                  <Link href="/team">Team</Link>
-                </Button>
-                <Button asChild variant="ghost" className="shrink-0">
-                  <Link href="/montage">Montage</Link>
-                </Button>
-              </>
+              <Button asChild variant="ghost" className="shrink-0">
+                <Link href="/team">Team</Link>
+              </Button>
             )}
             {!isLoggedIn && pathname !== "/login" && (
               <Button asChild variant="ghost" className="shrink-0">
@@ -58,7 +53,7 @@ export function TopNav({ isWebroot, isLoggedIn = false }: TopNavProps) {
 
         {/* Sign Up always visible — outside the overflow container */}
         {!isLoggedIn && pathname !== "/register" && (
-          <Button asChild className="shrink-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90">
+          <Button asChild className="shrink-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90">
             <Link href="/register">Sign Up</Link>
           </Button>
         )}

@@ -628,12 +628,12 @@
 
     var copyLabel = document.createElement('label');
     copyLabel.className = 'key-toolbar-label';
-    copyLabel.textContent = 'Copy my keys:';
+    copyLabel.textContent = 'Encrypt:';
 
     var copySelect = document.createElement('select');
     copySelect.className = 'key-copy-select';
     [
-      { value: 'off', label: 'No copying' },
+      { value: 'off', label: 'Immediately' },
       { value: '5',   label: 'Within 5 minutes' },
       { value: '20',  label: 'Within 20 minutes' },
       { value: '60',  label: 'Within 1 hour' },

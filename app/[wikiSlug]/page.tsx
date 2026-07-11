@@ -48,7 +48,7 @@ export default async function RepoWikiPage({
   const readme = await fetchReadme(readmeUrl);
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 md:px-6">
+    <main className="min-h-screen bg-background p-[18px]">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <section className="rounded-[28px] border border-border/60 bg-card/95 p-6 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

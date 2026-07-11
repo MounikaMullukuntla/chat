@@ -2,6 +2,7 @@
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -158,7 +159,10 @@ export function SidebarHistory() {
       <SidebarGroup>
         <SidebarGroupContent>
           <div className="flex w-full flex-row items-center justify-center gap-2 px-2 text-sm text-zinc-500">
-            Login to save and revisit previous chats!
+            <Link href="/login" className="font-bold dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300">
+              Sign in
+            </Link>{" "}
+            to save/recall chats
           </div>
         </SidebarGroupContent>
       </SidebarGroup>

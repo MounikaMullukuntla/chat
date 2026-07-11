@@ -7,6 +7,7 @@ import {
   betterAuthAccount,
   betterAuthVerification,
 } from "@/lib/db/drizzle-schema";
+import { isSocialProviderConfigured } from "@/lib/auth/social-providers";
 
 function requireSecret(): string {
   const secret = process.env.BETTER_AUTH_SECRET;
@@ -100,33 +101,33 @@ function createAuth() {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-      enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("google"),
     },
     linkedin: {
       clientId: process.env.LINKEDIN_CLIENT_ID ?? "",
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET ?? "",
-      enabled: !!(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("linkedin"),
     },
     github: {
       clientId: process.env.GITHUB_CLIENT_ID ?? "",
       clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
-      enabled: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("github"),
     },
     microsoft: {
       clientId: process.env.MICROSOFT_CLIENT_ID ?? "",
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
       tenantId: "common",
-      enabled: !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("microsoft"),
     },
     discord: {
       clientId: process.env.DISCORD_CLIENT_ID ?? "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
-      enabled: !!(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("discord"),
     },
     facebook: {
       clientId: process.env.FACEBOOK_CLIENT_ID ?? "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET ?? "",
-      enabled: !!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET),
+      enabled: isSocialProviderConfigured("facebook"),
     },
   },
 });

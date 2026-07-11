@@ -494,7 +494,7 @@ export function Chat({
         />
 
         {ragSkippedReason === "missing_credentials" && !ragDisabled && (
-          <div className="mx-auto w-full max-w-4xl px-2 pb-2 md:px-4">
+          <div className="mx-auto w-full max-w-4xl px-[26px] pb-2 md:px-[34px]">
             <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">
               Repository search is unavailable: the server is missing Pinecone
               and/or Voyage credentials, so prompts are answered without your
@@ -511,7 +511,7 @@ export function Chat({
         )}
 
         {ragSkippedReason === "unauthorized" && !ragDisabled && (
-          <div className="mx-auto w-full max-w-4xl px-2 pb-2 md:px-4">
+          <div className="mx-auto w-full max-w-4xl px-[26px] pb-2 md:px-[34px]">
             <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">
               <span className="font-medium">Pinecone key unauthorized.</span>{" "}
               The <code className="rounded bg-amber-100 px-0.5 dark:bg-amber-900">PINECONE_API_KEY</code> in{" "}
@@ -531,7 +531,7 @@ export function Chat({
         )}
 
         {ragSkippedReason === "index_not_found" && !ragDisabled && (
-          <div className="mx-auto w-full max-w-4xl px-2 pb-2 md:px-4">
+          <div className="mx-auto w-full max-w-4xl px-[26px] pb-2 md:px-[34px]">
             <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200">
               <span className="font-medium">Pinecone index not found.</span>{" "}
               Create a <code className="rounded bg-amber-100 px-0.5 dark:bg-amber-900">repo-chunks</code> index
@@ -558,7 +558,7 @@ export function Chat({
 
         {timingData && <RagTimingPanel timing={timingData} />}
 
-        <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
+        <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-[26px] pb-3 md:px-[34px] md:pb-4">
           {!isReadonly && (
             <MultimodalInput
               attachments={attachments}

@@ -460,3 +460,10 @@ a,
   -webkit-text-fill-color: transparent;
 }
 
+/* Next.js dev tools overlay (dev-mode only) — narrower + shifted left.
+   Uses !important because Next sets this element's size via inline styles. */
+#nextjs-dev-tools-menu {
+  width: 220px !important;
+  transform: translateX(-6px);
+}
+

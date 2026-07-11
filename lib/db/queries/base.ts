@@ -22,3 +22,17 @@ export function getDb() {
   if (!db) throw new Error("Database not configured — set POSTGRES_URL (locally: docker/.env, production: Vercel env vars)");
   return db;
 }
+
+// Generic Postgres reachability check — works for any POSTGRES_URL backend
+// (Supabase, Neon, ...), not tied to a specific provider's SDK.
+export async function isDbReachable(): Promise<boolean> {
+  if (!(isDbConfigured && client)) {
+    return false;
+  }
+  try {
+    await client`select 1`;
+    return true;
+  } catch {
+    return false;
+  }
+}

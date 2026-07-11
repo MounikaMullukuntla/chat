@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { PublicLayout } from "@/components/public-layout";
 import { SocialLoginButtons } from "@/components/social-login-buttons";
+import { EmailPasswordSignIn } from "@/components/email-password-signin";
+import { LocalEnvKeyPanel } from "@/components/local-env-key-panel";
+import { getConfiguredSocialProviders } from "@/lib/auth/social-providers";
+import { getDbStatus } from "@/lib/auth/db-status";
 
 function getErrorMessage(error: string, provider?: string): string | null {
   if (error === "account_not_linked") {
@@ -23,10 +27,13 @@ export default async function AuthPage({
 }) {
   const { error, provider } = await searchParams;
   const errorMessage = error ? getErrorMessage(error, provider) : null;
+  const configuredProviders = getConfiguredSocialProviders();
+  const dbStatus = await getDbStatus();
+  const isVercel = !!process.env.VERCEL;
 
   return (
     <PublicLayout>
-      <div className="flex flex-1 items-start justify-center pt-12 md:items-center md:pt-0 min-h-[60vh]">
+      <div className="flex flex-1 items-start justify-center p-[18px] pt-12 md:items-center md:pt-0 min-h-[60vh]">
         <div className="flex w-full max-w-2xl flex-col gap-6 px-4">
           <div className="flex flex-col items-center justify-center gap-2 text-center">
             <h3 className="font-semibold text-xl dark:text-zinc-50">Account</h3>
@@ -46,8 +53,10 @@ export default async function AuthPage({
               </div>
             }
           >
-            <SocialLoginButtons />
+            <SocialLoginButtons configuredProviders={configuredProviders} />
           </Suspense>
+          <EmailPasswordSignIn dbStatus={dbStatus} isVercel={isVercel} showDivider />
+          <LocalEnvKeyPanel />
         </div>
       </div>
     </PublicLayout>

@@ -37,8 +37,24 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: sessionData, isPending } = authClient.useSession();
+  const { data: sessionData, isPending, refetch: refetchSession } = authClient.useSession();
   const [error, setError] = useState<string | null>(null);
+
+  // better-auth's own refetch-on-focus only listens to `visibilitychange`
+  // (see node_modules/better-auth's focus-manager.mjs) and rate-limits to
+  // once per 5s — it can miss a page restored from the browser's
+  // back-forward cache (bfcache), which freezes the whole JS context
+  // (including any session fetch already in flight) and resumes it exactly
+  // as it was. `pageshow` with `event.persisted === true` is the dedicated
+  // signal for "this page came back from bfcache" and isn't covered by
+  // that rate limit, so force a fresh refetch here to unstick isPending.
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) refetchSession();
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [refetchSession]);
 
   const user = sessionData?.user ? (sessionData.user as unknown as User) : null;
   const session = sessionData?.session ? (sessionData.session as unknown as Session) : null;

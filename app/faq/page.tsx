@@ -118,7 +118,7 @@ export default function FAQPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Hero Section */}
-            <section className="px-4 pt-4 pb-20">
+            <section className="px-[34px] pt-4 pb-20">
                 <div className="container mx-auto text-center">
                     <div className="animate-fade-in-up">
                         <h1 className="mb-6 font-bold text-5xl md:text-7xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
@@ -141,7 +141,7 @@ export default function FAQPage() {
             </section>
 
             {/* Pricing Highlight */}
-            <section className="px-4 pb-16">
+            <section className="px-[34px] pb-16">
                 <div className="container mx-auto">
                     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 p-12 text-center text-white">
                         <div className="absolute inset-0 bg-grid-white/10" />
@@ -175,7 +175,7 @@ export default function FAQPage() {
             </section>
 
             {/* FAQ Categories */}
-            <section className="px-4 pt-0 pb-16">
+            <section className="px-[34px] pt-0 pb-16">
                 <div className="container mx-auto">
                     <div className="space-y-16">
                         {faqs.map((category, categoryIndex) => {
@@ -231,7 +231,7 @@ export default function FAQPage() {
             </section>
 
             {/* Still Have Questions */}
-            <section className="px-4 py-20">
+            <section className="px-[34px] py-20">
                 <div className="container mx-auto">
                     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 p-12 text-center text-white">
                         <div className="absolute inset-0 bg-grid-white/10" />

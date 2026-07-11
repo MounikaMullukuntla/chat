@@ -24,7 +24,7 @@ function PureChatHeader({
   return (
     <header className="sticky top-0 flex items-center gap-2 bg-background px-2 py-1.5 md:px-2">
       <Button
-        className={cn("order-2 ml-auto h-8 px-2 md:order-1 md:ml-0 md:h-fit md:px-2", open && "md:hidden")}
+        className={cn("ml-auto h-8 px-2 md:h-fit md:px-2", open && "md:hidden")}
         onClick={() => {
           router.push("/chat");
           router.refresh();
