@@ -267,7 +267,7 @@ export default function AgentsPage() {
                             </p>
                             <div className="flex justify-center gap-4">
                                 <Button asChild size="lg" variant="secondary">
-                                    <Link href="/register">Start Free</Link>
+                                    <Link href="/register">Sign Up</Link>
                                 </Button>
                                 <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-purple-600">
                                     <Link href="/features">View Features</Link>
