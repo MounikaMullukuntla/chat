@@ -269,7 +269,7 @@ export default function AgentsPage() {
                                 <Button asChild size="lg" variant="secondary">
                                     <Link href="/register">Sign Up</Link>
                                 </Button>
-                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-purple-600">
+                                <Button asChild size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-purple-600">
                                     <Link href="/features">View Features</Link>
                                 </Button>
                             </div>
