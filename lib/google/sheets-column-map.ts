@@ -1,0 +1,28 @@
+// Sheet column display name -> form field name. Single source of truth,
+// mirroring team/admin/google/form/form.js's fieldMapping (client-side, used
+// to populate the form) and config.yaml's `columns` map (column -> letter).
+export const SHEET_COLUMN_TO_FORM_FIELD: Record<string, string> = {
+  Timestamp: "timestamp",
+  Handle: "handle",
+  Name: "name",
+  ToDos: "todos",
+  Projects: "projects",
+  Team: "team",
+  Focus: "focus",
+  "UN Goal": "un_goals",
+  "School and Degree Program": "school",
+  "Your Location": "location",
+  Github: "github",
+  Status: "status",
+  Email: "email",
+  StartDate: "start_date",
+  EndDate: "end_date",
+  Note: "note",
+  "Your Website": "website",
+  "Date Degree Completed": "degree_date",
+  "OPT University Department": "opt_department",
+  "OPT University Department,Email Phone": "opt_contact",
+  HoursPerWeek: "hours_per_week",
+  "Job Title": "job_title",
+  Phone: "phone",
+};
