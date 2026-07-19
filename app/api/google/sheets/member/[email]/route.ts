@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { corsPreflight, withCors } from "@/lib/cors";
+import { corsErrorJson, corsPreflight, withCors } from "@/lib/cors";
 import { getMemberByEmail } from "@/lib/google/sheets-member";
 
 export const runtime = "nodejs";
@@ -13,36 +13,37 @@ export async function OPTIONS() {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ email: string }> }) {
   const { email } = await params;
-  const result = await getMemberByEmail(decodeURIComponent(email));
 
-  switch (result.status) {
-    case "not_configured":
-      return withCors(
-        NextResponse.json(
-          {
-            success: false,
-            error: "Google Sheets not configured. Please update spreadsheetId in config.yaml",
-            email,
-          },
-          { status: 400 }
-        )
-      );
-    case "no_credentials":
-      return withCors(
-        NextResponse.json(
-          {
-            success: false,
-            error: "GOOGLE_SERVICE_KEY / GOOGLE_SERVICE_KEY_JSON not set or invalid in docker/.env",
-            email,
-          },
-          { status: 400 }
-        )
-      );
-    case "not_found":
-      return withCors(NextResponse.json({ success: true, data: null, email }));
-    case "found":
-      return withCors(NextResponse.json({ success: true, data: result.data, email }));
-    default:
-      return withCors(NextResponse.json({ success: false, error: "Unknown error", email }, { status: 500 }));
+  try {
+    const result = await getMemberByEmail(decodeURIComponent(email));
+
+    switch (result.status) {
+      case "not_configured":
+        return corsErrorJson(400, {
+          success: false,
+          error: "Google Sheets not configured. Please update spreadsheetId in config.yaml",
+          email,
+        });
+      case "no_credentials":
+        return corsErrorJson(400, {
+          success: false,
+          error: "GOOGLE_SERVICE_KEY / GOOGLE_SERVICE_KEY_JSON not set or invalid in docker/.env",
+          email,
+        });
+      case "not_found":
+        return withCors(NextResponse.json({ success: true, data: null, email }));
+      case "found":
+        return withCors(NextResponse.json({ success: true, data: result.data, email }));
+      default:
+        return corsErrorJson(500, { success: false, error: "Unknown error", email });
+    }
+  } catch (error) {
+    // Most often a rejected Google Sheets API call: bad credentials, the
+    // service account lacks access to the sheet, or the sheet/tab was renamed.
+    return corsErrorJson(500, {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to read from Google Sheets",
+      email,
+    });
   }
 }

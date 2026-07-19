@@ -8,7 +8,11 @@ export const runtime = "nodejs";
 // get_env_config): both read the same docker/.env and expose the same
 // non-secret fields, so team/admin/google/form/form.js can point at whichever
 // backend is actually running. Only the fields form.js reads are included —
-// see checkOAuthConfiguration() in form.js.
+// see fetchConfigEnv() in form.js.
+//
+// Named "env-vars" rather than "env": chat/.gitignore has a bare `env`
+// pattern (for a root-level Python venv folder) that silently swallows any
+// path component literally named "env" anywhere in the tree.
 export async function OPTIONS() {
   return corsPreflight();
 }

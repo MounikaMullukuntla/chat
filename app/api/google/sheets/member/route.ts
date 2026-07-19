@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { corsPreflight, withCors } from "@/lib/cors";
+import { corsErrorJson, corsPreflight, withCors } from "@/lib/cors";
 import { saveMemberData } from "@/lib/google/sheets-member";
 
 export const runtime = "nodejs";
@@ -18,42 +18,41 @@ type SaveMemberRequestBody = {
 };
 
 async function handleSave(request: Request) {
-  const body = (await request.json()) as SaveMemberRequestBody;
-  const { data, email, updateExisting } = body;
+  try {
+    const body = (await request.json()) as SaveMemberRequestBody;
+    const { data, email, updateExisting } = body;
 
-  if (!email) {
-    return withCors(NextResponse.json({ success: false, error: "email is required" }, { status: 400 }));
-  }
+    if (!email) {
+      return corsErrorJson(400, { success: false, error: "email is required" });
+    }
 
-  const result = await saveMemberData(data ?? {}, email, !!updateExisting);
+    const result = await saveMemberData(data ?? {}, email, !!updateExisting);
 
-  switch (result.status) {
-    case "not_configured":
-      return withCors(
-        NextResponse.json(
-          {
-            success: false,
-            error: "Google Sheets not configured. Please update spreadsheetId in config.yaml",
-            email,
-          },
-          { status: 400 }
-        )
-      );
-    case "no_credentials":
-      return withCors(
-        NextResponse.json(
-          {
-            success: false,
-            error: "GOOGLE_SERVICE_KEY / GOOGLE_SERVICE_KEY_JSON not set or invalid in docker/.env",
-            email,
-          },
-          { status: 400 }
-        )
-      );
-    case "saved":
-      return withCors(NextResponse.json({ success: true, data: result.data, updated: result.updated }));
-    default:
-      return withCors(NextResponse.json({ success: false, error: "Unknown error", email }, { status: 500 }));
+    switch (result.status) {
+      case "not_configured":
+        return corsErrorJson(400, {
+          success: false,
+          error: "Google Sheets not configured. Please update spreadsheetId in config.yaml",
+          email,
+        });
+      case "no_credentials":
+        return corsErrorJson(400, {
+          success: false,
+          error: "GOOGLE_SERVICE_KEY / GOOGLE_SERVICE_KEY_JSON not set or invalid in docker/.env",
+          email,
+        });
+      case "saved":
+        return withCors(NextResponse.json({ success: true, data: result.data, updated: result.updated }));
+      default:
+        return corsErrorJson(500, { success: false, error: "Unknown error", email });
+    }
+  } catch (error) {
+    // Malformed JSON body, or a rejected Google Sheets API call: bad
+    // credentials, the service account lacks write access, quota, etc.
+    return corsErrorJson(500, {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save to Google Sheets",
+    });
   }
 }
 
