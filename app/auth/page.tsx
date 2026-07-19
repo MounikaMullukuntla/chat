@@ -3,6 +3,7 @@ import { PublicLayout } from "@/components/public-layout";
 import { SocialLoginButtons } from "@/components/social-login-buttons";
 import { EmailPasswordSignIn } from "@/components/email-password-signin";
 import { LocalEnvKeyPanel } from "@/components/local-env-key-panel";
+import { SupabaseKeyPanel } from "@/components/supabase-key-panel";
 import { getConfiguredSocialProviders } from "@/lib/auth/social-providers";
 import { getDbStatus } from "@/lib/auth/db-status";
 
@@ -56,6 +57,7 @@ export default async function AuthPage({
             <SocialLoginButtons configuredProviders={configuredProviders} />
           </Suspense>
           <EmailPasswordSignIn dbStatus={dbStatus} isVercel={isVercel} showDivider />
+          <SupabaseKeyPanel />
           <LocalEnvKeyPanel />
         </div>
       </div>

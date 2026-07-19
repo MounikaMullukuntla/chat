@@ -11,13 +11,14 @@ const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 type EnvValue = { name: string; value: string; isPlaceholder: boolean };
 
-// Lets a developer copy auth secrets out of docker/.env straight into
-// Vercel's dashboard without the value ever being rendered readably on
-// screen. The server route (api/auth/local-env-values) refuses to serve
-// values off-localhost/off-Vercel-detection regardless of this component
-// rendering — this client-side check is a second, redundant guard, not
-// the source of truth.
-export function LocalEnvKeyPanel() {
+type EnvKeyPanelProps = {
+  apiPath: string;
+  title: string;
+  description: string;
+  copyAllLabel: string;
+};
+
+export function EnvKeyPanel({ apiPath, title, description, copyAllLabel }: EnvKeyPanelProps) {
   const [isLocal, setIsLocal] = useState(false);
   const [values, setValues] = useState<EnvValue[] | null>(null);
 
@@ -27,11 +28,11 @@ export function LocalEnvKeyPanel() {
 
   useEffect(() => {
     if (!isLocal) return;
-    fetch("/api/auth/local-env-values")
+    fetch(apiPath)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setValues(data?.values ?? null))
       .catch(() => setValues(null));
-  }, [isLocal]);
+  }, [isLocal, apiPath]);
 
   if (!isLocal || !values || values.length === 0) return null;
 
@@ -50,12 +51,10 @@ export function LocalEnvKeyPanel() {
       toast({ type: "error", description: "No real keys configured yet — only placeholders" });
       return;
     }
-    // KEY=VALUE per line — the exact format Vercel's Environment Variables
-    // bulk-paste box accepts in a single paste.
     const blob = real.map((entry) => `${entry.name}=${entry.value}`).join("\n");
     try {
       await navigator.clipboard.writeText(blob);
-      toast({ type: "success", description: `Copied ${real.length} keys for Vercel` });
+      toast({ type: "success", description: `Copied ${real.length} ${copyAllLabel}` });
     } catch {
       toast({ type: "error", description: "Couldn't copy keys" });
     }
@@ -64,21 +63,18 @@ export function LocalEnvKeyPanel() {
   return (
     <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="font-semibold text-sm">Copy keys to Vercel</h4>
+        <h4 className="font-semibold text-sm">{title}</h4>
         <button
           type="button"
           onClick={copyAll}
-          aria-label="Copy all keys for Vercel"
+          aria-label={`Copy all ${copyAllLabel}`}
           className="flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground text-xs hover:bg-muted hover:text-foreground transition-colors"
         >
           <CopyIcon size={13} />
           Copy all
         </button>
       </div>
-      <p className="mt-1 text-muted-foreground text-xs">
-        Local only — values are blurred and never rendered readably. Copy all at once and paste
-        directly into Vercel&apos;s Environment Variables box, or copy one key at a time.
-      </p>
+      <p className="mt-1 text-muted-foreground text-xs">{description}</p>
       <ul className="mt-3 flex flex-col gap-1.5">
         {values.map((entry) => (
           <li key={entry.name} className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2">
@@ -109,5 +105,22 @@ export function LocalEnvKeyPanel() {
         ))}
       </ul>
     </div>
+  );
+}
+
+// Lets a developer copy auth secrets out of docker/.env straight into
+// Vercel's dashboard without the value ever being rendered readably on
+// screen. The server route (api/auth/local-env-values) refuses to serve
+// values off-localhost/off-Vercel-detection regardless of this component
+// rendering — this client-side check is a second, redundant guard, not
+// the source of truth.
+export function LocalEnvKeyPanel() {
+  return (
+    <EnvKeyPanel
+      apiPath="/api/auth/local-env-values"
+      title="Copy keys to Vercel"
+      description="Local only — values are blurred and never rendered readably. Copy all at once and paste directly into Vercel's Environment Variables box, or copy one key at a time."
+      copyAllLabel="keys for Vercel"
+    />
   );
 }
