@@ -38,32 +38,6 @@ sleep 4 && cat /tmp/chat-dev.log
 
 Then report the URLs from the log output.
 
-### Workflow repo detection
-
-If `workflow/comfyui-deploy/web/package.json` exists AND `CLERK_SECRET_KEY` is set in
-the local env file (the one `automation/paths.yaml` points at), also start the ComfyUI
-Deploy dashboard on port 3001 as part of `start chat`.
-Requires both `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — get them free
-at https://dashboard.clerk.com. Without them the Next.js middleware crashes on startup.
-
-```bash
-# Install dependencies first time (if node_modules absent):
-[ ! -d workflow/comfyui-deploy/web/node_modules ] && \
-  pnpm --prefix workflow/comfyui-deploy/web install
-
-# Resolve the local env file via automation/paths.yaml (see automation/README.md):
-ENV_FILE_REL="$(grep -E '^env_file:' automation/paths.yaml 2>/dev/null | tail -n1 | cut -d':' -f2- | sed -e 's/[[:space:]]#.*$//' | xargs)"
-ENV_FILE="automation/${ENV_FILE_REL}"
-
-# Only start if a env_file: is configured and its Clerk key is set (source it so Clerk vars are in scope):
-[ -n "$ENV_FILE_REL" ] && grep -q "CLERK_SECRET_KEY=sk_" "$ENV_FILE" 2>/dev/null && \
-  { lsof -ti:3001 > /dev/null 2>&1 || \
-    nohup bash -c "set -a; source \"$ENV_FILE\"; set +a; PORT=3001 pnpm --prefix workflow/comfyui-deploy/web dev" \
-      > /tmp/comfydeploy-dev.log 2>&1 &; }
-```
-
-URL: http://localhost:3001 — ComfyUI Deploy dashboard (requires Clerk keys).
-
 ---
 
 ## Running from the Webroot
@@ -101,7 +75,6 @@ The **chat app occupies the root** — no path prefix:
 | `localhost:3700/localsite/…` | `localsite/` static files |
 | `localhost:3700/team/…` | `team/` static files |
 | `localhost:3700/requests/…` | `requests/` static files |
-| `localhost:3001/` | ComfyUI Deploy dashboard (when `workflow/` present) |
 
 Static repo paths (`/localsite/`, `/team/`, `/requests/`, `/realitystream/`, `/data-pipeline/`, `/home/`) are served directly from the filesystem before Next.js sees the request; everything else goes to chat Next.js.
 
